@@ -203,6 +203,30 @@ receipts are retained whole, dropping the oldest turns in their entirety when th
 total limit is exceeded. Text and list counts are bounded before serialization.
 Save JSON and memory sidecars use atomic replacement.
 
+Lesson patches merge distinct entries into the most recent 16 durable lessons;
+an empty lesson list does not erase learned constraints. Other patched sections
+replace their previous contents. Planning instructions require objectives and
+commitments to match the orders actually issued and to preserve useful ongoing
+missions when choosing replacements.
+
+### Planning context and measurement
+
+The provider moves public command/ability/template definitions into a stable
+developer-message prefix before changing tactical state, memory and repair details.
+Template affordability and Titan blockers stay in the changing suffix. Constructor
+quotes use shared template base prices plus explicit price/shortfall exceptions.
+Omitted shortfalls in this planning-only representation mean zero; per-unit buildable
+names and currently issuable names still restrict construction. The ordinary socket
+observation and provider-neutral request remain complete.
+
+Telemetry records `prompt_metrics`: original/compact section character counts,
+stable catalog size, dynamic size and serialized/content input sizes. These are
+JSON character counts, not token estimates. Provider usage includes
+`cached_input_tokens` and `uncached_input_tokens` when cache details are returned.
+Neither metric set logs prompt contents. Run `python scripts/benchmark_observations.py`
+for fixed-seed, two-system radius-3 Normal/Testing character measurements without API
+calls; model cost, strength and larger-map performance require separate evidence.
+
 ## Shared order contract
 
 `game_ai.command_spec.COMMAND_SPECS` defines fields, constraints, queue behavior,
@@ -222,6 +246,36 @@ For an order-producing command, `queue=true` appends an explicit root; `queue=fa
 replaces explicit work after preflight succeeds. Immediate commands apply their
 own documented effect rather than implicitly replacing orders. Preserve a queued
 prerequisite by appending its dependent order instead of replacing it.
+
+Each catalog command includes `required_presence` (including `type` and selected
+unit IDs where needed) and separate `nullable_fields`. `required` remains the list
+of required non-null action fields for existing clients. For `set_wing_production`,
+`template_name` must be present but may be null to clear a slot:
+
+```json
+{"type":"set_wing_production","unit_ids":[12],"slot_index":0,"template_name":null}
+```
+
+Legacy Designate Target, Capture Unit and Drain Antimatter share hostile relationship
+validation across discovery, preflight and execution; Ion Bolt retains its existing
+self/allied/enemy policy. Capture also requires disabled/absent engines, destroyed/absent
+weapons and defenses, and functioning marines. Enemy fuel availability is checked only
+at execution, since it is private. Unit-target abilities may approach when route and
+movement capability allow it; direct activation requires current local range.
+
+Attack discovery and preflight use shared route feasibility. Wings cannot cross
+sectors, local craft require a functional drive for sector changes, and stationary
+platforms cannot approach out-of-range targets. A stationary platform can fire an
+eligible longer turret without closing for its shorter battery. Estimates and known
+origin previews ignore undisclosed dynamic inhibition fields; execution remains
+authoritative when previously unknown or changed conditions obstruct travel.
+
+Active public approaches include `progress.journey`: phase, remaining local approach
+distance, current route leg, remaining planned legs, drive status/recharge, and a
+conditional estimate capped at 10,000 owner turns. Hidden target references and
+private agent approach geometry suppress this view. Estimates use current equipment
+and known terrain, assume sufficient fuel and unchanged conditions, and never advance
+orders, record discoveries or draw randomness. Slow advancing work should be preserved.
 
 Preflight uses shared legality queries against live state plus preceding projected
 effects. Commit callbacks and executing orders recheck applicable live conditions,
@@ -530,6 +584,16 @@ hidden target and defers cancellation/history to the first gameplay validation.
   total budget. Incomplete cleanup produces a payload-free warning; the daemon
   runtime thread cannot hold process exit open.
 - On final failure, the error is shown and End Turn is re-enabled.
+- TLS verification combines the bundled CA roots with operating-system trust.
+  Explicit `SSL_CERT_FILE` or `SSL_CERT_DIR` overrides remain supported; verification
+  and hostname checks stay enabled. Safe error categories distinguish certificate
+  trust/configuration, connection, timeout, authentication, quota and rate limits
+  by exception types/chains, without inspecting raw messages or payloads.
+- Transport error latency measures monotonic time from attempt submission through
+  failure, including scheduling and SDK retry/backoff time.
+- The socket bridge exposes current AI lifecycle/attention and explicit token-scoped
+  retry/skip recovery. Commit failures cannot be automatically retried. See the
+  [control guide](CODEX_CONTROL.md#retry_ai_turn-and-skip_failed_ai_turn).
 - Third-party SDK request-body logging is suppressed; API keys, observations,
   memory, prompts, analysis, and raw model output are never logged.
 - Unexpected command preparation/commit diagnostics include stage, command index
@@ -880,6 +944,10 @@ include `titan_capacity` with owned IDs and pending reservation roots. Construct
 catalogue entries expose replacement/queue blockers. Owned/allied Titan state
 includes Core status, enduring cooldowns, active coverage and charge timing;
 ability state previews Fleet Jump passengers and replaced explicit orders.
+`origin_blocked_participant_ids` lists only owned passengers inside disclosed
+origin inhibition fields. A nonempty list makes the ability unavailable with
+`jump_inhibited`, before a destination is chosen. Hidden emitters do not affect
+this preview; execution still checks actual origin and destination safety.
 Owned/allied wings expose current Titan bonuses without changing base equipment.
 
 `deep_scan` introduces the `sector` target kind: provide `system_name` and

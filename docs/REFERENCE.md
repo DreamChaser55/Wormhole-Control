@@ -773,9 +773,13 @@ queued, suspended or cancelled attacks do not authorize fire.
 **Attack** approaches until all turrets eligible to hit the target are in range.
 **Attack (long-range only)** requires functional Weapons with at least one eligible
 Long Range variant turret and approaches only until all eligible Long Range turrets
-are in range. Each order uses the shortest effective range of its relevant turrets;
+are in range. Mobile attackers use the shortest effective range of their relevant turrets;
 cooldowns do not change that distance. Both orders let every eligible turret fire
 within its own range, including standard turrets if the enemy comes closer.
+Stationary platforms use their longest eligible range and can fire without closing
+for a shorter turret. Targets outside usable range or requiring unavailable sector
+travel are rejected before orders are replaced; later changed conditions can still
+cause an execution failure.
 Neither order retreats to regain distance. Pursuit resumes if the target moves out
 of the required range; losing all eligible long-range turrets fails the long-range order.
 

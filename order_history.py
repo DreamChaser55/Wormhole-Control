@@ -4,6 +4,9 @@ import json
 MAX_EVENTS = 128
 MAX_CHARACTERS = 32_000
 PUBLIC_REASONS = frozenset({"wing_service_required", "wing_endurance_expired", "completed", "failed", "cancelled", "execution_failed", "suborder_failed",
+    "invalid_relation", "target_not_disabled", "engines_unavailable", "hyperdrive_unavailable", "sector_unreachable", "system_unreachable",
+    "carrier_out_of_sector", "carrier_unavailable", "bay_unavailable", "unsafe_placement", "jump_inhibited", "invalid_destination", "out_of_range", "capture_resisted",
+    "ability_interrupted", "titan_limit_reached", "firing_blocked", "invalid_target", "link_occupied", "link_cycle",
     "unit_destroyed", "unit_dismantled", "dismantling_conflict", "target_out_of_range", "ownership_lost", "target_unavailable", "target_not_visible", "capability_unavailable",
     "assault_repulsed", "insufficient_troops", "cooldown_active", "insufficient_resources", "insufficient_population", "insufficient_capacity", "invalid_parameters",
     "path_unavailable", "hazard_blocked", "construction_unavailable", "refit_unavailable", "ability_unavailable", "ability_expired"})

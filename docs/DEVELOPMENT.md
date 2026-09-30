@@ -86,17 +86,67 @@ changing the others. The table is generated from their runtime constants.
 <!-- BEGIN GENERATED: versions -->
 | Contract | Current version / identifier | Source |
 | --- | --- | --- |
-| Campaign save | 4.20 | [CURRENT_SAVE_VERSION](../save_manager.py) |
-| Observation | 27 | [OBSERVATION_SCHEMA_VERSION](../game_ai/observation.py) |
-| Command contract | 22 | [CONTRACT_VERSION](../game_ai/command_spec.py) |
+| Campaign save | 4.21 | [CURRENT_SAVE_VERSION](../save_manager.py) |
+| Observation | 28 | [OBSERVATION_SCHEMA_VERSION](../game_ai/observation.py) |
+| Command contract | 23 | [CONTRACT_VERSION](../game_ai/command_spec.py) |
 | Response schema | wormhole_control_turn_v15 | [TURN_PLAN_SCHEMA_NAME](../game_ai/schema.py) |
-| Prompt cache | wormhole-control-turn-v27 | [PROMPT_CACHE_KEY](../game_ai/adapters/openai_responses.py) |
-| Local socket protocol | 3 | [PROTOCOL_VERSION](../game_control_protocol.py) |
+| Prompt cache | wormhole-control-turn-v28 | [PROMPT_CACHE_KEY](../game_ai/adapters/openai_responses.py) |
+| Local socket protocol | 4 | [PROTOCOL_VERSION](../game_control_protocol.py) |
 | Constructor component | 5 | [Constructor.SCHEMA_VERSION](../unit_components/constructor.py) |
 | Commander component | 2 | [Commander.SCHEMA_VERSION](../unit_components/commander.py) |
 | Strikecraft Bay component | 5 | [StrikecraftBayComponent.SCHEMA_VERSION](../unit_components/strikecraft.py) |
 | Strikecraft Wing component | 2 | [StrikecraftWingComponent.SCHEMA_VERSION](../unit_components/strikecraft.py) |
 <!-- END GENERATED: versions -->
+
+## Playtest repair plan — 2026-09-30
+
+The [playtest report](../PLAYTEST_REPORT_2026-09-30.md) identified eight confirmed
+issues. The implemented plan preserves fog of war, batch preflight atomicity,
+order ownership and existing gameplay balance.
+
+| Issue | Plan and implementation | Regression coverage |
+| --- | --- | --- |
+| Windows TLS trust | Combine bundled/system roots; honor CA overrides; classify failures without payloads. | Trust loading, invalid bundle, typed error chains, SDK client verification. |
+| Failed AI turn looks busy | Publish bounded lifecycle/attention, wake waiters, add current-failure retry/skip tokens. | Pending/immediate waits, stale turns/tokens, partial-commit retry rejection, idempotent recovery. |
+| Friendly legacy target | Share relation/range/capability rules through discovery, gateway and execution. | Friendly/allied rejection before replacement/payment; legitimate allied Ion Bolt; private enemy fuel. |
+| Impossible attack routes | Reuse approach estimation and movement-capability checks, including deployables. | Stations/wings/local craft excluded; legal stationary fire and mobile approaches retained. |
+| Generic execution outcomes | Propagate allowlisted movement/ability/carrier/placement causes to root history/briefings. | Relation, carrier departure, placement retention, one root outcome. |
+| Zero error latency | Measure monotonic submission-to-failure elapsed time. | Delayed transport failure with safe telemetry. |
+| Stale local skill/examples | Link runtime-generated versions; check authored control examples and skill guidance. | Stale examples/skill fail read-only documentation checks. |
+| Ordinary cancellation on forced return | Set `wing_endurance_expired` before cancelling interrupted roots. | Current and queued interruption causes; existing voluntary cancellation behavior. |
+
+Additional implemented interface work: stable planning catalogs and constructor
+price exceptions, section/cache-use metrics, per-command field-presence guidance,
+merged durable lessons and objective/order guidance, conditional journey progress,
+owned known Fleet Jump origin blockers, seeded setup/export, and explicit contained
+save/load/menu actions. See the [AI contract](AGENTIC_AI.md) and
+[control guide](CODEX_CONTROL.md) for public fields and recovery guarantees.
+
+`python scripts/benchmark_observations.py` uses seed 20260930 with two radius-3
+systems and separate Normal/Testing setups. Compare original request characters
+with content-input characters and inspect stable-prefix size; provider token/cache
+figures are recorded separately. These fixtures do not establish large-map speed,
+billed cost or a model-strength ranking.
+
+Measured initial planning-content characters (including the new shared-context
+instructions, excluding unchanged system instructions):
+
+| Profile | Original request | Compact content | Stable catalogs | Reduction |
+| --- | ---: | ---: | ---: | ---: |
+| Normal | 178,144 | 165,035 | 108,156 | 7.4% |
+| Testing | 234,350 | 221,371 | 112,776 | 5.5% |
+
+Automatic quiet-turn continuation and delta observations remain optional experiments.
+The cache/compaction measurements should come first; an automatic continuation
+needs a defined interruption contract for discoveries, combat, losses, failures and
+resource shortages. Opening-pace/balance changes and tactical model comparisons
+require separate fixed Normal/Testing gameplay evidence. No balance retuning or
+live paid provider benchmark is part of these repairs.
+
+Validation completed: 4,836 tests and 10 subtests passed, with 8 tests skipped.
+Ruff, import boundaries, generated-reference drift, Linux/Windows mypy checks and
+the headless application smoke test passed. The existing key configuration was
+retained; validation made no live provider calls.
 
 ## Architecture
 

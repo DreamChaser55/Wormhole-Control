@@ -41,6 +41,8 @@ def availability(unit, kind, galaxy, *, ignore_reservations=False, resources=Tru
         drive = unit.hyperdrive_component
         if drive.drive_type not in (HyperdriveType.BASIC, HyperdriveType.ADVANCED) or drive.jump_status != JumpStatus.READY:
             return 'capability_unavailable'
+        if jump_origin_blockers(unit, galaxy):
+            return 'jump_inhibited'
     reserved = list(pending_casts(unit)) if not ignore_reservations else []
     if any(k == kind for k, _ in reserved):
         return 'capability_unavailable'
@@ -58,6 +60,16 @@ def jump_participants(unit, galaxy):
         and not u.is_disabled and not offline(u) and not u.is_hidden_in_gas_giant
         and u.engines_component and not u.engines_component.is_destroyed
         and u.engines_component.effective_speed > 0 and distance(unit.position, u.position) <= GATHER_RADIUS), key=lambda u: u.id)
+
+
+def jump_origin_blockers(unit, galaxy):
+    """Owned participants in known origin fields; destination remains conditional."""
+    from tactical_abilities import sector_for
+    from visibility import VisibilityService, known_inhibition_zones
+    snapshot = VisibilityService.compute(galaxy, unit.owner, record_intel=False)
+    zones = known_inhibition_zones(sector_for(unit, galaxy), unit.owner, snapshot)
+    return [ship.id for ship in jump_participants(unit, galaxy)
+            if any(is_point_in_circle(ship.position, zone) for zone in zones)]
 
 
 def jump_plan(unit, galaxy, system_name, hex_coord, position):

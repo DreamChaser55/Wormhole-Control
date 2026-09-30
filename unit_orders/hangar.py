@@ -46,6 +46,14 @@ class DockOrder(Order):
             logger.debug(f"DOCK order failed: Target carrier {target_carrier_id} not found.")
             return
 
+        from domain.players import are_allies
+        if not are_allies(self.unit.owner, target_carrier.owner):
+            self.fail('invalid_relation')
+            return
+        if self.unit.hull_size == HullSize.STRIKECRAFT_WING and (self.unit.in_system != target_carrier.in_system or self.unit.in_hex != target_carrier.in_hex):
+            self.fail('carrier_out_of_sector')
+            return
+
         docking_component = None
         if self.unit.hull_size == HullSize.STRIKECRAFT_WING and target_carrier.strikecraft_bay_component:
             docking_component = target_carrier.strikecraft_bay_component
@@ -53,7 +61,7 @@ class DockOrder(Order):
             docking_component = target_carrier.hangar_component
 
         if not docking_component:
-            self.fail("target_unavailable")
+            self.fail("bay_unavailable")
             logger.debug(f"DOCK order failed: Target carrier {format_unit_for_log(target_carrier)} has no compatible hangar/strikecraftbay for {format_unit_for_log(self.unit)}.")
             return
 
@@ -93,6 +101,26 @@ class DockOrder(Order):
         if not self.sub_orders:
             self.status = OrderStatus.COMPLETED
 
+    def update(self, galaxy_ref):
+        if self.status == OrderStatus.IN_PROGRESS:
+            target = galaxy_ref.get_unit_by_id(self.parameters.get('target_carrier_id'))
+            error = None
+            if target is None:
+                error = 'carrier_unavailable'
+            else:
+                from domain.players import are_allies
+                if not are_allies(self.unit.owner, target.owner):
+                    error = 'invalid_relation'
+            if target is not None and error is None and self.unit.hull_size == HullSize.STRIKECRAFT_WING and (self.unit.in_system != target.in_system or self.unit.in_hex != target.in_hex):
+                error = 'carrier_out_of_sector'
+            if error:
+                for child in list(self.sub_orders):
+                    child.cancel()
+                self.sub_orders.clear()
+                self.fail(error)
+                return
+        super().update(galaxy_ref)
+
 
 class DeployUnitOrder(Order):
     target_fields = (OrderTargetField('docked_unit_id', 'unit', public=True),)
@@ -122,7 +150,7 @@ class DeployUnitOrder(Order):
         super().execute(galaxy_ref)
 
         if not self.unit.hangar_component and not self.unit.strikecraft_bay_component:
-            self.fail("execution_failed")
+            self.fail("bay_unavailable")
             logger.debug(f"DEPLOY_UNIT order failed: Unit {format_unit_for_log(self.unit)} has no HangarComponent or StrikecraftBayComponent.")
             return
 
@@ -166,7 +194,10 @@ class DeployUnitOrder(Order):
         else:
             in_storm = is_position_in_magnetic_storm(galaxy_ref, self.unit.in_system, self.unit.in_hex, self.unit.position)
             in_field = is_position_blocked_by_celestial_field(galaxy_ref, self.unit.in_system, self.unit.in_hex, self.unit.position, docked_unit)
-            self.fail("hazard_blocked" if ((docked_unit.hull_size == HullSize.STRIKECRAFT_WING and in_storm) or in_field) else "execution_failed")
+            reason = "hazard_blocked" if ((docked_unit.hull_size == HullSize.STRIKECRAFT_WING and in_storm) or in_field) else "unsafe_placement"
+            if source_component is self.unit.strikecraft_bay_component and not source_component.can_deploy(docked_unit, galaxy_ref):
+                reason = "capability_unavailable"
+            self.fail(reason)
             logger.debug(f"Deployment of {format_unit_for_log(docked_unit)} from {format_unit_for_log(self.unit)} failed.")
 
     def check_completion_conditions(self) -> None:
@@ -188,7 +219,7 @@ class DeployAllWingsOrder(Order):
         super().execute(galaxy_ref)
 
         if not self.unit.strikecraft_bay_component:
-            self.fail("execution_failed")
+            self.fail("bay_unavailable")
             logger.debug(f"DEPLOY_ALL_WINGS order failed: Unit {format_unit_for_log(self.unit)} has no StrikecraftBayComponent.")
             return
 

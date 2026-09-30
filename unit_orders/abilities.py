@@ -53,20 +53,20 @@ class UseAbilityOrder(Order):
 
         if not self.unit.ability_component:
             logger.debug(f"[{format_unit_for_log(self.unit)}] USE_ABILITY order failed: unit has no AbilityComponent.")
-            self.status = OrderStatus.FAILED
+            self.fail("ability_unavailable")
             return
 
         ability_type_str = self.parameters.get("ability_type")
         if not ability_type_str:
             logger.debug(f"[{format_unit_for_log(self.unit)}] USE_ABILITY order failed: no ability_type parameter.")
-            self.status = OrderStatus.FAILED
+            self.fail("ability_unavailable")
             return
 
         try:
             ability_type = AbilityType(ability_type_str)
         except ValueError:
             logger.debug(f"[{format_unit_for_log(self.unit)}] USE_ABILITY order failed: unknown ability_type '{ability_type_str}'.")
-            self.status = OrderStatus.FAILED
+            self.fail("ability_unavailable")
             return
 
         from titan_balance import TITAN_ABILITIES
@@ -96,13 +96,13 @@ class UseAbilityOrder(Order):
                     f"Ability <b>{ability_type.name}</b> on unit <b>{self.unit.name}</b> is on cooldown or cannot be activated.",
                     title="Ability Unavailable"
                 )
-            self.status = OrderStatus.FAILED
+            self.fail("ability_unavailable")
             return
 
         from unit_components.abilities import ABILITY_DEFINITIONS
         defn = ABILITY_DEFINITIONS.get(ability_type)
         if not defn:
-            self.status = OrderStatus.FAILED
+            self.fail("ability_unavailable")
             return
 
         target_unit_id = self.parameters.get("target_unit_id")
@@ -126,73 +126,22 @@ class UseAbilityOrder(Order):
                     self.fail('execution_failed')
                 return
 
-        # --- Pre-validation for CAPTURE_UNIT ability ---
-        if ability_type == AbilityType.CAPTURE_UNIT and target_unit_id is not None:
-            target_unit = self.unit.game.galaxy.get_unit_by_id(target_unit_id)
-            if target_unit:
-                from constants import HullSize
-                from titan_acquisition import blocker
-                if target_unit.hull_size == HullSize.TITAN and blocker(galaxy_ref, self.unit.owner, exclude_order=self):
-                    self.fail("titan_limit_reached")
-                    return
-                if target_unit.owner == self.unit.owner:
-                    logger.debug(f"[{format_unit_for_log(self.unit)}] USE_ABILITY: target unit {format_unit_for_log(target_unit)} is already friendly.")
-                    self.status = OrderStatus.FAILED
-                    return
-                if target_unit.engines_component is not None:
-                    engines_disabled = target_unit.engines_component.is_destroyed or target_unit.is_disabled
-                    if not engines_disabled:
-                        logger.debug(f"[{format_unit_for_log(self.unit)}] USE_ABILITY: target {format_unit_for_log(target_unit)} engines are not disabled.")
-                        gui = getattr(getattr(self.unit, 'game', None), 'gui', None)
-                        if gui:
-                            gui.show_warning_dialog(
-                                f"Cannot capture target <b>{target_unit.name}</b>: Unit engines, weapons, and defenses must be disabled first!",
-                                title="Capture Failed"
-                            )
-                        self.status = OrderStatus.FAILED
-                        return
-                from unit_components.defenses import Defenses
-                if target_unit.weapons_component and not target_unit.weapons_component.is_destroyed:
-                    logger.debug(f"[{format_unit_for_log(self.unit)}] USE_ABILITY: target {format_unit_for_log(target_unit)} weapons are active.")
-                    gui = getattr(getattr(self.unit, 'game', None), 'gui', None)
-                    if gui:
-                        gui.show_warning_dialog(
-                            f"Cannot capture target <b>{target_unit.name}</b>: Unit engines, weapons, and defenses must be disabled first!",
-                            title="Capture Failed"
-                        )
-                    self.status = OrderStatus.FAILED
-                    return
-                defenses = target_unit.get_component(Defenses)
-                if defenses and not defenses.is_destroyed:
-                    logger.debug(f"[{format_unit_for_log(self.unit)}] USE_ABILITY: target {format_unit_for_log(target_unit)} defenses are active.")
-                    gui = getattr(getattr(self.unit, 'game', None), 'gui', None)
-                    if gui:
-                        gui.show_warning_dialog(
-                            f"Cannot capture target <b>{target_unit.name}</b>: Unit engines, weapons, and defenses must be disabled first!",
-                            title="Capture Failed"
-                        )
-                    self.status = OrderStatus.FAILED
-                    return
-
-        # --- Pre-validation for DRAIN_ANTIMATTER ability ---
-        if ability_type == AbilityType.DRAIN_ANTIMATTER and target_unit_id is not None:
-            target_unit = self.unit.game.galaxy.get_unit_by_id(target_unit_id)
-            if target_unit:
-                if target_unit.owner == self.unit.owner:
-                    logger.debug(f"[{format_unit_for_log(self.unit)}] USE_ABILITY: target unit {format_unit_for_log(target_unit)} is friendly.")
-                    self.status = OrderStatus.FAILED
-                    return
-                target_am = target_unit.antimatter_component
-                if not target_am or target_am.is_destroyed or target_am.current_amount <= 0:
-                    logger.debug(f"[{format_unit_for_log(self.unit)}] USE_ABILITY: target {format_unit_for_log(target_unit)} has no antimatter to drain.")
-                    gui = getattr(getattr(self.unit, 'game', None), 'gui', None)
-                    if gui:
-                        gui.show_warning_dialog(
-                            f"Cannot drain antimatter from <b>{target_unit.name}</b>: Target has no antimatter reserves.",
-                            title="Drain Failed"
-                        )
-                    self.status = OrderStatus.FAILED
-                    return
+        from unit_targeting import legacy_target_blocker
+        target = galaxy_ref.get_unit_by_id(target_unit_id) if target_unit_id is not None else None
+        if ability_type == AbilityType.CAPTURE_UNIT and target is not None:
+            from constants import HullSize
+            from titan_acquisition import blocker
+            if target.hull_size == HullSize.TITAN and blocker(galaxy_ref, self.unit.owner, exclude_order=self):
+                self.fail("titan_limit_reached")
+                return
+        error = legacy_target_blocker(self.unit, ability_type.value, target, galaxy_ref, execution=True, check_path=False)
+        if error:
+            if error == "target_not_disabled":
+                gui = getattr(getattr(self.unit, 'game', None), 'gui', None)
+                if gui:
+                    gui.show_warning_dialog("Cannot capture target: Unit engines, weapons, and defenses must be disabled first!", title="Capture Failed")
+            self.fail(error)
+            return
 
         # --- Pre-validation for MICROJUMP ability ---
         if ability_type == AbilityType.MICROJUMP:
@@ -209,7 +158,7 @@ class UseAbilityOrder(Order):
                             f"Cannot microjump unit <b>{self.unit.name}</b>: Target position is in a different sector. Microjumps are restricted to the local sector.",
                             title="Microjump Failed"
                         )
-                    self.status = OrderStatus.FAILED
+                    self.fail("target_out_of_range")
                     return
 
                 system = galaxy_ref.systems.get(self.unit.in_system) if galaxy_ref else None
@@ -225,7 +174,7 @@ class UseAbilityOrder(Order):
                                     f"Cannot microjump unit <b>{self.unit.name}</b>: Origin position is inside a hyperspace inhibition field.",
                                     title="Microjump Failed"
                                 )
-                            self.status = OrderStatus.FAILED
+                            self.fail("jump_inhibited")
                             return
                         if is_point_in_circle(target_position, zone):
                             logger.debug(f"[{format_unit_for_log(self.unit)}] USE_ABILITY (Microjump) failed: destination position is inside an inhibition field.")
@@ -235,7 +184,7 @@ class UseAbilityOrder(Order):
                                     f"Cannot microjump unit <b>{self.unit.name}</b>: Destination position is inside a hyperspace inhibition field.",
                                     title="Microjump Failed"
                                 )
-                            self.status = OrderStatus.FAILED
+                            self.fail("jump_inhibited")
                             return
 
         # --- Range check for unit-targeted abilities ---
@@ -243,7 +192,7 @@ class UseAbilityOrder(Order):
             target_unit = self.unit.game.galaxy.get_unit_by_id(target_unit_id)
             if not target_unit or target_unit.current_hit_points <= 0:
                 logger.debug(f"[{format_unit_for_log(self.unit)}] USE_ABILITY: target unit {target_unit_id} not found or dead.")
-                self.status = OrderStatus.FAILED
+                self.fail("target_unavailable")
                 return
 
             in_same_hex = (self.unit.in_system == target_unit.in_system and
@@ -302,7 +251,7 @@ class UseAbilityOrder(Order):
             self.status = OrderStatus.COMPLETED
         else:
             logger.debug(f"[{format_unit_for_log(self.unit)}] USE_ABILITY: {ability_type.name} activation failed.")
-            self.status = OrderStatus.FAILED
+            self.fail("capture_resisted" if ability_type == AbilityType.CAPTURE_UNIT else "ability_unavailable")
 
     def cancel(self) -> None:
         super().cancel()

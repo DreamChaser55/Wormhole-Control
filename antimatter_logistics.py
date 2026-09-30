@@ -108,7 +108,7 @@ class JourneyEstimate:
     position: Position
 
 
-def estimate_approach(unit, galaxy, target, origin=None, *, approach_range=ANTIMATTER_TRANSFER_RANGE):
+def estimate_approach(unit, galaxy, target, origin=None, *, approach_range=ANTIMATTER_TRANSFER_RANGE, known_only=False):
     """Estimate a deterministic feasible approach without orders, IDs or mutations.
 
     Uses navigation's topology, jump waypoints, collision avoidance and fuel costs.
@@ -137,9 +137,15 @@ def estimate_approach(unit, galaxy, target, origin=None, *, approach_range=ANTIM
         else 0
     )
     boundary = Circle(Position(0, 0), SECTOR_CIRCLE_RADIUS_LOGICAL)
+    if known_only:
+        from visibility import VisibilityService, known_inhibition_zones
+        snapshot = VisibilityService.compute(galaxy, unit.owner, record_intel=False)
 
     def sector():
         return galaxy.systems[system].hexes[coord]
+
+    def zones():
+        return known_inhibition_zones(sector(), unit.owner, snapshot) if known_only else sector().get_all_inhibition_zones()
 
     def sublight(destination):
         nonlocal point, fuel, turns
@@ -177,7 +183,7 @@ def estimate_approach(unit, galaxy, target, origin=None, *, approach_range=ANTIM
             point = end
 
     def escape():
-        for zone in sector().get_all_inhibition_zones():
+        for zone in zones():
             if is_point_in_circle(point, zone):
                 edge = get_closest_point_on_circle_edge(point, zone)
                 sublight(edge)
@@ -195,7 +201,7 @@ def estimate_approach(unit, galaxy, target, origin=None, *, approach_range=ANTIM
             for waypoint in find_hex_jump_path(coord, destination_hex, jump_range):
                 coord = waypoint
                 landing = destination if waypoint == destination_hex else Position(0, 0)
-                for zone in sector().get_all_inhibition_zones():
+                for zone in zones():
                     if is_point_in_circle(landing, zone):
                         landing = get_closest_point_on_circle_edge(landing, zone)
                 duration = max(1, drive.RECHARGE_DURATION + 1)

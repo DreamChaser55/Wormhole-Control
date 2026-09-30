@@ -326,7 +326,7 @@ class ControlCliTests(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertTrue(response["ok"])
         sent = send.call_args.args[0]
-        self.assertEqual(sent["protocol_version"], 3)
+        self.assertEqual(sent["protocol_version"], PROTOCOL_VERSION)
         self.assertTrue(sent["request_id"])
 
         code, response, _ = self._run(["-", "--no-launch"], '{"action":"status"}')

@@ -74,6 +74,9 @@ def test_return_replaces_orders_and_moves_before_combat():
     assert wing.position.x < 1200
     assert target.current_hit_points == hp
     assert attack.status == queued.status == OrderStatus.CANCELLED
+    interrupted = [event for event in wing.owner.order_history if event['order_id'] in {attack.public_id, queued.public_id}]
+    assert len(interrupted) == 2
+    assert all(event['reason'] == 'wing_endurance_expired' for event in interrupted)
     assert not commander.orders_queue and commander.stance == UnitStance.ATTACK_SAME_SECTOR
     assert commander.get_active_attack_order() is None
 
@@ -236,7 +239,7 @@ def test_observations_are_pure_and_enemy_private():
     # Observations refresh visibility intel, but never the service/order state or RNG.
     assert own['wing_service']['turns_outside'] == wing.strikecraft_wing_component.turns_outside == 80
     assert rng == random.getstate() and counter == Order.order_counter
-    assert before['version'] == after['version'] == '4.20'
+    assert before['version'] == after['version'] == '4.21'
 
 
 @pytest.mark.parametrize('phase', ['deployed', 'returning', 'orphan', 'docked'])

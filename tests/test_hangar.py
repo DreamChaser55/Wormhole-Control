@@ -106,6 +106,7 @@ def test_dock_order():
     carrier.add_component(hangar)
 
     ship = MockUnit()
+    ship.owner = carrier.owner
     ship.hull_size = HullSize.TINY
     ship.in_system = "Sol"
     ship.in_hex = (0, 0)

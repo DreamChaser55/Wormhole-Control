@@ -47,7 +47,7 @@ For requests that are inconvenient to quote, pipe one JSON object through stdin:
 '@ | python .\game_control.py -
 ```
 
-The CLI adds `protocol_version: 3` and a random `request_id` when omitted. Supplying request IDs yourself is recommended for mutating actions so an identical request can be retried safely.
+The CLI adds `protocol_version: 4` and a random `request_id` when omitted. Supplying request IDs yourself is recommended for mutating actions so an identical request can be retried safely.
 
 ## Transport and process behavior
 
@@ -57,7 +57,7 @@ The CLI adds `protocol_version: 3` and a random `request_id` when omitted. Suppl
 - Port: pass `--port PORT` to either script or set `WORMHOLE_CONTROL_PORT`. An explicit CLI flag wins.
 - Framing: one UTF-8 JSON object followed by a newline, with one response per connection.
 - Request limit: 1 MiB. Protocol responses may be larger because observations contain visible game state.
-- Version: every direct socket request must contain `"protocol_version": 3`.
+- Version: every direct socket request must contain `"protocol_version": 4`.
 - Shutdown: exiting the GUI closes the listener and resolves pending requests with `server_stopping`.
 
 `game_control.py` writes exactly one compact JSON response to stdout. Launch and error diagnostics go to stderr. Its exit statuses are:
@@ -76,7 +76,7 @@ Request:
 
 ```json
 {
-  "protocol_version": 3,
+  "protocol_version": 4,
   "request_id": "stable-client-generated-id",
   "action": "status"
 }
@@ -87,7 +87,7 @@ Every response contains the echoed protocol version, request ID, action, success
 ```json
 {
   "service": "wormhole-control",
-  "protocol_version": 3,
+  "protocol_version": 4,
   "request_id": "stable-client-generated-id",
   "action": "status",
   "ok": true,
@@ -102,7 +102,10 @@ Every response contains the echoed protocol version, request ID, action, success
       "team_id": 1,
       "controller": "codex"
     },
-    "codex_ready": true
+    "codex_ready": true,
+    "campaign_token": "opaque-campaign-turn-token",
+    "attention_required": false,
+    "ai_lifecycle": null
   },
   "data": {}
 }
@@ -132,7 +135,11 @@ Creates a campaign only while the GUI is at the main menu. `settings.players` mu
 
 Each player requires `name`, `controller`, and `team_id`. Optional fields are `color` (three RGB integers), and—for `openai` controllers only—`ai_reasoning_effort` (`low`, `medium`, or `high`) and `ai_repair_retries` (1–5). Controller values are `human`, `openai`, and `codex`.
 
-Optional galaxy/economy fields use `GameSettings` defaults when absent:
+Optional galaxy/economy fields use `GameSettings` defaults when absent. `seed` may be
+null or an integer from 0 to 4294967295. A fixed seed repeats initial map, homes and
+fleets, and seeds planetary invasion randomness; campaign/agent identities remain
+fresh. It does not reproduce subsequent unrecorded gameplay randomness. A supplied
+map preview requires that original map as well as its settings for replay.
 
 ```json
 {
@@ -169,7 +176,7 @@ Requires the active player to be controlled by Codex. It returns a new opaque tu
 ```
 
 ```json
-{"data":{"turn_token":"opaque-value","observation":{"schema_version":26}}}
+{"data":{"turn_token":"opaque-value","observation":{"schema_version":28}}}
 ```
 
 Treat the observation as the only permitted source of game facts. Never infer hidden targets from saves, source files, logs, rendered pixels, or previous campaigns. IDs and available options in an old observation may be stale.
@@ -222,9 +229,71 @@ Waits between 1 and 600 seconds for the Codex player. It returns immediately if 
 
 When ready, `data` contains `ready: true`, an observation, and the current token. A normal timeout is a successful response with `data.ready: false`.
 
+A final AI failure returns immediately with `data.ready: false` and
+`data.attention_required: true`, including for connections already waiting.
+Every envelope carries `state.ai_lifecycle` while an OpenAI player is active:
+`phase` is `scheduled`, `planning`, `repairing`, `applying`, `cancelling`, `failed`
+or `manual_recovery`. The bounded object includes `repair_attempt`, `repair_limit`,
+`error_category`, `manual_recovery_available`, `recovery_actions` and a nullable
+`recovery_token`. Error categories identify certificate trust/configuration,
+connection, timeout, authentication, quota, rate limit, invalid output, preflight,
+commit or provider failure without exception messages, credentials or hidden state.
+
+### `retry_ai_turn` and `skip_failed_ai_turn`
+
+These actions require a fresh request ID and the failed turn's advertised
+`recovery_token`. They are available only for a final failure belonging to the
+current AI player/campaign/round. Retry takes a fresh observation and starts a new
+attempt with the configured repair budget. Skip explicitly ends that AI turn.
+A partial commit advertises only skip because automatically replaying committed
+commands could apply effects twice. Busy, human and Codex turns cannot be recovered
+through these actions, and stale recovery tokens are rejected.
+
+```json
+{"action":"retry_ai_turn","request_id":"recover-001","recovery_token":"opaque-failed-turn-token"}
+```
+
+### Replay and campaign lifecycle
+
+`export_setup` returns `data.setup`, containing the initial `settings` (including
+seed/profile) and `pregenerated_map_used`, or null when no setup record exists.
+It is reproducibility metadata, not additional current game intelligence.
+`export_state` requires a Codex turn and returns the same fair observation/token as
+`observe`, together with that setup record. Neither exports hidden enemy state.
+
+`list_saves` lists at most 64 save basenames, compatibility flags and saved round
+numbers, with `omitted_count`. `save_game` requires the current status
+`campaign_token` and an explicit `save_name`. Names are short ASCII basenames ending
+in `.json`, resolved inside the configured saves directory; traversal, reserved
+Windows names and escaping filesystem links are rejected. Existing files require
+an explicit boolean `overwrite: true`.
+
+`return_to_menu` requires the current `campaign_token`. It explicitly leaves the
+campaign and cancels pending planning without saving; save first when needed.
+`load_game` accepts a `save_name` only from the main menu. An active campaign must
+be left explicitly before either loading or creating another. Successful loads use
+the normal transactional loader and refresh scheduling/UI. Errors return bounded
+codes rather than file contents or raw exceptions.
+
+```json
+{"action":"save_game","request_id":"save-001","campaign_token":"opaque-campaign-turn-token","save_name":"playtest.json"}
+```
+
+```json
+{"action":"return_to_menu","request_id":"menu-001","campaign_token":"opaque-campaign-turn-token"}
+```
+
+```json
+{"action":"load_game","request_id":"load-001","save_name":"playtest.json"}
+```
+
 ## Idempotent retries
 
-The server caches the last 256 responses to mutating actions (`new_game`, `command`, and `end_turn`). Retrying the exact same JSON payload with the same non-empty `request_id` returns the cached response without applying it again. Reusing that ID for different JSON returns `request_id_conflict`.
+The server caches the last 256 responses to mutating actions (`new_game`, `command`,
+`end_turn`, both failed-AI recovery actions, `save_game`, `load_game`, and
+`return_to_menu`). Retrying the exact same JSON payload with the same non-empty
+`request_id` returns the cached response without applying it again. Reusing that ID
+for different JSON returns `request_id_conflict`.
 
 Keep the same request ID only when recovering from an uncertain transport result. Use a fresh ID for each intentional mutation, including each incremental command batch.
 
@@ -239,6 +308,9 @@ Common codes include:
 | `game_not_started`, `campaign_active` | Action conflicts with campaign lifecycle. |
 | `not_codex_turn`, `no_codex_player` | Codex cannot act or wait in the current campaign state. |
 | `stale_turn_token` | Missing token, advanced turn, reload, or manual End Turn. Observe again when ready. |
+| `ai_recovery_unavailable`, `stale_recovery_token` | No eligible failed AI turn, partial commit retry, or stale recovery token. |
+| `stale_campaign_token`, `invalid_save_name`, `save_exists` | Lifecycle token, save containment/name, or explicit overwrite requirement. |
+| `save_failed`, `load_failed`, `invalid_lifecycle_request` | Campaign persistence failure or malformed lifecycle fields. |
 | `invalid_settings`, `invalid_players`, `invalid_codex_count`, `invalid_teams` | New-game schema or bounds violation. |
 | `invalid_commands`, `invalid_command_contract`, `commands_rejected` | Batch shape or game-rule validation failure. |
 | `invalid_timeout` | Wait duration is outside 1–600 seconds. |

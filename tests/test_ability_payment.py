@@ -135,7 +135,10 @@ def test_rejected_activation_refunds_once_without_cooldown(monkeypatch, rejectio
     before = gameplay_state(game, actor, target)
     assert not cast(game, actor, kind, args)
     assert tank.current_amount == 100
-    tank.add.assert_called_once_with(actor.ability_component.abilities[AbilityType(kind)].definition.antimatter_cost)
+    if rejection == 'missing_target':
+        tank.add.assert_not_called()  # Target validation rejects before payment.
+    else:
+        tank.add.assert_called_once_with(actor.ability_component.abilities[AbilityType(kind)].definition.antimatter_cost)
     assert gameplay_state(game, actor, target) == before
     assert target.owner is game.players[1]
 

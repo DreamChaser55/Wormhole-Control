@@ -269,9 +269,9 @@ def test_socket_and_strict_provider_share_per_slot_configuration():
     game.current_player = carrier.owner
     carrier.owner.controller = PlayerController.CODEX
     service = ControlService(game, port=0)
-    observed = service._dispatch_or_wait(dict(protocol_version=3, action='observe'), Future())
-    assert observed['data']['observation']['schema_version'] == 27
-    reply = service._dispatch_or_wait(dict(protocol_version=3, action='command', request_id='slots',
+    observed = service._dispatch_or_wait(dict(protocol_version=4, action='observe'), Future())
+    assert observed['data']['observation']['schema_version'] == 28
+    reply = service._dispatch_or_wait(dict(protocol_version=4, action='command', request_id='slots',
         turn_token=observed['data']['turn_token'], commands=[
             dict(type='set_wing_production', unit_ids=[carrier.id], slot_index=0, template_name='FIGHTER_WING'),
             dict(type='set_wing_production', unit_ids=[carrier.id], slot_index=1, template_name='BOMBER_WING')]), Future())
@@ -285,7 +285,7 @@ def test_socket_and_strict_provider_share_per_slot_configuration():
         schema = kwargs['text']['format']
         assert schema['strict'] and schema['name'] == 'wormhole_control_turn_v15'
         assert 'slot_index' in schema['schema']['properties']['commands']['items']['required']
-        assert kwargs['prompt_cache_key'] == 'wormhole-control-turn-v27'
+        assert kwargs['prompt_cache_key'] == 'wormhole-control-turn-v28'
         return SimpleNamespace(id='fake', output_text=json.dumps(output), usage=None)
 
     provider = OpenAIResponsesProvider(client=SimpleNamespace(responses=SimpleNamespace(create=fake_response)))

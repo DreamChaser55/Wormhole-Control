@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import ssl
 from time import perf_counter
 from typing import Any
 
@@ -11,11 +13,12 @@ from game_ai.config import load_openai_api_key
 from game_ai.contracts import ContractError, TurnPlan
 from game_ai.runtime import AgentRuntimeConfig
 from game_ai.prompts import SYSTEM_INSTRUCTIONS
+from game_ai.prompt_context import planning_context
 from game_ai.schema import responses_text_config
 
 from .base import PlanningOutputError, PlanningRequest, PlanningResult
 
-PROMPT_CACHE_KEY = "wormhole-control-turn-v27"
+PROMPT_CACHE_KEY = "wormhole-control-turn-v28"
 
 
 class OpenAIResponsesProvider:
@@ -30,7 +33,7 @@ class OpenAIResponsesProvider:
         if self._client is not None:
             return self._client
         try:
-            from openai import AsyncOpenAI
+            from openai import AsyncOpenAI, DefaultAsyncHttpxClient
         except ImportError as exc:
             raise RuntimeError(
                 "The OpenAI SDK is not installed. Install the project requirements."
@@ -39,6 +42,7 @@ class OpenAIResponsesProvider:
             api_key=load_openai_api_key(),
             timeout=runtime_config.timeout_seconds,
             max_retries=2,
+            http_client=DefaultAsyncHttpxClient(verify=_tls_context()),
         )
         return self._client
 
@@ -57,10 +61,11 @@ class OpenAIResponsesProvider:
     ) -> PlanningResult:
         started = perf_counter()
         client = self._client_for(runtime_config)
+        messages, prompt_metrics = planning_context(request)
         response = await client.responses.create(
             model=runtime_config.model,
             instructions=SYSTEM_INSTRUCTIONS,
-            input=json.dumps(request.to_dict(), separators=(",", ":"), ensure_ascii=False),
+            input=messages,
             reasoning={"effort": runtime_config.reasoning_effort},
             text=responses_text_config(),
             max_output_tokens=runtime_config.max_output_tokens,
@@ -87,6 +92,7 @@ class OpenAIResponsesProvider:
                 response_id=response_id,
                 usage=usage,
                 latency_seconds=latency_seconds,
+                prompt_metrics=prompt_metrics,
             )
         try:
             raw = json.loads(output_text)
@@ -100,6 +106,7 @@ class OpenAIResponsesProvider:
                 response_id=response_id,
                 usage=usage,
                 latency_seconds=latency_seconds,
+                prompt_metrics=prompt_metrics,
             ) from exc
         try:
             plan = TurnPlan.from_dict(raw, max_commands=runtime_config.max_commands, strict=True)
@@ -113,6 +120,7 @@ class OpenAIResponsesProvider:
                 response_id=response_id,
                 usage=usage,
                 latency_seconds=latency_seconds,
+                prompt_metrics=prompt_metrics,
             ) from exc
         return PlanningResult(
             plan=plan,
@@ -122,11 +130,30 @@ class OpenAIResponsesProvider:
             response_id=response_id,
             usage=usage,
             latency_seconds=latency_seconds,
+            prompt_metrics=prompt_metrics,
         )
 
 
 def _safe_identifier(agent_id: str) -> str:
     return hashlib.sha256(agent_id.encode("utf-8")).hexdigest()[:64]
+
+
+def _tls_context() -> ssl.SSLContext:
+    """Honor CA overrides; otherwise combine bundled and operating system roots."""
+    import certifi
+    from game_ai.provider_errors import CertificateConfigurationError
+
+    try:
+        if os.environ.get("SSL_CERT_FILE"):
+            return ssl.create_default_context(cafile=os.environ["SSL_CERT_FILE"])
+        if os.environ.get("SSL_CERT_DIR"):
+            return ssl.create_default_context(capath=os.environ["SSL_CERT_DIR"])
+        context = ssl.create_default_context(cafile=certifi.where())
+        # On Windows this includes the ROOT and CA system certificate stores.
+        context.load_default_certs(ssl.Purpose.SERVER_AUTH)
+        return context
+    except (OSError, ssl.SSLError) as exc:
+        raise CertificateConfigurationError("Could not load TLS CA configuration.") from exc
 
 
 def _usage_dict(usage: Any) -> dict[str, int]:
@@ -135,6 +162,12 @@ def _usage_dict(usage: Any) -> dict[str, int]:
     result = {}
     for name in ("input_tokens", "output_tokens", "total_tokens"):
         value = getattr(usage, name, None)
-        if isinstance(value, int):
+        if type(value) is int and value >= 0:
             result[name] = value
+    details = getattr(usage, "input_tokens_details", None)
+    cached = getattr(details, "cached_tokens", None)
+    if type(cached) is int and cached >= 0:
+        result["cached_input_tokens"] = cached
+        if "input_tokens" in result:
+            result["uncached_input_tokens"] = max(0, result["input_tokens"] - cached)
     return result

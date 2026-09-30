@@ -36,6 +36,11 @@ class AbilityDefinition:
 
     @property
     def allowed_relations(self):
+        from unit_targeting import HOSTILE_LEGACY_ABILITIES
+        if self.ability_type.value in HOSTILE_LEGACY_ABILITIES:
+            return ['enemy']
+        if self.ability_type.value == 'ion_bolt':
+            return ['self', 'ally', 'enemy']
         if self.ability_type.value in ('attack_run', 'tracking_lock', 'siege_lance'):
             return ['enemy']
         if self.ability_type.value in ('evasive_formation', 'emergency_recovery'):

@@ -91,6 +91,8 @@ def reconcile_unit(unit, galaxy):
         expire(unit)
         return
     if root is None or root.order_type != OrderType.RETURN_FOR_SERVICE or root.status != OrderStatus.IN_PROGRESS:
+        from order_history import interrupt_unit_orders
+        interrupt_unit_orders(unit, 'wing_endurance_expired')
         commander.clear_explicit_orders(internal=True)
         commander.suspend_stance_activity('mandatory carrier servicing')
         commander._clear_weapon_target()

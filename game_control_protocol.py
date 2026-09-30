@@ -25,7 +25,7 @@ from player_controller import PlayerController
 
 logger = logging.getLogger(__name__)
 
-PROTOCOL_VERSION = 3
+PROTOCOL_VERSION = 4
 SERVICE_NAME = "wormhole-control"
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 47653
@@ -33,7 +33,7 @@ MAX_REQUEST_BYTES = 1024 * 1024
 MAX_CACHE_ENTRIES = 256
 MAX_COMMANDS = 40
 MAX_WAIT_SECONDS = 600.0
-MUTATING_ACTIONS = frozenset({"new_game", "command", "end_turn"})
+MUTATING_ACTIONS = frozenset({"new_game", "command", "end_turn", "retry_ai_turn", "skip_failed_ai_turn", "save_game", "load_game", "return_to_menu"})
 
 
 def _reject_non_json_constant(value: str) -> None:
@@ -262,7 +262,7 @@ class ControlService:
         if type(payload.get("protocol_version")) is not int or payload["protocol_version"] != PROTOCOL_VERSION:
             raise ProtocolError("unsupported_protocol", f"Upgrade your client: protocol_version must be {PROTOCOL_VERSION}; legacy order observations are not supported.")
         action = payload.get("action")
-        if action not in {"status", "new_game", "observe", "command", "end_turn", "wait_for_turn"}:
+        if action not in MUTATING_ACTIONS | {"status", "observe", "export_setup", "export_state", "list_saves", "wait_for_turn"}:
             raise ProtocolError("unknown_action", "Unknown control action.")
         request_id = payload.get("request_id", "")
         if not isinstance(request_id, str) or len(request_id) > 128:
@@ -277,13 +277,26 @@ class ControlService:
                 return self._success(action, request_id, {"service": SERVICE_NAME})
             if action == "new_game":
                 return self._new_game(action, request_id, payload)
-            if action == "observe":
+            if action in {"observe", "export_state"}:
                 player = self._require_codex_turn()
-                return self._success(action, request_id, self._observation_data(player))
+                data = self._observation_data(player)
+                if action == "export_state":
+                    data["setup"] = copy.deepcopy(getattr(self.game, "setup_metadata", None))
+                return self._success(action, request_id, data)
+            if action == "export_setup":
+                if not getattr(self.game, "game_started", False):
+                    raise ProtocolError("game_not_started", "Create or load a campaign first.")
+                return self._success(action, request_id, {"setup": copy.deepcopy(getattr(self.game, "setup_metadata", None))})
+            if action == "list_saves":
+                return self._list_saves(action, request_id)
+            if action in {"save_game", "load_game", "return_to_menu"}:
+                return self._campaign_action(action, request_id, payload)
             if action == "command":
                 return self._command(action, request_id, payload)
             if action == "end_turn":
                 return self._end_turn(action, request_id, payload)
+            if action in {"retry_ai_turn", "skip_failed_ai_turn"}:
+                return self._recover_ai_turn(action, request_id, payload)
         except ProtocolError as exc:
             return self.envelope_error(action, request_id, exc.code, str(exc), exc.details)
         raise AssertionError(f"Unhandled action {action}")
@@ -380,6 +393,8 @@ class ControlService:
             player = getattr(self.game, "current_player", None)
             if player is not None and player.controller == PlayerController.CODEX:
                 return self._success(action, request_id, {"ready": True, **self._observation_data(player)})
+            if self._public_state()["attention_required"]:
+                return self._success(action, request_id, {"ready": False, "attention_required": True})
             self._waiters.append(_PendingWait(payload, future, time.monotonic() + timeout))
             return None
         except ProtocolError as exc:
@@ -401,11 +416,109 @@ class ControlService:
             if player is not None and player.controller == PlayerController.CODEX:
                 waiter.future.set_result(self._success("wait_for_turn", request_id, {"ready": True, **self._observation_data(player)}))
                 continue
+            if self._public_state()["attention_required"]:
+                waiter.future.set_result(self._success("wait_for_turn", request_id, {"ready": False, "attention_required": True}))
+                continue
             if now >= waiter.deadline:
                 waiter.future.set_result(self._success("wait_for_turn", request_id, {"ready": False}))
                 continue
             remaining.append(waiter)
         self._waiters = remaining
+
+    def _recover_ai_turn(self, action, request_id, payload):
+        if set(payload) - {"protocol_version", "action", "request_id", "recovery_token"}:
+            raise ProtocolError("invalid_recovery", "Recovery accepts only the failed-turn recovery_token.")
+        lifecycle = self._public_state()["ai_lifecycle"]
+        if lifecycle is None or action not in lifecycle["recovery_actions"]:
+            raise ProtocolError("ai_recovery_unavailable", "This action is available only for a failed AI turn; a partial commit cannot be retried automatically.")
+        if payload.get("recovery_token") != lifecycle["recovery_token"]:
+            raise ProtocolError("stale_recovery_token", "The recovery token is missing or stale.")
+        coordinator = self.game.ai_coordinator
+        self.game.pending_ai_turn_end_time = 0
+        coordinator.reset()
+        self._token_value = secrets.token_urlsafe(24)
+        if action == "retry_ai_turn":
+            if not coordinator.start_current_turn():
+                raise ProtocolError("ai_recovery_unavailable", "The AI turn could not be restarted.")
+            return self._success(action, request_id, {"retried": True})
+        self.game.end_turn()
+        return self._success(action, request_id, {"skipped": True})
+
+    @staticmethod
+    def _save_path(name):
+        """A basename inside the configured save root, including after resolution."""
+        import re
+        from pathlib import Path
+        import save_manager
+        if not isinstance(name, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,63}\.json", name):
+            raise ProtocolError("invalid_save_name", "save_name must be a short ASCII basename ending in .json.")
+        reserved = {"con", "prn", "aux", "nul", *(f"com{i}" for i in range(1, 10)), *(f"lpt{i}" for i in range(1, 10))}
+        if name.split('.')[0].lower() in reserved:
+            raise ProtocolError("invalid_save_name", "Reserved file names are not allowed.")
+        try:
+            root = Path(save_manager.SAVES_DIR).resolve()
+            path = (root / name).resolve()
+        except (OSError, RuntimeError) as exc:
+            raise ProtocolError("invalid_save_name", "Save files must stay inside the configured save directory.") from exc
+        if path.parent != root:
+            raise ProtocolError("invalid_save_name", "Save files must stay inside the configured save directory.")
+        return path
+
+    def _list_saves(self, action, request_id):
+        from pathlib import Path
+        import save_manager
+        root = Path(save_manager.SAVES_DIR)
+        files = sorted(root.glob('*.json'), reverse=True) if root.exists() else []
+        entries = []
+        for file in files:
+            try:
+                path = self._save_path(file.name)
+                raw = json.loads(path.read_text(encoding='utf-8'))
+                if not isinstance(raw, dict) or not isinstance(raw.get('game_state'), dict):
+                    continue
+                turn = raw['game_state'].get('turn_number')
+                entries.append({'save_name': file.name, 'compatible': raw.get('version') == save_manager.CURRENT_SAVE_VERSION,
+                                'turn_number': turn if type(turn) is int and turn > 0 else None})
+            except (ProtocolError, OSError, ValueError):
+                continue
+        return self._success(action, request_id, {'saves': entries[:64], 'omitted_count': max(0, len(entries) - 64)})
+
+    def _campaign_action(self, action, request_id, payload):
+        allowed = {"protocol_version", "action", "request_id", "campaign_token"}
+        if action in {"save_game", "load_game"}:
+            allowed.add("save_name")
+        if action == "save_game":
+            allowed.add("overwrite")
+        if set(payload) - allowed:
+            raise ProtocolError("invalid_lifecycle_request", "Unknown campaign lifecycle fields.")
+        if action == "load_game":
+            if getattr(self.game, "game_started", False):
+                raise ProtocolError("campaign_active", "Return to the main menu before loading another campaign.")
+            path = self._save_path(payload.get('save_name'))
+            if not path.is_file() or not self.game.load_game(str(path)):
+                raise ProtocolError("load_failed", "The selected save could not be loaded.")
+            self._requires_observation = False
+            self._unobserved_created_ids.clear()
+            return self._success(action, request_id, {'loaded': True})
+        player = getattr(self.game, 'current_player', None)
+        if not getattr(self.game, 'game_started', False) or player is None:
+            raise ProtocolError("game_not_started", "Create or load a campaign first.")
+        if payload.get('campaign_token') != self._turn_token(player):
+            raise ProtocolError("stale_campaign_token", "Use the current status campaign_token for this action.")
+        if action == 'return_to_menu':
+            self.game.quit_to_main_menu()
+            self._requires_observation = False
+            self._unobserved_created_ids.clear()
+            return self._success(action, request_id, {'returned_to_menu': True})
+        path = self._save_path(payload.get('save_name'))
+        overwrite = payload.get('overwrite', False)
+        if type(overwrite) is not bool:
+            raise ProtocolError('invalid_lifecycle_request', 'overwrite must be a boolean.')
+        if path.exists() and not overwrite:
+            raise ProtocolError('save_exists', 'The save exists; choose another name or explicitly set overwrite=true.')
+        if self.game.save_game(str(path)) is None:
+            raise ProtocolError('save_failed', 'The campaign could not be saved.')
+        return self._success(action, request_id, {'saved': True, 'save_name': path.name})
 
     def _require_codex_turn(self) -> Any:
         if not getattr(self.game, "game_started", False):
@@ -446,10 +559,35 @@ class ControlService:
     def _public_state(self) -> dict[str, Any]:
         started = bool(getattr(self.game, "game_started", False))
         player = getattr(self.game, "current_player", None) if started else None
+        lifecycle = None
+        attention = False
+        if player is not None and player.controller == PlayerController.OPENAI:
+            coordinator = getattr(self.game, "ai_coordinator", None)
+            failed = getattr(coordinator, "failed_current_turn", None)
+            attention = callable(failed) and failed() is True
+            phase = {"thinking": "planning", "repairing": "repairing", "applying": "applying", "cancelling": "cancelling"}.get(getattr(coordinator, "state", None), "manual_recovery")
+            if getattr(self.game, "pending_ai_turn_end_time", 0) > 0:
+                phase = "scheduled"
+            if attention:
+                phase = "failed"
+            from game_ai.provider_errors import MESSAGES
+            category = getattr(coordinator, "last_error_category", None) if attention else None
+            if category is not None and category not in {*MESSAGES, "invalid_output", "preflight", "commit"}:
+                category = "provider_error"
+            actions = (["skip_failed_ai_turn"] if category == "commit" else ["retry_ai_turn", "skip_failed_ai_turn"]) if attention else []
+            def repair_count(name):
+                value = getattr(coordinator, name, 0)
+                return min(5, max(0, value)) if type(value) is int else 0
+            lifecycle = {"phase": phase, "error_category": category,
+                         "repair_attempt": repair_count("_repair_attempts_used"),
+                         "repair_limit": repair_count("_max_repair_retries"),
+                         "manual_recovery_available": attention, "recovery_actions": actions,
+                         "recovery_token": self._turn_token(player) if attention else None}
         return {
             "game_started": started,
             "view_mode": str(getattr(self.game, "view_mode", "main_menu")),
             "campaign_id": str(getattr(self.game, "campaign_id", "")) if started else None,
+            "campaign_token": self._turn_token(player) if player is not None else None,
             "turn_number": int(getattr(self.game, "turn_number", 1)) if started else None,
             "current_player": (
                 {
@@ -462,6 +600,8 @@ class ControlService:
                 else None
             ),
             "codex_ready": bool(player is not None and player.controller == PlayerController.CODEX),
+            "attention_required": attention,
+            "ai_lifecycle": lifecycle,
         }
 
     def _success(self, action: str, request_id: str, data: dict[str, Any]) -> dict[str, Any]:
@@ -519,6 +659,7 @@ _SETTINGS_FIELDS = {
     "starting_population",
     "spawn_profile",
     "home_system_assignment_mode",
+    "seed",
 }
 _PLAYER_FIELDS = {"name", "controller", "team_id", "color", "ai_reasoning_effort", "ai_repair_retries", "home_system_name"}
 

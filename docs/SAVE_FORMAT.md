@@ -13,9 +13,19 @@ Rejected files are never modified.
 
 ## Testing campaign catalogue
 
-Loading any save uses the normal construction catalogue plus custom designs, even when the saved campaign started with the Testing profile. Existing Testing ships retain their saved components. The spawn profile is not persisted.
+Loading any save uses the normal construction catalogue plus custom designs, even when the saved campaign started with the Testing profile. Existing Testing ships retain their saved components. The original spawn profile is retained only in initial setup metadata and does not reactivate the Testing catalogue on load.
 
 After order restoration on the isolated load candidate, active Testing-only construction is cancelled without promoting queued work. Recorded charges are refunded once to the original payer; orphaned jobs without recorded charges are rejected during validation. A load warning reports each cancellation. Queued Testing-only construction remains queued and fails through normal unavailable-template handling when attempted. Failed loads preserve the running campaign, its resource balances, and its active catalogue.
+
+## Initial setup metadata
+
+`game_state.setup_metadata` is required and nullable. New campaigns store an object
+with validated initial `settings` (including optional seed, profile and player
+configuration) and boolean `pregenerated_map_used`. Test/embedded campaigns without
+a setup record serialize null. The loader validates and preserves the metadata
+without regenerating maps, respawning fleets or replaying randomness. Seeded setup
+preserves the caller's global RNG state even if preparation fails. Identity strings
+remain freshly generated; a preview map is not reconstructed from its seed alone.
 
 ## Design validation
 

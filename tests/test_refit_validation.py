@@ -164,7 +164,7 @@ def test_wing_engine_budget_matches_designer_serialization_and_refit(world, role
     assert installed.hull_cost == pytest.approx(hull_cost)
 
 
-@pytest.mark.parametrize('radius,hull_cost', [(100, 20 / 3), (300, 20), (750, 50), (1500, 100)])
+@pytest.mark.parametrize('radius,hull_cost', [(100, 2), (300, 6), (750, 15), (1500, 30)])
 def test_inhibitor_budget_matches_designer_construction_and_refit(world, radius, hull_cost):
     from custom_unit_templates import ComponentConfig, template_from_dict, template_to_dict
     from gui.unit_editor_gui.cost_model import current_hull_used
@@ -506,7 +506,7 @@ def test_saved_removal_settles_exactly_once(outcome):
     actor.commander_component.add_order(order)
     salvage = actor.constructor_component.current_refit_target['salvage_due']
     state = serialize_game_state(game)
-    assert state['version'] == '4.20'
+    assert state['version'] == '4.21'
     assert deserialize_game_state(game, state)
     actor, target = find_unit(game.galaxy, actor.id), find_unit(game.galaxy, target.id)
     order = actor.commander_component.current_order

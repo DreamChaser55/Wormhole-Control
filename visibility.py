@@ -25,6 +25,13 @@ class VisibilitySnapshot:
     sensed_colony_ids: Set[int] = dataclasses.field(default_factory=set)
 
 
+def known_inhibition_zones(sector, viewer, snapshot):
+    """Public terrain and disclosed emitters only; no hidden-field oracle."""
+    visible_ids = {unit.id for unit in sector.units if is_unit_visible(snapshot, unit)}
+    return list(sector.static_inhibition_zones) + [zone for uid, zone in sector.dynamic_inhibition_zones.items()
+                                                 if uid in visible_ids]
+
+
 class VisibilityService:
     """Computes visibility (DETAILED vs PRESENCE vs HIDDEN) for all enemy units from a viewer's perspective."""
 

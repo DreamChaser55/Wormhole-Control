@@ -336,4 +336,4 @@ class TestMemory(unittest.TestCase):
             campaign_id="campaign",
         )
         game.display_config = DisplayConfig()
-        self.assertEqual(serialize_game_state(game)["version"], "4.20")
+        self.assertEqual(serialize_game_state(game)["version"], "4.21")

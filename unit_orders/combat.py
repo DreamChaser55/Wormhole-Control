@@ -6,7 +6,6 @@ from typing import Dict, Optional, Any, TYPE_CHECKING
 
 from geometry import distance
 from constants import DEFAULT_STANDOFF_DISTANCE
-from unit_components.weapons import targeting_range
 from .base import Order, OrderStatus, OrderType
 from .movement import MoveOrder
 
@@ -135,17 +134,9 @@ class AttackOrder(Order):
 
     def approach_range(self, target_unit: 'Unit') -> Optional[float]:
         """Shortest effective range of the turrets that determine this approach."""
-        weapons = self.unit.weapons_component
-        if not weapons:
-            return None
-        turrets = weapons.eligible_turrets_for(target_unit, long_range_only=self.long_range_only)
-        if not isinstance(turrets, (list, tuple)):
-            # Keep lightweight weapon collaborators usable by order tests.
-            from unit_components.enums import TurretVariant
-            turrets = [t for t in getattr(weapons, 'turrets', [])
-                       if not self.long_range_only or t.variant == TurretVariant.LONG_RANGE]
+        from unit_targeting import attack_range
         component_type = resolve_component_type(self.parameters.get("target_component_type"))
-        return min((targeting_range(turret.range, component_type) for turret in turrets), default=None)
+        return attack_range(self.unit, target_unit, long_range_only=self.long_range_only, target_component=component_type)
 
     def get_state_data(self) -> Dict[str, Any]:
         state_data = super().get_state_data()
@@ -196,6 +187,13 @@ class AttackOrder(Order):
         min_turret_range = self.approach_range(target_unit)
         if min_turret_range is None:
             self.fail("capability_unavailable")
+            weapons.clear_target()
+            return
+        from unit_targeting import attack_blocker
+        error = attack_blocker(self.unit, target_unit, galaxy,
+                               long_range_only=self.long_range_only, target_component=target_component_type)
+        if error:
+            self.fail(error)
             weapons.clear_target()
             return
         weapons.set_target(target_unit, target_component_type)

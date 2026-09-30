@@ -196,16 +196,44 @@ def update_documents(blocks, *, check=False, root=ROOT):
     return stale
 
 
+def control_guidance_errors(root=ROOT):
+    """Check authored examples and the local skill against runtime-owned versions."""
+    errors = []
+    guide = root / 'docs/CODEX_CONTROL.md'
+    if guide.exists():
+        content = guide.read_text(encoding='utf-8')
+        for field, source, constant in (
+            ('protocol_version', 'game_control_protocol.py', 'PROTOCOL_VERSION'),
+            ('schema_version', 'game_ai/observation.py', 'OBSERVATION_SCHEMA_VERSION')):
+            expected = literal_constant(root / source, constant)
+            values = re.findall(r'["`]?'+field+r'["`]?\s*:\s*(\d+)', content)
+            if any(int(value) != expected for value in values):
+                errors.append(f'docs/CODEX_CONTROL.md: stale {field} example; expected {expected}')
+    skill = root / '.agents/skills/wormhole-control/SKILL.md'
+    if skill.exists():
+        content = skill.read_text(encoding='utf-8')
+        if '../../../docs/DEVELOPMENT.md#current-formats-and-protocols' not in content:
+            errors.append('.agents/skills/wormhole-control/SKILL.md: link the generated current-version table')
+        if re.search(r'\b(?:socket protocol|contract|observation schema)\s+\d+\b', content, re.I):
+            errors.append('.agents/skills/wormhole-control/SKILL.md: remove duplicated mutable version numbers')
+    return errors
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--check', action='store_true', help='Fail if generated blocks are stale; do not write.')
     args = parser.parse_args(argv)
     with isolated_environment():
         stale = update_documents(generated_blocks(), check=args.check)
+    guidance_errors = control_guidance_errors()
+    for error in guidance_errors:
+        print(error)
     for path in stale:
         print(f'{"Stale" if args.check else "Updated"}: {path}')
     if args.check and stale:
         print('Run python scripts/generate_reference.py to refresh these blocks.')
+        return 1
+    if guidance_errors:
         return 1
     print('Generated reference is current.')
     return 0

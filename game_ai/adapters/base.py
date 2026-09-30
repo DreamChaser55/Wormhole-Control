@@ -55,6 +55,7 @@ class PlanningOutputError(RuntimeError):
         response_id: str | None = None,
         usage: dict[str, int] | None = None,
         latency_seconds: float = 0.0,
+        prompt_metrics: dict[str, Any] | None = None,
     ):
         super().__init__(message)
         self.code = code
@@ -64,6 +65,7 @@ class PlanningOutputError(RuntimeError):
         self.response_id = response_id
         self.usage = usage or {}
         self.latency_seconds = latency_seconds
+        self.prompt_metrics = prompt_metrics or {}
 
 
 @dataclass(frozen=True)
@@ -99,6 +101,7 @@ class PlanningResult:
     response_id: str | None = None
     usage: dict[str, int] = field(default_factory=dict)
     latency_seconds: float = 0.0
+    prompt_metrics: dict[str, Any] = field(default_factory=dict)
 
 
 class PlanningProvider(Protocol):

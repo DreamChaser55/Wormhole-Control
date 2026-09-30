@@ -474,6 +474,7 @@ def test_capture_unit_out_of_range():
     
     ability_comp = AbilityComponent(caster, [AbilityType.CAPTURE_UNIT])
     caster.add_component(ability_comp)
+    caster.add_component(MarinesComponent(caster, marines_count=10))
     caster.antimatter_component.current_amount = 50.0
     
     # Range of CAPTURE_UNIT is 100.0, target is at 200.0 distance

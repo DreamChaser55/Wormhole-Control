@@ -3,7 +3,7 @@ import os
 import shutil
 import subprocess
 import sys
-from scripts.generate_reference import ROOT, replace_block, update_documents, version_table
+from scripts.generate_reference import ROOT, replace_block, update_documents, version_table, control_guidance_errors
 
 
 def test_check_mode_reports_stale_blocks_without_writing(tmp_path):
@@ -72,3 +72,21 @@ def test_block_replacement_preserves_authored_prose():
     result = replace_block(text, 'sample', 'fresh')
     assert result.startswith('Before\n') and result.endswith('\nAfter')
     assert '\nfresh\n' in result and 'stale' not in result
+
+
+def test_control_examples_and_skill_cannot_drift(tmp_path):
+    (tmp_path / 'docs').mkdir()
+    (tmp_path / 'game_ai').mkdir()
+    (tmp_path / 'game_control_protocol.py').write_text('PROTOCOL_VERSION = 99')
+    (tmp_path / 'game_ai/observation.py').write_text('OBSERVATION_SCHEMA_VERSION = 88')
+    guide = tmp_path / 'docs/CODEX_CONTROL.md'
+    guide.write_text('{"protocol_version": 98, "schema_version": 87}')
+    skill = tmp_path / '.agents/skills/wormhole-control/SKILL.md'
+    skill.parent.mkdir(parents=True)
+    skill.write_text('socket protocol 99; observation schema 88; contract 123')
+    before = (guide.read_bytes(), skill.read_bytes())
+    assert len(control_guidance_errors(tmp_path)) == 4
+    assert (guide.read_bytes(), skill.read_bytes()) == before
+    guide.write_text('{"protocol_version": 99, "schema_version": 88}')
+    skill.write_text('[Current versions](../../../docs/DEVELOPMENT.md#current-formats-and-protocols)')
+    assert control_guidance_errors(tmp_path) == []

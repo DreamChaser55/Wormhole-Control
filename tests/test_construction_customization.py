@@ -314,11 +314,11 @@ def test_socket_and_strict_provider_share_override_contract():
     game, builder = world()
     game.current_player = builder.owner
     service = ControlService(game, port=0)
-    observed = service._dispatch_or_wait(dict(protocol_version=3, action='observe'), Future())
+    observed = service._dispatch_or_wait(dict(protocol_version=4, action='observe'), Future())
     raw = command(builder).to_dict()
     # Socket omissions and null are both supported.
     raw.pop('defense_type_override')
-    reply = service._dispatch_or_wait(dict(protocol_version=3, action='command', request_id='override',
+    reply = service._dispatch_or_wait(dict(protocol_version=4, action='command', request_id='override',
         turn_token=observed['data']['turn_token'], commands=[raw]), Future())
     assert reply['ok'] and reply['data']['accepted']
     assert builder.constructor_component.current_construction_target['defense_type_override'] is None

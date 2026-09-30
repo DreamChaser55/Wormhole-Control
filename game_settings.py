@@ -33,6 +33,9 @@ DEFAULT_SPAWN_PROFILE: SpawnProfile = SpawnProfile.NORMAL
 MIN_PLAYERS, MAX_PLAYERS = 2, 6
 MIN_SYSTEMS, MAX_SYSTEMS = 2, 30
 MIN_SYSTEM_RADIUS, MAX_SYSTEM_RADIUS = 3, 12
+SETUP_SCALAR_FIELDS = ('num_systems', 'min_system_distance', 'max_system_distance', 'wormhole_density',
+    'system_radius_min', 'system_radius_max', 'starting_credits', 'starting_metal', 'starting_crystal',
+    'starting_population', 'seed', 'home_system_assignment_mode')
 
 
 @dataclass(frozen=True)
@@ -158,6 +161,7 @@ class GameSettings:
     wormhole_density: float = 1 / 3          # probability of secondary connections
     system_radius_min: int = 6
     system_radius_max: int = 10
+    seed: typing.Optional[int] = None
 
     # --- Economy / starting resources ---
     starting_credits: float = 20_000.0
@@ -195,6 +199,8 @@ class GameSettings:
                 add(name, f'{name} must be a finite positive number.')
         if not _finite(self.wormhole_density) or not 0 <= self.wormhole_density <= 1:
             add('wormhole_density', 'wormhole_density must be a finite number between 0 and 1.')
+        if self.seed is not None and (not _integer(self.seed) or not 0 <= self.seed <= 2**32 - 1):
+            add('seed', 'seed must be null or an integer between 0 and 4294967295.')
         invalid = {issue.field for issue in issues}
         if not invalid.intersection(('system_radius_min', 'system_radius_max')) and self.system_radius_min > self.system_radius_max:
             add('system_radius_min', f'Min System Radius ({self.system_radius_min}) cannot be greater than Max System Radius ({self.system_radius_max}).')
@@ -243,6 +249,28 @@ class GameSettings:
     def validate(self, *, for_preview=False) -> typing.List[str]:
         """Return errors without mutation; by default validate a complete campaign."""
         return [issue.message for issue in self.validation_issues(for_preview=for_preview)]
+
+    def to_setup_dict(self):
+        """Initial settings only, excluding generated maps and runtime/private IDs."""
+        return {**{name: getattr(self, name) for name in SETUP_SCALAR_FIELDS},
+            'spawn_profile': normalize_spawn_profile(self.spawn_profile).value,
+            'players': [{**{name: getattr(config, name) for name in ('name', 'team_id', 'home_system_name')},
+                         'color': list(config.color), 'controller': config.controller.value,
+                         **({'ai_reasoning_effort': config.ai_reasoning_effort, 'ai_repair_retries': config.ai_repair_retries}
+                            if config.controller == PlayerController.OPENAI else {})}
+                        for config in self.player_configs]}
+
+    @classmethod
+    def from_setup_dict(cls, data):
+        if (not isinstance(data, dict) or set(data) != {*SETUP_SCALAR_FIELDS, 'spawn_profile', 'players'}
+                or not isinstance(data.get('players'), list)):
+            raise ValueError('Invalid setup metadata.')
+        values = dict(data)
+        players = values.pop('players')
+        try:
+            return cls(player_configs=[PlayerConfig(**config) for config in players], **values)
+        except (TypeError, ValueError) as exc:
+            raise ValueError('Invalid setup metadata.') from exc
 
     def __post_init__(self, preview_only=False) -> None:
         issues = self.validation_issues(for_preview=preview_only)

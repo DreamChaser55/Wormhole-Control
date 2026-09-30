@@ -50,11 +50,14 @@ class AgentMemory:
             ("objectives", 12),
             ("commitments", 12),
             ("beliefs", 16),
-            ("lessons", 16),
             ("misc", 16),
         ):
             if patch.get(field_name) is not None:
                 setattr(self, field_name, _text_list(patch.get(field_name), limit))
+        if patch.get("lessons") is not None:
+            # Durable lessons accumulate; empty patches cannot erase a learned
+            # engine constraint. Keep the most recent 16 distinct entries.
+            self.lessons = list(dict.fromkeys(self.lessons + _text_list(patch.get("lessons"), 16)))[-16:]
         self.updated_turn = max(0, int(turn))
 
     def add_receipt(self, text: str, *, turn: int) -> None:

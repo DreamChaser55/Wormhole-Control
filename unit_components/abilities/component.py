@@ -235,6 +235,10 @@ class AbilityComponent(UnitComponent):
         instance = self.abilities[ability_type]
         defn = instance.definition
 
+        from unit_targeting import legacy_target_blocker
+        if legacy_target_blocker(self.unit, ability_type.value, target, galaxy, approach=False, execution=True):
+            return False
+
         am_comp = self.unit.antimatter_component
         cost = defn.antimatter_cost
         if cost > 0 and not am_comp.consume(cost):

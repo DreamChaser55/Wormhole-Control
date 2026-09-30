@@ -72,6 +72,21 @@ def _homeworld(system, player, population):
 
 
 def prepare_new_campaign(settings):
+    """With an explicit seed, repeat setup and restore the caller's RNG."""
+    if settings.seed is None:
+        return _prepare_new_campaign(settings)
+    errors = settings.validate()
+    if errors:
+        raise ValueError('; '.join(errors))
+    previous_rng = random.getstate()
+    try:
+        random.seed(settings.seed)
+        return _prepare_new_campaign(settings)
+    finally:
+        random.setstate(previous_rng)
+
+
+def _prepare_new_campaign(settings):
     """Return a validated PreparedCampaign from new-game settings, without commit.
 
     Revalidate settings, copy player configuration and any supplied map preview,
@@ -114,9 +129,10 @@ def prepare_new_campaign(settings):
         allocations[(GameObject, 'object_counter')] = max(
             allocations[(GameObject, 'object_counter')],
             max((obj.id for obj, _ in iter_objects(galaxy)), default=0) + 1)
+        setup = {'settings': settings.to_setup_dict(), 'pregenerated_map_used': settings.pregenerated_galaxy is not None}
         settings.pregenerated_galaxy = None
         candidate = SimpleNamespace(
-            invasion_rng=random.Random(),
+            invasion_rng=random.Random(settings.seed), setup_metadata=setup,
             settings=settings, galaxy=galaxy, players=[], campaign_id=generate_short_id(),
             current_player_index=0, turn_number=1, view_mode='galaxy', game_started=True,
             current_system_name=None, current_sector_coord=None, conversations={}, message_counter=0,

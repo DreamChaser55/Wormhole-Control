@@ -67,7 +67,13 @@ def validate_document(data):
     state = data["game_state"]
     require(state, ("turn_number", "current_player_index", "view_mode", "current_system_name",
                     "current_sector_coord", "object_counter", "player_counter", "agent_counter",
-                    "message_counter", "campaign_id", "invasion_rng_state"), "game_state")
+                    "message_counter", "campaign_id", "invasion_rng_state", "setup_metadata"), "game_state")
+    setup = state['setup_metadata']
+    if setup is not None:
+        from game_settings import GameSettings
+        if not isinstance(setup, dict) or set(setup) != {'settings', 'pregenerated_map_used'} or type(setup['pregenerated_map_used']) is not bool:
+            raise ValueError('Invalid setup metadata.')
+        GameSettings.from_setup_dict(setup['settings'])
     from planetary_warfare import rng_from_state
     rng_from_state(state["invasion_rng_state"])
     for name in ("turn_number", "current_player_index", "object_counter", "player_counter", "agent_counter", "message_counter"):
@@ -581,7 +587,7 @@ def prepare_campaign(data):
         validate_document(data)
         info = data["game_state"]
         candidate = SimpleNamespace(**{name: info[name] for name in
-            ("turn_number", "current_player_index", "view_mode", "current_system_name", "campaign_id", "message_counter")})
+            ("turn_number", "current_player_index", "view_mode", "current_system_name", "campaign_id", "message_counter", "setup_metadata")})
         candidate.current_sector_coord = HexCoord(*info["current_sector_coord"]) if info["current_sector_coord"] is not None else None
         from planetary_warfare import rng_from_state
         candidate.invasion_rng = rng_from_state(info["invasion_rng_state"])

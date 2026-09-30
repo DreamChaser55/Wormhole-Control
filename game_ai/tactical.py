@@ -81,10 +81,11 @@ def enrich_states(unit, states):
             if kind == 'siege_lance':
                 state.update(charge_round=inst.charge_round, fires_on_owner_end_turn=inst.charge_round+1 if inst.is_active else None)
             if kind == 'fleet_jump':
-                from titan_abilities import jump_participants
+                from titan_abilities import jump_participants, jump_origin_blockers
                 from tactical_abilities import deployed
                 fleet = jump_participants(unit, galaxy) if deployed(unit, galaxy) else []
                 state.update(destination_reach='any_explored_hex_in_current_system', gather_radius=750,
+                    origin_blocked_participant_ids=jump_origin_blockers(unit, galaxy) if fleet else [],
                     escort_hull_usage=sum(u.hull_capacity for u in fleet if u is not unit), escort_hull_limit=800,
                     participants=[{'unit_id': u.id, 'replaces_order_ids': [o.public_id for o in
                         [u.commander_component.current_order, *u.commander_component.orders_queue] if o is not None] if u is not unit else []} for u in fleet])
@@ -151,8 +152,10 @@ def guidance(game, player, unit, legal, options, visible_units, exact_bodies):
     weapons = getattr(unit, 'weapons_component', None)
     if weapons and not weapons.is_destroyed:
         for kind in ('attack', 'attack_long_range'):
+            from unit_targeting import attack_blocker
             enemies = [d.id for d in deployables if are_enemies(player, d.owner)
-                       and weapons.eligible_turrets_for(d, long_range_only=kind == 'attack_long_range')]
+                       and weapons.eligible_turrets_for(d, long_range_only=kind == 'attack_long_range')
+                       and attack_blocker(unit, d, game.galaxy, long_range_only=kind == 'attack_long_range') is None]
             if enemies:
                 options.setdefault(kind, {}).setdefault('target_ids', []).extend(enemies)
                 legal.add(kind)

@@ -332,6 +332,9 @@ def test_owned_sdk_client_configuration_and_idempotent_close(monkeypatch):
     client = SimpleNamespace(responses=SimpleNamespace(create=AsyncMock(return_value=response)), close=AsyncMock())
     factory = Mock(return_value=client)
     monkeypatch.setattr("openai.AsyncOpenAI", factory)
+    http_client = Mock()
+    http_factory = Mock(return_value=http_client)
+    monkeypatch.setattr("openai.DefaultAsyncHttpxClient", http_factory)
     monkeypatch.setattr("game_ai.adapters.openai_responses.load_openai_api_key", lambda: "offline-test-key")
     async def exercise():
         provider = OpenAIResponsesProvider()
@@ -341,7 +344,10 @@ def test_owned_sdk_client_configuration_and_idempotent_close(monkeypatch):
         with pytest.raises(RuntimeError, match="closed"):
             await provider.plan_turn(PlanningRequest("campaign", "agent", "AI", 1, {}, {}), get_runtime_config("high"))
     asyncio.run(exercise())
-    assert factory.call_args.kwargs == dict(api_key="offline-test-key", timeout=120, max_retries=2)
+    assert factory.call_args.kwargs == dict(api_key="offline-test-key", timeout=120, max_retries=2, http_client=http_client)
+    import ssl
+    context = http_factory.call_args.kwargs["verify"]
+    assert context.verify_mode == ssl.CERT_REQUIRED and context.check_hostname
     client.close.assert_awaited_once()
     assert client.responses.create.call_args.kwargs["store"] is False
     assert "background" not in client.responses.create.call_args.kwargs

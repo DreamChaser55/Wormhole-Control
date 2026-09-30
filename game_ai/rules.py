@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any, Iterable
 from .command_spec import COMMAND_SPECS
 from component_visibility import public_target_components
+from unit_targeting import operational_engines as has_operational_engines
 
 
 def is_colonizable_body(body: Any) -> bool:
@@ -40,24 +41,6 @@ def is_antimatter_source(body: Any) -> bool:
     if isinstance(body, Nebula) and getattr(body, "nebula_type", None) == NebulaType.HYDROGEN:
         return True
     return False
-
-
-def has_operational_engines(unit: Any) -> bool:
-    """Return whether a unit's installed engines can provide sub-light movement."""
-    engines = getattr(unit, "engines_component", None)
-    if engines is None:
-        return False
-
-    operational = getattr(engines, "is_operational", None)
-    if isinstance(operational, bool):
-        return operational
-    if getattr(engines, "is_destroyed", False) is True:
-        return False
-
-    effective_speed = getattr(engines, "effective_speed", None)
-    if not isinstance(effective_speed, (int, float)):
-        effective_speed = getattr(engines, "speed", None)
-    return effective_speed > 0 if isinstance(effective_speed, (int, float)) else True
 
 
 def compatible_hangar_component(unit: Any, target: Any) -> Any | None:
@@ -362,11 +345,12 @@ def command_guidance(
             if discovered and operational:
                 legal.add("eliminate_agent")
 
+    from unit_targeting import attack_blocker, legacy_target_blocker
     target_options = {
-        "attack": [candidate.id for candidate in enemy_units if not callable(getattr(getattr(unit, "weapons_component", None), "eligible_turrets_for", None)) or unit.weapons_component.eligible_turrets_for(candidate)],
+        "attack": [candidate.id for candidate in enemy_units if attack_blocker(unit, candidate, game.galaxy) is None],
         "attack_long_range": [candidate.id for candidate in enemy_units
                               if getattr(unit, "weapons_component", None)
-                              and unit.weapons_component.eligible_turrets_for(candidate, long_range_only=True)],
+                              and attack_blocker(unit, candidate, game.galaxy, long_range_only=True) is None],
         "protect": [candidate.id for candidate in friendly_units],
         "repair": [candidate.id for candidate in friendly_units],
         "unload_resources": [
@@ -576,7 +560,8 @@ def command_guidance(
         options["use_ability"] = {
             "values": abilities,
             "targets_by_ability": {
-                state["ability"]: [candidate.id for candidate in visible_units]
+                state["ability"]: [candidate.id for candidate in visible_units
+                                   if legacy_target_blocker(unit, state["ability"], candidate, game.galaxy) is None]
                 for state in ready_states
                 if state["requires_target_unit"]
             },
@@ -586,7 +571,10 @@ def command_guidance(
                 if state["requires_target_position"]
             ],
         }
-        if abilities:
+        from unit_targeting import LEGACY_UNIT_ABILITIES
+        options['use_ability']['values'] = [kind for kind in abilities if kind not in LEGACY_UNIT_ABILITIES
+            or options['use_ability']['targets_by_ability'].get(kind)]
+        if options['use_ability']['values']:
             legal.add("use_ability")
 
     if 'toggle_ability' in supported:

@@ -171,6 +171,7 @@ def test_dock_and_deploy_orders_with_strikecraft_bay():
     carrier.add_component(strikecraft_bay)
 
     wing = MockUnit()
+    wing.owner = carrier.owner
     wing.id = 200
     wing.hull_size = HullSize.STRIKECRAFT_WING
     wing.in_system = "Sol"

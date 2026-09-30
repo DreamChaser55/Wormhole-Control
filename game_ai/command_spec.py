@@ -6,7 +6,7 @@ from copy import deepcopy
 import math
 from construction_customization import TURRET_TYPES, DEFENSE_TYPES, validate_override_values
 
-CONTRACT_VERSION = 22
+CONTRACT_VERSION = 23
 MAX_COMMANDS = 40
 MAX_UNITS = 12
 MAX_WAYPOINTS = 16
@@ -215,6 +215,8 @@ def command_catalog():
     return {"version": CONTRACT_VERSION, "max_commands": MAX_COMMANDS, "max_units": MAX_UNITS,
         "fields": deepcopy(COMMAND_PROPERTIES),
         "commands": {kind: {"description": s.description, "fields": list(s.fields), "required": list(s.required),
+                            "required_presence": ["type"] + ([] if s.player_level else ["unit_ids"]) + list(s.required) + (["template_name"] if kind == "set_wing_production" else []),
+                            "nullable_fields": [name for name in s.fields if name not in s.required],
                             "queue": "append_or_replace" if s.queued else "must_be_false",
                             "unit_selection": "none" if s.player_level else "one" if s.single_unit else "owned",
                             "capabilities": list(s.capability), "message_max_length": s.text_limit} for kind, s in COMMAND_SPECS.items()},

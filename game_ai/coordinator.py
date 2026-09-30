@@ -6,6 +6,7 @@ import json
 import logging
 from concurrent.futures import Future
 from pathlib import Path
+from time import perf_counter
 from typing import Any
 
 from .adapters.base import (
@@ -29,6 +30,7 @@ from .runtime import (
     normalize_repair_retries,
 )
 from player_controller import PlayerController
+from .provider_errors import classify_provider_error, MESSAGES
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +61,9 @@ class AgentTurnCoordinator:
         self.state = "idle"
         self.status_message = ""
         self.last_error = ""
+        self.last_error_category = None
+        self._failure_identity = None
+        self._attempt_started = None
 
     @property
     def is_busy(self) -> bool:
@@ -103,7 +108,7 @@ class AgentTurnCoordinator:
             self._future = None
             self._handle = None
             self._record_transport_error(PlanningRetirementError())
-            self._fail("The previous AI request did not stop within the cancellation deadline.")
+            self._fail(MESSAGES["cancellation_timeout"], category="cancellation_timeout")
             return
         if handle is not None and handle.waiting.is_set() and not handle.started.is_set():
             self.state, self.status_message = "cancelling", "cancelling previous request…"
@@ -120,7 +125,7 @@ class AgentTurnCoordinator:
             result = future.result()
         except PlanningRetirementError as exc:
             self._record_transport_error(exc)
-            self._fail("The previous AI request did not stop within the cancellation deadline.")
+            self._fail(MESSAGES["cancellation_timeout"], category="cancellation_timeout")
             return
         except PlanningOutputError as exc:
             logger.warning("AI output was invalid: %s", exc)
@@ -129,9 +134,8 @@ class AgentTurnCoordinator:
         except Exception as exc:
             logger.error("AI planning provider failed: %s", exc.__class__.__name__)
             self._record_transport_error(exc)
-            self._fail(
-                f"AI planning provider failed ({exc.__class__.__name__})."
-            )
+            category = classify_provider_error(exc)
+            self._fail(MESSAGES[category], category=category)
             return
         if not self._turn_is_current():
             self._discard_stale_result()
@@ -153,6 +157,9 @@ class AgentTurnCoordinator:
         self.state = "idle"
         self.status_message = ""
         self.last_error = ""
+        self.last_error_category = None
+        self._failure_identity = None
+        self._attempt_started = None
         self._set_end_turn_enabled(True)
 
     def shutdown(self) -> None:
@@ -184,7 +191,10 @@ class AgentTurnCoordinator:
             self.status_message = "thinking…"
         self._planning_status = (self.state, self.status_message)
         self.last_error = ""
+        self.last_error_category = None
+        self._failure_identity = None
         self._set_end_turn_enabled(False)
+        self._attempt_started = perf_counter()
         self._handle = self._runtime.submit(request, runtime_config)
         self._future = self._handle.result
 
@@ -232,7 +242,7 @@ class AgentTurnCoordinator:
                     "applied_count": command_result.applied_count, "may_have_partial_effects": True,
                     "requires_observation": True}
             messages = "; ".join(error.message for error in command_result.errors)
-            self._fail(f"AI command failure ({command_result.failure_stage}): {messages}")
+            self._fail(f"AI command failure ({command_result.failure_stage}): {messages}", category=command_result.failure_stage or "preflight")
             return
 
         memory = AgentMemory.from_dict(getattr(player, "ai_memory", None))
@@ -255,6 +265,7 @@ class AgentTurnCoordinator:
             "reasoning_effort": result.reasoning_effort,
             "usage": result.usage,
             "latency_seconds": round(result.latency_seconds, 3),
+            "prompt_metrics": result.prompt_metrics,
         }
         self._write_memory(player, memory)
         self._record_telemetry(
@@ -288,7 +299,7 @@ class AgentTurnCoordinator:
             )
             self._submit(self._repair_request(context), repairing=True)
             return
-        self._fail(f"AI planning output was invalid: {error}")
+        self._fail(f"AI planning output was invalid: {error}", category="invalid_output")
 
     def _repair_request(self, context: RepairContext) -> PlanningRequest:
         base = self._base_request
@@ -349,6 +360,7 @@ class AgentTurnCoordinator:
             "response_id": result.response_id,
             "usage": result.usage,
             "latency_seconds": round(result.latency_seconds, 3),
+            "prompt_metrics": result.prompt_metrics,
             "status": status,
             "commands": len(result.plan.batch.commands),
             "command_summaries": [
@@ -402,6 +414,7 @@ class AgentTurnCoordinator:
             "response_id": error.response_id,
             "usage": error.usage,
             "latency_seconds": round(error.latency_seconds, 3),
+            "prompt_metrics": error.prompt_metrics,
             "status": "invalid_output",
             "commands": 0,
             "command_summaries": [],
@@ -425,6 +438,8 @@ class AgentTurnCoordinator:
         )
 
     def _record_transport_error(self, error: Exception) -> None:
+        from .prompt_context import planning_context
+        prompt_metrics = planning_context(self._request)[1] if self._request is not None else {}
         player = getattr(self.game, "current_player", None)
         runtime_config = get_runtime_config(
             getattr(player, "ai_reasoning_effort", DEFAULT_REASONING_EFFORT)
@@ -440,17 +455,19 @@ class AgentTurnCoordinator:
             "reasoning_effort": runtime_config.reasoning_effort,
             "response_id": None,
             "usage": {},
-            "latency_seconds": 0.0,
+            "prompt_metrics": prompt_metrics,
+            "latency_seconds": round(max(0.0, perf_counter() - self._attempt_started), 3) if self._attempt_started is not None else 0.0,
             "status": "transport_error",
             "commands": 0,
             "command_summaries": [],
             "applied_operations": 0,
             "errors": [error.__class__.__name__],
+            "error_category": classify_provider_error(error),
             "error_details": [
                 {
                     "command_index": None,
                     "code": error.__class__.__name__,
-                    "message": "The planning provider request failed.",
+                    "message": MESSAGES[classify_provider_error(error)],
                 }
             ],
             "will_retry": False,
@@ -475,10 +492,13 @@ class AgentTurnCoordinator:
         except Exception:
             logger.warning("Could not write AI telemetry.", exc_info=True)
 
-    def _fail(self, message: str) -> None:
+    def _fail(self, message: str, *, category="provider_error") -> None:
         self.state = "error"
         self.status_message = "attention"
         self.last_error = message
+        self.last_error_category = category
+        player = getattr(self.game, "current_player", None)
+        self._failure_identity = (str(self.game.campaign_id), str(player.agent_id), int(self.game.turn_number)) if player is not None else None
         self._request = None
         self._base_request = None
         self._turn_token = None
@@ -497,6 +517,12 @@ class AgentTurnCoordinator:
         self._base_request = None
         self._turn_token = None
         self._set_end_turn_enabled(True)
+
+    def failed_current_turn(self) -> bool:
+        player = getattr(self.game, "current_player", None)
+        return bool(self.state == "error" and player is not None
+                    and player.controller == PlayerController.OPENAI
+                    and self._failure_identity == (str(self.game.campaign_id), str(player.agent_id), int(self.game.turn_number)))
 
     def _set_end_turn_enabled(self, enabled: bool) -> None:
         gui = getattr(self.game, "gui", None)

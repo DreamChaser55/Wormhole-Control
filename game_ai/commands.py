@@ -2063,6 +2063,12 @@ class CommandGateway:
             check = getattr(unit.weapons_component, "eligible_turrets_for", None)
             if callable(check) and not check(target, long_range_only=command.type == "attack_long_range"):
                 raise _Rejected("capability_unavailable", "No eligible weapons for this target.")
+            from unit_targeting import attack_blocker
+            error = attack_blocker(unit, target, self.game.galaxy,
+                                   long_range_only=command.type == "attack_long_range",
+                                   target_component=command.target_component)
+            if error:
+                raise _Rejected(error, "Attack approach unavailable: " + error.replace('_', ' ') + ".")
         elif command.type == "colonize":
             if projection.cargo_for(unit) <= 0:
                 queue_hint = (
@@ -2228,6 +2234,11 @@ class CommandGateway:
                     "capability_unavailable",
                     f"Ability {command.ability} is unavailable on unit {unit.id}.",
                 )
+            from unit_targeting import LEGACY_UNIT_ABILITIES, legacy_target_blocker
+            if command.ability in LEGACY_UNIT_ABILITIES:
+                error = legacy_target_blocker(unit, command.ability, self._visible_unit(unit.owner, command.target_id), self.game.galaxy)
+                if error:
+                    raise _Rejected(error, "Ability target unavailable: " + error.replace('_', ' ') + ".")
         elif command.type in {"infiltrate_unit", "infiltrate_planet"}:
             intelligence = getattr(unit, "intelligence_component", None)
             if intelligence is None or int(getattr(intelligence, "available_agents", 0)) <= 0:

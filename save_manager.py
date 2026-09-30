@@ -37,7 +37,7 @@ from unit_orders.registry import ORDER_CLASS_REGISTRY
 logger = logging.getLogger(__name__)
 
 
-CURRENT_SAVE_VERSION = "4.20"
+CURRENT_SAVE_VERSION = "4.21"
 
 SAVES_DIR = os.path.join(os.path.dirname(__file__), "saves")
 
@@ -369,6 +369,7 @@ def serialize_game_state(game: Any) -> dict:
             "agent_counter": Agent.agent_counter,
             "message_counter": getattr(game, "message_counter", 0),
             "campaign_id": campaign_id,
+            "setup_metadata": getattr(game, "setup_metadata", None),
         },
         "players": players_data,
         "galaxy": galaxy_data,

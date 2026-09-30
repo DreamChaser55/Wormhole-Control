@@ -16,6 +16,69 @@ def point(value):
     return list(value) if isinstance(value, (tuple, list)) and len(value) == 2 else None
 
 
+def journey_progress(unit, order, known_targets):
+    """Describe the active planned leg using public intent and current equipment."""
+    from types import SimpleNamespace
+    from geometry import distance
+    from antimatter_logistics import estimate_approach
+    from visibility import VisibilityService, known_inhibition_zones
+    nodes, node = [], order
+    for _ in range(7):
+        reference = node.primary_target_reference()
+        if reference is not None and reference[1] not in known_targets:
+            return None
+        nodes.append(node)
+        children = list(node.sub_orders)
+        if not children:
+            break
+        node = children[0]
+    moves = [node for node in nodes if enum_name(node.order_type) == 'move']
+    if not moves:
+        return None
+    params = nodes[-1].parameters
+    destination = params.get('destination_position')
+    system_name = params.get('destination_system_name')
+    coord = params.get('destination_hex_coord')
+    if destination is None or system_name is None or coord is None:
+        return None
+    galaxy = getattr(getattr(unit, 'game', None), 'galaxy', None)
+    if galaxy is None:
+        return None
+    local = unit.in_system == system_name and unit.in_hex == coord
+    drive = getattr(unit, 'hyperdrive_component', None)
+    recharge = getattr(drive, 'recharge_time_remaining', 0)
+    recharge = recharge if type(recharge) is int else 0
+    root_params = moves[0].parameters
+    final_local = (unit.in_system == root_params.get('destination_system_name')
+                   and unit.in_hex == root_params.get('destination_hex_coord'))
+    phase = 'approach' if final_local else 'egress'
+    if not local:
+        phase = 'recharge' if recharge > 0 else 'jump'
+    elif final_local and drive and enum_name(drive.jump_status) == 'charging':
+        phase = 'arrival'
+    sector = galaxy.systems[unit.in_system].hexes[unit.in_hex]
+    from geometry import is_point_in_circle
+    snapshot = VisibilityService.compute(galaxy, unit.owner, record_intel=False)
+    if local and not final_local and any(is_point_in_circle(unit.position, zone)
+            for zone in known_inhibition_zones(sector, unit.owner, snapshot)):
+        phase = 'egress'
+    final = root_params.get('destination_position')
+    estimate = None
+    if final is not None:
+        target = SimpleNamespace(position=final, in_system=root_params['destination_system_name'],
+                                 in_hex=root_params['destination_hex_coord'])
+        estimate = estimate_approach(unit, galaxy, target, approach_range=5.0, known_only=True)
+    turns = min(10000, estimate.turns + max(0, recharge)) if estimate else None
+    return {'phase': phase, 'remaining_approach_distance': round(distance(unit.position, destination), 2) if local else None,
+            'route_leg': {'system_name': system_name, 'hex_coord': point(coord), 'position': point(destination)},
+            'remaining_route_legs': len(moves[0].sub_orders),
+            'drive_status': enum_name(drive.jump_status) if drive else None,
+            'drive_recharge_owner_turns': recharge,
+            'estimated_remaining_owner_turns': turns,
+            'estimate_conditional': True,
+            'estimate_note': 'Current route and equipment; assumes unchanged targets/terrain and sufficient fuel. Future blockers may delay arrival.'}
+
+
 def order_layers(unit, relation, visible_ids, body_ids):
     """Return bounded public order layers without changing orders or visibility.
 
@@ -132,6 +195,10 @@ def order_layers(unit, relation, visible_ids, body_ids):
             phase = order_phase(order, unit.game.galaxy)
             if phase:
                 progress['phase'] = phase
+        if root and active and actionable and not hidden and not private_agent_order:
+            journey = journey_progress(unit, order, visible_ids | body_ids)
+            if journey is not None:
+                progress['journey'] = journey
         data["progress"] = progress
         children = list(getattr(order, "sub_orders", []))
         shown = []
