@@ -79,20 +79,19 @@ def test_minelayer_component_and_resource_cost():
     assert player1.credits == 3000.0 - MINEFIELD_CREDIT_COST
     assert unit.antimatter_component.current_amount == 300.0 - MINEFIELD_ANTIMATTER_COST
 
-    # Lay until limit (MAX_MINEFIELDS_PER_HEX = 4)
-    mf2 = minelayer.deploy_mine(game.galaxy, "Sol", (0, 0), Position(110.0, 100.0))
-    mf3 = minelayer.deploy_mine(game.galaxy, "Sol", (0, 0), Position(120.0, 100.0))
-    mf4 = minelayer.deploy_mine(game.galaxy, "Sol", (0, 0), Position(130.0, 100.0))
-    assert mf2 is not None and mf3 is not None and mf4 is not None
-    assert len(system.hexes[(0, 0)].minefields) == 4
+    # Lay until limit (MAX_MINEFIELDS_PER_HEX = 8)
+    for i in range(2, 9):
+        mf = minelayer.deploy_mine(game.galaxy, "Sol", (0, 0), Position(100.0 + i * 10, 100.0))
+        assert mf is not None
+    assert len(system.hexes[(0, 0)].minefields) == 8
 
-    # Attempting to lay a 5th minefield should be rejected due to MAX_MINEFIELDS_PER_HEX = 4
+    # Attempting to lay a 9th minefield should be rejected due to MAX_MINEFIELDS_PER_HEX = 8
     can_lay, reason = minelayer.can_lay_mine(game.galaxy, "Sol", (0, 0))
     assert can_lay is False
     assert "limit" in reason.lower()
 
-    mf5 = minelayer.deploy_mine(game.galaxy, "Sol", (0, 0), Position(140.0, 100.0))
-    assert mf5 is None
+    mf9 = minelayer.deploy_mine(game.galaxy, "Sol", (0, 0), Position(190.0, 100.0))
+    assert mf9 is None
 
 
 def test_lay_minefield_order():
