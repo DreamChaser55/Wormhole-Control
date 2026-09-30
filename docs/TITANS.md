@@ -27,10 +27,10 @@ ordinary subsystem rules.
 Flagship uses 744.80 hull: an 8-turret heavy capital battery, tripled defenses,
 2,000 AM, an eight-slot Strikecraft Bay, Advanced Hyperdrive, fleet repair,
 extended sensors with 3-ring long-range coverage, marines, counter-intelligence,
-all five Titan powers, and tactical fleet abilities. Citadel uses 675.80 hull,
-adds a 300-radius Hyperspace Inhibitor field and 4-ring long-range sensors, and
-omits Engines, Hyperdrive, Fleet Jump, and Marines. Bay production selections
-start empty. The catalogue computes prices from the equipment.
+all five Titan powers, and tactical fleet abilities. Citadel uses 685.80 hull,
+adds a 1,500-radius Hyperspace Inhibitor field costing 15 AM per owner turn and
+4-ring long-range sensors, and omits Engines, Hyperdrive, Fleet Jump, and Marines.
+Bay production selections start empty. The catalogue computes prices from the equipment.
 
 New wormholes are 70% Titan, 15% Large and 15% Medium diameter. A Huge-diameter
 connection excludes Titans. Ordinary terrain, docking and atmospheric restrictions

@@ -61,8 +61,8 @@ def test_calc_mining_hull_cost():
 
 def test_calc_inhibitor_hull_cost():
     assert calc_inhibitor_hull_cost(0) == 0.0
-    assert calc_inhibitor_hull_cost(100.0) == pytest.approx(20.0 / 3)
-    assert calc_inhibitor_hull_cost(300.0) == 20.0
+    assert calc_inhibitor_hull_cost(100.0) == 2.0
+    assert calc_inhibitor_hull_cost(300.0) == 6.0
 
 
 def test_component_config_dynamic_properties():
@@ -92,7 +92,7 @@ def test_component_config_dynamic_properties():
     # Inhibitor
     c.has_inhibitor = True
     c.inhibitor_radius = 150.0
-    assert c.inhibitor_hull_cost == 10.0
+    assert c.inhibitor_hull_cost == 3.0
 
 
 def test_custom_unit_template_total_hull_cost():
@@ -100,14 +100,14 @@ def test_custom_unit_template_total_hull_cost():
         has_hangar=True,
         hangar_slots=3,  # 30 hull cost
         has_inhibitor=True,
-        inhibitor_radius=300.0,  # 20 hull cost
+        inhibitor_radius=300.0,  # 6 hull cost
     )
     tmpl = CustomUnitTemplate(
         display_name="Test Carrier",
         hull_size=HullSize.LARGE,
         components=comp,
     )
-    assert tmpl.total_hull_cost == 50.0
+    assert tmpl.total_hull_cost == 36.0
 
 
 def test_unit_editor_summary_hull_size_scaling():

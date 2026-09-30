@@ -29,7 +29,7 @@ def create(game, key, owner=0):
 def test_catalog_coverage_and_canonical_values():
     from scripts.generate_reference import component_rows
     from unit_components.enums import AbilityType
-    assert len(BUILTINS) == 74
+    assert len(BUILTINS) == 76
     assert validate_builtin_catalog(BUILTINS) == {}
     assert {a.value for a in AbilityType} == {a for t in BUILTINS.values() for a in t['abilities']}
     assert all(any(t[row['key']] for t in BUILTINS.values()) for row in component_rows())
@@ -81,9 +81,12 @@ def test_revised_specialists():
 
 
 @pytest.mark.parametrize('key,radius,hull_cost,total_hull,price,turns,am_cost,ticks', [
-    ('INTERDICTOR', 705, 47, 100, 4000, 30, 70.5, 3),
-    ('INTERDICTION_FORTRESS', 1563, 104.2, 200, 8000, 40, 156.3, 1),
-    ('SPAWN_STATION_MEDIUM', 300, 20, 40, 500, 7, 30, 6),
+    ('INTERDICTION_FRIGATE', 600, 12, 50, 2000, 20, 6, 33),
+    ('INTERDICTION_STATION', 900, 18, 50, 2000, 20, 9, 33),
+    ('INTERDICTOR', 1500, 30, 100, 4000, 30, 15, 33),
+    ('INTERDICTION_FORTRESS', 2000, 40, 190.8, 7724, 39, 20, 70),
+    ('TITAN_CITADEL', 1500, 30, 685.8006163584874, 40574, 111, 15, 133),
+    ('SPAWN_STATION_MEDIUM', 300, 6, 26, 500, 7, 3, 66),
 ])
 def test_inhibitor_catalog_budget_field_fuel_and_persistence(
         key, radius, hull_cost, total_hull, price, turns, am_cost, ticks):
@@ -108,9 +111,10 @@ def test_inhibitor_catalog_budget_field_fuel_and_persistence(
                                         existing_zones=[Circle(Position(radius, 0), 50)])
     assert overlap.code == 'inhibitor_overlap'
     assert emitter.set_active(True, game.galaxy).allowed
+    fuel_before_load = unit.antimatter_component.current_amount
 
     restored = campaign()
-    deserialize_game_state(restored, serialize_game_state(game))
+    assert deserialize_game_state(restored, serialize_game_state(game))
     saved = restored.galaxy.get_unit_by_id(unit.id)
     emitter = saved.inhibitor_component
     sector = restored.galaxy.systems['Sol'].hexes[(0, 0)]
@@ -119,6 +123,7 @@ def test_inhibitor_catalog_budget_field_fuel_and_persistence(
     assert emitter.hull_cost == pytest.approx(hull_cost)
     assert emitter.max_hit_points == round(hull_cost * 10)
     fuel = saved.antimatter_component.current_amount
+    assert fuel == fuel_before_load
     for _ in range(ticks):
         emitter.update()
         assert emitter.is_active
@@ -335,7 +340,7 @@ def test_observation_catalog_deduplicates_builders_and_exposes_bomber_choices():
     create(game, 'FLEET_CARRIER')
     observation = build_observation(game, game.players[0])
     catalog = observation['action_catalogs']
-    assert len(catalog['construction_templates']) == 69
+    assert len(catalog['construction_templates']) == 71
     assert len(catalog['wing_templates']) == 5
     assert all(e['description'] and e['roles'] and 'support' in e for e in catalog['construction_templates'])
     assert observation['command_catalog']['version'] == 22

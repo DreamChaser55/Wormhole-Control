@@ -385,7 +385,7 @@ The Unit Designer provides **28 selectable component rows**. Commander is always
 | 16 | `has_crystal_refinery_component` | Crystal Refinery | Fixed | 20.0 |
 | 17 | `has_hangar` | Hangar | Dynamic | 20.0 |
 | 18 | `has_strikecraft_bay` | Strikecraft Bay | Dynamic | 15.0 |
-| 19 | `has_inhibitor` | Inhibitor Field | Dynamic | 6.67 |
+| 19 | `has_inhibitor` | Inhibitor Field | Dynamic | 2.0 |
 | 20 | `has_wormhole_stabilizer_component` | Wormhole Stabilizer | Fixed | 15.0 |
 | 21 | `has_ability_component` | Abilities | Dynamic | 10.0 |
 | 22 | `has_sensors` | Sensors | Dynamic | 2.0 |
@@ -426,10 +426,10 @@ hulls. Dynamic costs follow configured performance; fixed costs appear in the ta
   not strikecraft wings.
 - **Strikecraft Bay:** Medium or larger; cost scales with wing slots. Builds,
   carries and replenishes built-in Fighter-role and Bomber-role wing designs.
-- **Inhibitor Field:** Medium or larger. Cost is `radius / 15` hull; active fuel
-  consumption is `radius × 0.1` AM/turn. The field must fit inside the sector and
-  cannot overlap any natural or artificial inhibition zone. Insufficient fuel
-  deactivates it.
+- **Inhibitor Field:** Medium or larger. Cost is `radius / 50` hull; active fuel
+  consumption is `radius × 0.01` AM per owner turn. The field must fit inside the
+  sector and cannot overlap any natural or artificial inhibition zone.
+  Insufficient fuel deactivates it.
 - **Abilities:** Cost scales with equipped abilities; prerequisites must also be installed.
 - **Sensors:** All hulls. Cost scales with short-range radius and long-range hex
   coverage. Designs with Sensors enabled and field refits require a base short-range
@@ -565,6 +565,7 @@ report mandatory returns and endurance losses.
 | Artillery Frigate | Combat | MEDIUM ship | 49.02/50 | 1971 | 75 | 25 | 20 | 0.49 | Dedicated missile artillery frigate for mobile fire support. Inter-system travel. |
 | Flak Battery | Combat | MEDIUM station | 49.10/50 | 1973 | 75 | 25 | 20 | 0.49 | Designed for stationary air defense. Stationary installation. |
 | Flak Escort | Combat | MEDIUM ship | 49.80/50 | 1994 | 75 | 25 | 20 | 0.50 | Designed for fleet air defense. Inter-system travel. |
+| Interdiction Station | Combat | MEDIUM station | 50.00/50 | 2000 | 75 | 25 | 20 | 0.50 | Lightly armed hyperspace interdiction specialist with a 900-radius field for 9 AM per owner turn. Stationary installation. Activate clear of natural or artificial inhibition zones and sector boundaries. Use escorts and fuel deliveries for sustained interdiction; the field also blocks friendly ships. |
 | Artillery Cruiser | Combat | LARGE ship | 90.24/100 | 3707 | 141 | 46 | 29 | 0.90 | Designed for ranged fire support. Inter-system travel. |
 | Lance Cruiser | Combat | LARGE ship | 90.24/100 | 3707 | 141 | 46 | 29 | 0.90 | Dedicated beam sniper cruiser with long-range energy lances. Inter-system travel. |
 | Railgun Cruiser | Combat | LARGE ship | 90.24/100 | 3707 | 141 | 46 | 29 | 0.90 | Dedicated kinetic sniper cruiser with long-range railguns. Inter-system travel. |
@@ -572,9 +573,9 @@ report mandatory returns and endurance losses.
 | Orbital Bastion | Combat | LARGE station | 92.80/100 | 3784 | 143 | 47 | 29 | 0.93 | Designed for colony defense. Stationary installation. Requires a friendly or allied colony and an available colony support slot. |
 | Battleship | Combat | HUGE ship | 183.93/200 | 7518 | 284 | 92 | 38 | 1.84 | Designed for fleet anchor. Inter-system travel. |
 | Siege Dreadnought | Combat | HUGE ship | 185.49/200 | 7565 | 286 | 93 | 39 | 1.85 | Dedicated planetary bombardment with a Siege Battery and long-range fleet weapons. Inter-system travel. |
+| Interdiction Fortress | Combat | HUGE station | 190.80/200 | 7724 | 291 | 96 | 39 | 1.91 | Fortified stationary jump denial with a 2000-radius field for 20 AM per owner turn. Deploy in clear sectors away from natural inhibition zones and sector boundaries. Support with escorts and fuel deliveries; the field also blocks friendly ships. |
 | Artillery Dreadnought | Combat | HUGE ship | 194.93/200 | 7848 | 295 | 98 | 39 | 1.95 | Dedicated long-range fleet bombardment dreadnought featuring tri-weapon artillery batteries. Inter-system travel. |
-| Interdiction Fortress | Combat | HUGE station | 200.00/200 | 8000 | 300 | 100 | 40 | 2.00 | Designed for fortified jump denial. Stationary installation. Activate clear of existing natural or artificial inhibition fields; maintain fuel supply. |
-| Titan Citadel | Combat | TITAN station | 675.80/800 | 40274 | 1076 | 338 | 111 | 117.58 | Unique strategic station with a Titan Core, heavy battery, jump inhibition, and repair base. |
+| Titan Citadel | Combat | TITAN station | 685.80/800 | 40574 | 1086 | 343 | 111 | 118.58 | Unique strategic station with a Titan Core, heavy battery, repair base, and 1500-radius inhibition field for 15 AM per owner turn. Deploy clear of natural inhibition zones and sector boundaries. Support with escorts and fuel deliveries for its field and abilities; inhibition also blocks friendly ships. |
 | Titan Flagship | Combat | TITAN ship | 744.80/800 | 42344 | 1145 | 373 | 116 | 124.48 | Unique strategic flagship with a Titan Core, heavy battery, extended sensors, and fleet support. |
 | Mining Drone | Economy | TINY ship | 9.00/10 | 370 | 14 | 5 | 6 | 0.09 | Designed for transportable mining. Local-sector operations; Tiny craft can travel aboard a hangar transport. Mine metal asteroids or comets and unload at the matching refinery. |
 | Small Mining Ship | Economy | SMALL ship | 23.20/25 | 946 | 36 | 12 | 12 | 0.23 | Designed for local mining. Intra-system travel only. Mine metal asteroids or comets and unload at the matching refinery. |
@@ -608,13 +609,14 @@ report mandatory returns and endurance losses.
 | Sensor Station | Reconnaissance | MEDIUM station | 46.00/50 | 1880 | 71 | 23 | 19 | 0.46 | Designed for long-range reconnaissance. Stationary installation. |
 | Covert Intelligence Ship | Special Operations | MEDIUM ship | 48.00/50 | 1940 | 73 | 24 | 20 | 0.48 | Externally identical to the Patrol Escort, with two hidden intelligence agents. Constructed under the cover name â€˜Patrol Escortâ€™. After construction, you may rename it to another generic warship name; avoid names that reveal its intelligence role. Inter-system travel. |
 | Minelayer | Special Operations | MEDIUM ship | 49.50/50 | 1985 | 75 | 25 | 20 | 0.49 | Designed for mine deployment. Inter-system travel. |
+| Interdiction Frigate | Special Operations | MEDIUM ship | 50.00/50 | 2000 | 75 | 25 | 20 | 0.50 | Lightly armed hyperspace interdiction specialist with a 600-radius field for 6 AM per owner turn. Inter-system travel; deactivate before jumping. Activate clear of natural or artificial inhibition zones and sector boundaries. Use escorts and fuel deliveries for sustained interdiction; the field also blocks friendly ships. |
 | Intelligence Ship | Special Operations | LARGE ship | 75.00/100 | 3250 | 125 | 38 | 26 | 0.75 | Designed for espionage and counter-intelligence. Inter-system travel. |
 | Boarding Cruiser | Special Operations | LARGE ship | 82.00/100 | 3460 | 132 | 41 | 27 | 0.82 | Designed for boarding and capture. Inter-system travel. |
 | Minesweeper | Special Operations | LARGE ship | 87.80/100 | 3634 | 138 | 44 | 28 | 0.88 | Designed for mine detection and clearance. Inter-system travel. |
 | Command Cruiser | Special Operations | LARGE ship | 88.00/100 | 3640 | 138 | 44 | 28 | 0.88 | Designed for target designation and protection. Inter-system travel. |
 | Raider | Special Operations | LARGE ship | 93.50/100 | 3805 | 144 | 47 | 29 | 0.94 | Designed for covert raiding. Inter-system travel. |
 | Stealth Tender | Special Operations | LARGE ship | 97.50/100 | 3925 | 148 | 49 | 30 | 0.97 | Designed for fleet concealment and decoys. Inter-system travel. |
-| Interdictor | Special Operations | LARGE ship | 100.00/100 | 4000 | 150 | 50 | 30 | 1.00 | Designed for mobile jump denial. Inter-system travel. Activate clear of existing natural or artificial inhibition fields; maintain fuel supply. |
+| Interdictor | Special Operations | LARGE ship | 100.00/100 | 4000 | 150 | 50 | 30 | 1.00 | Mobile fleet interdiction with a 1500-radius field for 15 AM per owner turn. Inter-system travel. Deploy in clear space, use escorts against trapped enemies, and maintain fuel deliveries. Deactivate before jumping; the field also blocks friendly ships. |
 <!-- END GENERATED: unit-catalog -->
 
 ### Automated construction customization
@@ -856,6 +858,21 @@ Sublight movement consumes fuel. Hyperdrives jump between sectors, with Advanced
 drives also using wormholes between systems. Natural and artificial inhibition
 fields block jump entry and exit; plan approach legs outside their boundaries.
 In Sector View, their jump-denial perimeters are drawn as red outlined circles.
+
+**Interdiction Frigate** and **Interdiction Station** are lightly armed Medium
+specialists with 600- and 900-radius fields, consuming 6 and 9 AM per owner turn.
+Their full tanks support 33 paid stationary turns; movement and other fuel use
+reduce endurance. The frigate has Advanced Hyperdrive for inter-system deployment;
+the station trades mobility for coverage and protection. Position them near an
+engagement and provide escorts to damage trapped enemies.
+
+The Large **Interdictor**, Huge **Interdiction Fortress** and **Titan Citadel**
+provide larger fields for clear sectors. Greater coverage requires more room
+away from natural fields and sector boundaries. Inhibition affects friendly
+ships too, including the emitter: deactivate before jumping the mobile units.
+Use fuel deliveries for sustained operation; all five public inhibitor designs
+consume less than the 25 AM transfer rate. Fuel exhaustion shuts the field down;
+resupply does not automatically reactivate it.
 
 Positive-cost movement requires functioning Antimatter Storage and successful
 payment before displacement. Ordinary ships without storage cannot move for free;

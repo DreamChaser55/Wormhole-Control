@@ -53,7 +53,7 @@ def test_public_designs_costs_and_core_rules():
     from economy import calculate_unit_upkeep
     from refit_validation import evaluate_refit
     from resource_costs import construction_cost
-    for key, hull in [('TITAN_FLAGSHIP', 744.8021156), ('TITAN_CITADEL', 675.8006164)]:
+    for key, hull in [('TITAN_FLAGSHIP', 744.8021156), ('TITAN_CITADEL', 685.8006164)]:
         design = template_from_dict(key, UNIT_TEMPLATES[key])
         assert design.validate() == []
         assert design.total_hull_cost == pytest.approx(hull)

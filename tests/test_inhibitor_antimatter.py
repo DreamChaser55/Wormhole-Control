@@ -1,6 +1,7 @@
 """Unit tests for antimatter consumption by HyperspaceInhibitionFieldEmitter."""
 from display_config import DisplayConfig
 from unittest.mock import MagicMock
+import pytest
 from domain.units import Unit
 from galaxy import Galaxy, StarSystem, Hex
 from domain.coordinates import HexCoord
@@ -34,13 +35,13 @@ def test_inhibitor_antimatter_cost_scaling():
     mock_unit = MagicMock(spec=Unit)
     
     emitter_50 = HyperspaceInhibitionFieldEmitter(unit=mock_unit, radius=50.0)
-    assert emitter_50.get_antimatter_cost_per_turn() == 5.0
+    assert emitter_50.get_antimatter_cost_per_turn() == 0.5
 
     emitter_100 = HyperspaceInhibitionFieldEmitter(unit=mock_unit, radius=100.0)
-    assert emitter_100.get_antimatter_cost_per_turn() == 10.0
+    assert emitter_100.get_antimatter_cost_per_turn() == 1.0
 
     emitter_25 = HyperspaceInhibitionFieldEmitter(unit=mock_unit, radius=25.0)
-    assert emitter_25.get_antimatter_cost_per_turn() == 2.5
+    assert emitter_25.get_antimatter_cost_per_turn() == 0.25
 
 
 def test_active_inhibitor_consumes_antimatter_on_update():
@@ -59,29 +60,46 @@ def test_active_inhibitor_consumes_antimatter_on_update():
     emitter.update()
 
     assert emitter.is_active is True
-    assert unit.antimatter_component.current_amount == 45.0
+    assert unit.antimatter_component.current_amount == 49.5
+
+
+def test_exact_payment_keeps_field_active_until_next_unpaid_update():
+    unit = make_unit()
+    unit.antimatter_component.current_amount = 0.5
+    emitter = HyperspaceInhibitionFieldEmitter(unit, radius=50.0)
+    unit.add_component(emitter)
+    emitter.turn_on()
+
+    emitter.update()
+    assert emitter.is_active
+    assert unit.antimatter_component.current_amount == 0
+
+    emitter.update()
+    assert not emitter.is_active
+    assert unit.antimatter_component.current_amount == 0
 
 
 def test_active_inhibitor_autodeactivates_when_antimatter_depleted():
     """Verify inhibitor auto-deactivates when antimatter reserve is insufficient."""
     unit = make_unit()
-    unit.antimatter_component.current_amount = 3.0
+    unit.antimatter_component.current_amount = 0.25
 
-    emitter = HyperspaceInhibitionFieldEmitter(unit=unit, radius=50.0)  # requires 5.0 AM
+    emitter = HyperspaceInhibitionFieldEmitter(unit=unit, radius=50.0)  # requires 0.5 AM
     unit.add_component(emitter)
     emitter.turn_on()
 
     assert emitter.is_active is True
 
-    # Perform update with insufficient antimatter (3.0 < 5.0)
+    # Perform update with insufficient antimatter (0.25 < 0.5)
     emitter.update()
 
     assert emitter.is_active is False
     # Antimatter amount remains unchanged because consumption failed
-    assert unit.antimatter_component.current_amount == 3.0
+    assert unit.antimatter_component.current_amount == 0.25
 
 
-def test_active_inhibitor_autodeactivates_and_removes_hex_zone():
+@pytest.mark.parametrize('storage_state', ['insufficient', 'missing', 'destroyed'])
+def test_active_inhibitor_autodeactivates_and_removes_hex_zone(storage_state):
     """Verify auto-deactivation cleans up dynamic inhibition zone from current sector hex."""
     galaxy = Galaxy()
     system = StarSystem("Alpha Centauri", Position(0.0, 0.0))
@@ -93,7 +111,13 @@ def test_active_inhibitor_autodeactivates_and_removes_hex_zone():
     unit = make_unit(in_system="Alpha Centauri", in_hex=hex_coord)
     unit.in_galaxy = galaxy
     unit.id = 12345
-    unit.antimatter_component.current_amount = 2.0
+    storage = unit.antimatter_component
+    storage.current_amount = 0.25 if storage_state == 'insufficient' else 50.0
+    if storage_state == 'missing':
+        unit.remove_component(AntimatterStorage)
+    elif storage_state == 'destroyed':
+        storage.current_hit_points = 0
+    fuel_before = storage.current_amount
 
     emitter = HyperspaceInhibitionFieldEmitter(unit=unit, radius=50.0)
     unit.add_component(emitter)
@@ -108,6 +132,7 @@ def test_active_inhibitor_autodeactivates_and_removes_hex_zone():
 
     assert emitter.is_active is False
     assert unit.id not in hex_obj.dynamic_inhibition_zones
+    assert storage.current_amount == fuel_before
 
 
 def test_inactive_inhibitor_does_not_consume_antimatter():
