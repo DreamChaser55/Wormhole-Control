@@ -87,10 +87,10 @@ changing the others. The table is generated from their runtime constants.
 | Contract | Current version / identifier | Source |
 | --- | --- | --- |
 | Campaign save | 4.21 | [CURRENT_SAVE_VERSION](../save_manager.py) |
-| Observation | 28 | [OBSERVATION_SCHEMA_VERSION](../game_ai/observation.py) |
+| Observation | 29 | [OBSERVATION_SCHEMA_VERSION](../game_ai/observation.py) |
 | Command contract | 23 | [CONTRACT_VERSION](../game_ai/command_spec.py) |
 | Response schema | wormhole_control_turn_v15 | [TURN_PLAN_SCHEMA_NAME](../game_ai/schema.py) |
-| Prompt cache | wormhole-control-turn-v28 | [PROMPT_CACHE_KEY](../game_ai/adapters/openai_responses.py) |
+| Prompt cache | wormhole-control-turn-v29 | [PROMPT_CACHE_KEY](../game_ai/adapters/openai_responses.py) |
 | Local socket protocol | 4 | [PROTOCOL_VERSION](../game_control_protocol.py) |
 | Constructor component | 5 | [Constructor.SCHEMA_VERSION](../unit_components/constructor.py) |
 | Commander component | 2 | [Commander.SCHEMA_VERSION](../unit_components/commander.py) |
@@ -298,6 +298,14 @@ assembled log text; do not modify unit names, UI labels or persisted state.
 For mixed object kinds, apply it only to units. Design names, other object names
 and quoted communications/developer feedback retain their existing formatting.
 Both file and console handlers receive the same formatted message.
+
+`setup_logging(log_to_file=True)` appends UTF-8 records to `game.log`, preserving
+earlier sessions and avoiding truncation beneath another writer. Application
+startup acquires `application_instance`'s per-user OS lease before configuring
+logs or opening a window; `ControlService.start` also acquires it. Leases are
+reference-counted within one process, released on shutdown/bind failure, and
+released by the OS after a crash. Tests may inject a private `instance_path`.
+See [process behavior](CODEX_CONTROL.md#transport-and-process-behavior).
 
 ## Test conventions
 

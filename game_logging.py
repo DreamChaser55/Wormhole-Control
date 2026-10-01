@@ -64,7 +64,7 @@ def setup_logging(log_to_file: bool = False):
     including any already detached by callers. External handlers remain owned by
     their callers; the borrowed stderr stream is never closed.
 
-    Install filtered stderr output and, when log_to_file is True, truncate
+    Install filtered stderr output and, when log_to_file is True, append to
     game.log in the working directory after closing the previous destinations.
     False leaves the file untouched apart from flushing an old owned handler.
     Cleanup errors propagate after all owned handlers have been processed. A
@@ -99,7 +99,7 @@ def setup_logging(log_to_file: bool = False):
     root_logger.addHandler(stream_handler)
 
     if log_to_file:
-        file_handler = logging.FileHandler("game.log", mode='w')
+        file_handler = logging.FileHandler("game.log", mode='a', encoding='utf-8')
         file_handler.addFilter(ThirdPartyPayloadFilter())
         file_handler.setFormatter(GameLogFormatter(fmt))
         _application_handlers.append(file_handler)

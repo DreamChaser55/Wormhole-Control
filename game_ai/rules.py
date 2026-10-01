@@ -233,6 +233,7 @@ def command_guidance(
     from planetary_intel import ownership_view, is_colony_body, colony_target_blocker
     from visibility import VisibilityService
     snapshot = VisibilityService.compute(game.galaxy, player, record_intel=False)
+    from unit_targeting import utility_approach_blocker
     colony_views = {body.id: ownership_view(game, player, body, snapshot)
                     for body in exact_bodies if is_colony_body(body)}
     known_bodies = [body for body in exact_bodies if body.id in colony_views
@@ -300,8 +301,10 @@ def command_guidance(
             for body in known_bodies
             if is_colonizable_body(body)
             and colony_views[body.id].relation == "enemy"
+            and utility_approach_blocker(unit, body, game.galaxy, "infiltrate_planet") is None
         ]
-        options["infiltrate_unit"] = {"target_ids": [candidate.id for candidate in enemy_units]}
+        options["infiltrate_unit"] = {"target_ids": [candidate.id for candidate in enemy_units
+            if utility_approach_blocker(unit, candidate, game.galaxy, 'infiltrate_unit') is None]}
         options["infiltrate_planet"] = {"target_ids": enemy_colonies}
         if operational and available_agents > 0 and options["infiltrate_unit"]["target_ids"]:
             legal.add("infiltrate_unit")
@@ -388,7 +391,8 @@ def command_guidance(
         ],
     }
     from antimatter_logistics import exchange_blocker, continuous_route_blocker
-    fuel_targets = [candidate for candidate in friendly_units if exchange_blocker(unit, candidate, game.galaxy) is None]
+    fuel_targets = [candidate for candidate in friendly_units if exchange_blocker(unit, candidate, game.galaxy) is None
+                    and utility_approach_blocker(unit, candidate, game.galaxy, "transfer_antimatter") is None]
     target_options['transfer_antimatter'] = [candidate.id for candidate in fuel_targets if unit.antimatter_component.current_amount > 0 and candidate.antimatter_component.current_amount < candidate.antimatter_component.max_capacity]
     target_options['take_antimatter'] = [candidate.id for candidate in fuel_targets if candidate.antimatter_component.current_amount > 0]
     if getattr(unit, 'antimatter_component', None) and unit.antimatter_component.current_amount >= unit.antimatter_component.max_capacity:
@@ -401,6 +405,9 @@ def command_guidance(
             legal.add('continuous_antimatter_transport')
     for command_type, target_ids in target_options.items():
         if command_type in supported:
+            if command_type not in {"attack", "attack_long_range"}:
+                target_ids = [candidate.id for candidate in friendly_units if candidate.id in target_ids
+                              and utility_approach_blocker(unit, candidate, game.galaxy, command_type) is None]
             options[command_type] = {"target_ids": target_ids}
             if target_ids:
                 legal.add(command_type)
@@ -431,6 +438,7 @@ def command_guidance(
             body.id
             for body in exact_bodies
             if colony_target_blocker(game, player, body, 'colonize', snapshot) is None
+            and utility_approach_blocker(unit, body, game.galaxy, "colonize") is None
         ]
         sources = [
             {
@@ -445,6 +453,7 @@ def command_guidance(
             if colony_views[body.id].relation == 'self'
             and (colony_views[body.id].status == 'last_known' or body.population > 0)
             and remaining > 0
+            and utility_approach_blocker(unit, body, game.galaxy, "load_colonists") is None
         ]
         options["colonize"] = {"target_ids": colony_targets}
         options["load_colonists"] = {"targets": sources}
@@ -462,7 +471,8 @@ def command_guidance(
         if sources:
             legal.add("load_colonists")
 
-    mining_targets = [body.id for body in exact_bodies if is_mining_target(body)]
+    mining_targets = [body.id for body in exact_bodies if "mine" in supported and is_mining_target(body)
+                      and utility_approach_blocker(unit, body, game.galaxy, "mine") is None]
     for command_type in ("mine", "continuous_mine"):
         if command_type in supported:
             options[command_type] = {"target_ids": mining_targets}
@@ -485,6 +495,7 @@ def command_guidance(
             body.id
             for body in exact_bodies
             if getattr(body, "planet_type", None) == PlanetType.GAS_GIANT
+            and utility_approach_blocker(unit, body, game.galaxy, "enter_gas_giant") is None
         ]
         options["enter_gas_giant"] = {"target_ids": gas_giants}
         if gas_giants and has_operational_engines(unit):
@@ -664,13 +675,18 @@ def ability_states(unit: Any) -> list[dict[str, Any]]:
     for ability_type, instance in getattr(component, "abilities", {}).items():
         definition = getattr(instance, "definition", None)
         ready = bool(getattr(instance, "is_ready", False))
+        blocker = None
         if ability_type.value not in SPECS and getattr(definition, 'activation_mode', 'cast') != 'toggle':
-            ready = component.can_use(ability_type)
+            blocker = component.availability(ability_type)
+            ready = blocker is None
         result.append(
             {
                 "ability": _enum_value(ability_type),
                 "required_location_fields": ["system_name", "hex_coord", "position"] if getattr(definition, "requires_target_position", False) else [],
                 "ready": ready,
+                "unavailable_reason": blocker,
+                "cooldown_remaining": getattr(instance, "cooldown_remaining", 0),
+                "duration_remaining": getattr(instance, "duration_remaining", 0),
                 "requires_target_unit": bool(
                     getattr(definition, "requires_target_unit", False)
                 ),

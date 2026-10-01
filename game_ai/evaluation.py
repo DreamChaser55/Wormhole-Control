@@ -289,6 +289,8 @@ def colony_opening_gateway_case() -> GatewayEvaluationCase:
         from constants import PlanetType
         from galaxy import StarSystem
         from unit_components.sensors import Sensors
+        from unit_components.enums import HyperdriveType
+        from constants import HullSize
 
         class Player:
             id = 1
@@ -321,7 +323,10 @@ def colony_opening_gateway_case() -> GatewayEvaluationCase:
             colony_component=SimpleNamespace(population_cargo=0, max_cargo=100),
             commander_component=Commander(),
             components={},
-            engines_component=None,
+            engines_component=SimpleNamespace(speed=100, effective_speed=100, is_operational=True, is_destroyed=False),
+            hyperdrive_component=SimpleNamespace(drive_type=HyperdriveType.BASIC, is_functional=True,
+                                                jump_range=3, RECHARGE_DURATION=2),
+            xp_multiplier=lambda bonus: 1.0,
             weapons_component=None,
             constructor_component=None,
             repair_component=None,
@@ -334,7 +339,7 @@ def colony_opening_gateway_case() -> GatewayEvaluationCase:
             inhibitor_component=None,
             cloaking_component=None,
             ability_component=None,
-            hull_size=SimpleNamespace(name="SMALL"),
+            hull_size=HullSize.SMALL,
             current_hit_points=100,
             is_hidden_in_gas_giant=False,
             intelligence_component=None,
@@ -425,6 +430,59 @@ def inhibitor_overlap_case() -> EvaluationCase:
         PlanningRequest("evaluation", "inhibitor-agent", "AI", 3, observation, {}),
         forbidden_command_types=frozenset({"toggle_inhibitor"}),
         maximum_commands=4,
+    )
+
+
+def playtest_gateway_cases() -> tuple[GatewayEvaluationCase, ...]:
+    """Real carriers and targets for the observed slot, missing-field and range errors.
+
+    A provider should configure carrier 101 using its four editable slots; carrier
+    102 has eight. For the range case, preserve useful wing attacks and omit the
+    unavailable Siege Lance. The same fixtures accept live or offline providers.
+    """
+    def build_case(ability_case=False):
+        from constants import HullSize
+        from domain.players import Player
+        from galaxy import Galaxy, StarSystem
+        from unit_components.constructor import instantiate_unit_from_template
+        from unit_components.sensors import Sensors
+        from unit_orders.combat import AttackOrder
+        from .observation import build_observation
+        galaxy = Galaxy(num_systems=0)
+        system = StarSystem('Sol', Position(0, 0), radius=3)
+        system.in_galaxy = galaxy
+        galaxy.systems['Sol'] = system
+        player, enemy = Player('AI', (0, 200, 0), team_id=1), Player('Rival', (200, 0, 0), team_id=2)
+        player.credits, player.metal, player.crystal = 100000, 10000, 5000
+        game = SimpleNamespace(galaxy=galaxy, players=[player, enemy], turn_number=30,
+                               gui=None, sidebar_needs_update=False, visibility_dirty=False)
+        galaxy.game = game
+        def make(template, owner, uid, position=(0, 0)):
+            actor = instantiate_unit_from_template(template, owner, 'Sol', (0, 0), Position(*position), galaxy, game)
+            actor.id = uid
+            return actor
+        make('ESCORT_CARRIER', player, 101)
+        make('FLEET_CARRIER', player, 102, (200, 0))
+        if ability_case:
+            caster = make('TITAN_FLAGSHIP', player, 103)
+            caster.add_component(Sensors(caster, short_range_radius=5000, long_range_hexes=2))
+            target = make('PATROL_ESCORT', enemy, 201, (3500, 0))
+            wing = make('BOMBER_WING', player, 104)
+            assert wing.hull_size == HullSize.STRIKECRAFT_WING
+            wing.commander_component.add_order(AttackOrder(wing, {'target_unit_id': target.id}))
+        observation = build_observation(game, player)
+        request = PlanningRequest('playtest-evaluation', 'playtest-agent', player.name, game.turn_number, observation, {})
+        gateway = CommandGateway(game)
+        def validate(plan):
+            verdict = gateway.apply_batch(player, plan.batch)
+            if ability_case and verdict.accepted and wing.commander_component.current_order is None:
+                raise ValueError('Useful wing attack was discarded')
+            return verdict
+        return request, validate
+    return (
+        GatewayEvaluationCase('playtest-carrier-slot-indices', build_case),
+        GatewayEvaluationCase('playtest-required-slot-index', build_case),
+        GatewayEvaluationCase('playtest-ability-out-of-range', lambda: build_case(True)),
     )
 
 

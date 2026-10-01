@@ -134,7 +134,7 @@ def describe_body(body) -> BodyDescription:
             hazards.append(EnvironmentalHazard('pulsar', balance.PULSAR_ANTIMATTER_DRAIN_PERCENT,
                 'antimatter', 'sector', amount_basis='fraction_of_current_antimatter'))
     elif isinstance(body, Planet) and body.planet_type == PlanetType.GAS_GIANT:
-        rules.extend(('Atmospheric hiding: Tiny through Huge ships with operational Engines may enter. Wings and stationary stations cannot.',
+        rules.extend(('Atmospheric hiding: Tiny through Titan ships with operational Engines may enter. Wings and stationary stations cannot.',
                       'Submerged ships are hidden from enemy sensors and cannot interact with outside space. Only a Leave at the front of the queue can execute; upkeep and existing ability timers continue.'))
     elif isinstance(body, Wormhole):
         rules.append(f'Advanced Hyperdrive traversal; maximum hull: {body.diameter.name.title()}. The traversal order handles the wormhole approach.')

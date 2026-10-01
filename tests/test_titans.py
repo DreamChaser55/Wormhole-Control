@@ -161,7 +161,7 @@ def test_aegis_exact_duration_weapon_only_and_subsystem():
     assert protected(target, 'aegis_field')
     advance(game, unit)
     assert not protected(target, 'aegis_field')
-    assert availability(unit, 'aegis_field', game.galaxy) == 'capability_unavailable'
+    assert availability(unit, 'aegis_field', game.galaxy) == 'cooldown_active'
 
 
 def test_lance_charge_cost_and_one_round_interruption_window():
@@ -279,7 +279,7 @@ def test_active_round_trip_and_cooldowns_survive_refit(kind):
     assert restored.antimatter_component.current_amount == fuel
     restored.remove_component(AbilityComponent)
     restored.add_component(AbilityComponent(restored, [AbilityType(kind)], hull_cost=35))
-    assert availability(restored, kind, game.galaxy) == 'capability_unavailable'
+    assert availability(restored, kind, game.galaxy) == 'cooldown_active'
 
 
 def test_capacity_counts_disabled_and_coreless_and_direct_creation():

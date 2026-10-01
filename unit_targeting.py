@@ -5,6 +5,42 @@ from geometry import distance
 LEGACY_UNIT_ABILITIES = frozenset({"designate_target", "capture_unit", "drain_antimatter", "ion_bolt"})
 HOSTILE_LEGACY_ABILITIES = LEGACY_UNIT_ABILITIES - {"ion_bolt"}
 
+UTILITY_BODY_COMMANDS = frozenset({"mine", "continuous_mine", "colonize", "load_colonists", "enter_gas_giant", "infiltrate_planet"})
+UTILITY_UNIT_COMMANDS = frozenset({"protect", "repair", "unload_resources", "trade", "dock",
+                                   "dock_in_hangar", "dock_in_strikecraft_bay", "infiltrate_unit",
+                                   "transfer_antimatter", "take_antimatter"})
+
+
+def utility_approach_blocker(unit, target, galaxy, command_type):
+    """Use the job's action range when checking a disclosed utility destination.
+
+    Check hardware/topology/known terrain, never fuel or undisclosed inhibitors.
+    Temporary recharge and fuel shortages can wait during execution.
+    """
+    from constants import DEFAULT_STANDOFF_DISTANCE, TRADE_ARRIVAL_RANGE, ANTIMATTER_TRANSFER_RANGE
+    if command_type in {"mine", "continuous_mine"}:
+        reach = getattr(getattr(unit, "mining_component", None), "mining_range", 0.0)
+    elif command_type == "repair":
+        reach = getattr(getattr(unit, "repair_component", None), "repair_range", 0.0)
+    elif command_type == "unload_resources":
+        refinery = getattr(target, "metal_refinery_component", None) or getattr(target, "crystal_refinery_component", None)
+        reach = getattr(refinery, "unload_range", 300.0)
+    elif command_type == "trade":
+        reach = TRADE_ARRIVAL_RANGE
+    elif command_type in {"dock", "dock_in_hangar", "dock_in_strikecraft_bay"}:
+        from unit_orders.hangar import DOCKING_RANGE
+        reach = DOCKING_RANGE
+    elif command_type in {"infiltrate_unit", "infiltrate_planet"}:
+        from unit_orders.intelligence import INTELLIGENCE_OPERATIONAL_RANGE
+        reach = INTELLIGENCE_OPERATIONAL_RANGE
+    elif command_type in {"transfer_antimatter", "take_antimatter"}:
+        reach = ANTIMATTER_TRANSFER_RANGE
+    elif command_type in {"colonize", "load_colonists", "enter_gas_giant"}:
+        reach = getattr(target, "collision_radius", getattr(target, "radius", 0.0)) + DEFAULT_STANDOFF_DISTANCE
+    else:
+        reach = DEFAULT_STANDOFF_DISTANCE
+    return approach_blocker(unit, target, galaxy, reach)
+
 
 def operational_engines(unit):
     engines = getattr(unit, "engines_component", None)

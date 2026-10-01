@@ -310,7 +310,7 @@ def test_shared_recipient_lock_and_caster_lock_survive_reinstall():
     first.add_component(AbilityComponent(first, [AbilityType.MULTIPLY_ANTIMATTER]))
     assert (
         availability(first, "multiply_antimatter", game.galaxy)
-        == "capability_unavailable"
+        == "cooldown_active"
     )
     game.turn_number += 29
     start_owner_turn(game.galaxy, first.owner, game.turn_number)

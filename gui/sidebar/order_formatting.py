@@ -331,6 +331,15 @@ def generate_order_data_html(order: Order, current_indent_level: int = 0, galaxy
     # Get the list of text lines for the current order
     state_data = order.get_state_data()
     order_info_lines = format_order_state_data(state_data, galaxy)
+    if current_indent_level == 0 and order is getattr(order.unit.commander_component, 'current_order', None):
+        game = getattr(order.unit, 'game', None)
+        players = getattr(game, 'players', None)
+        if isinstance(players, list) and players:
+            from game_ai.order_view import public_journey_progress, journey_summary_lines
+            journey = public_journey_progress(game, players[game.current_player_index], order.unit)
+            if journey:
+                order_info_lines.extend('  ' + escape(line) for line in journey_summary_lines(journey))
+                order_info_lines.append('  Estimate assumes fuel and unchanged conditions; queued work adds time.')
 
     sub_order_first_line_prefix_char = "> "
 

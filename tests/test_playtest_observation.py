@@ -70,6 +70,8 @@ def test_required_presence_distinguishes_nullable_slot_clear_and_lessons_accumul
 
 def test_journey_progress_advances_without_order_or_rng_mutation():
     game, player, _, unit = world()
+    from unit_components.antimatter import AntimatterStorage
+    unit.add_component(AntimatterStorage(unit, max_capacity=500))
     order = MoveOrder(unit, {'destination_system_name': 'Sol', 'destination_hex_coord': (0, 0),
                             'destination_position': Position(800, 0)})
     unit.commander_component.add_order(order)
@@ -110,6 +112,47 @@ def test_fleet_jump_reports_owned_known_origin_blockers_without_hidden_fields():
     assert state['ready'] and state['origin_blocked_participant_ids'] == []
     assert hidden.id not in state['origin_blocked_participant_ids']
     assert hidden.id not in [participant['unit_id'] for participant in state['participants']]
+
+
+@pytest.mark.parametrize('state', ['egress', 'recharge', 'fuel', 'storage'])
+def test_travel_feedback_explains_waits_without_changing_orders_or_briefings(state):
+    from unit_components.antimatter import AntimatterStorage
+    from game_ai.order_view import public_journey_progress
+    from gui.sidebar.order_formatting import generate_order_data_html
+    from gui.turn_briefing_window import current_travel_html
+    game, player, enemy, unit = world()
+    game.current_player_index = 0
+    unit.add_component(AntimatterStorage(unit, max_capacity=500))
+    remote = state in {'egress', 'recharge'}
+    if state == 'egress':
+        game.galaxy.systems['Sol'].hexes[(0, 0)].static_inhibition_zones = [Circle(Position(0, 0), 1000)]
+    order = MoveOrder(unit, {'destination_system_name': 'Sol',
+        'destination_hex_coord': (0, 1) if remote else (0, 0), 'destination_position': Position(800, 0)})
+    unit.commander_component.add_order(order)
+    if state == 'recharge':
+        unit.hyperdrive_component.start_recharge()
+    elif state == 'fuel':
+        unit.antimatter_component.current_amount = 0
+    elif state == 'storage':
+        unit.antimatter_component.current_hit_points = 0
+    before = (random.getstate(), order.public_id, list(order.sub_orders), copy.deepcopy(player.briefing),
+              copy.deepcopy(player.order_history), unit.position, unit.antimatter_component.current_amount)
+    journey = public_journey_progress(game, player, unit)
+    assert journey['phase'] == {'egress': 'egress', 'recharge': 'recharge',
+        'fuel': 'waiting_for_fuel', 'storage': 'blocked'}[state]
+    assert journey['estimated_remaining_owner_turns'] > 0
+    assert journey['estimated_remaining_antimatter'] > 0
+    if state in {'fuel', 'storage'}:
+        assert journey['next_step_antimatter'] > 0 and journey['waiting_reason']
+    if state == 'recharge':
+        assert journey['drive_recharge_owner_turns'] > 0
+    for html in (generate_order_data_html(order, galaxy=game.galaxy), current_travel_html(game, player)):
+        assert 'Estimated travel remaining: about' in html
+        assert {'egress': 'Leaving inhibition field', 'recharge': 'Waiting for drive recharge',
+            'fuel': 'Waiting for antimatter', 'storage': 'Antimatter Storage unavailable'}[state] in html
+    assert public_journey_progress(game, enemy, unit) is None
+    assert before == (random.getstate(), order.public_id, list(order.sub_orders), player.briefing,
+                      player.order_history, unit.position, unit.antimatter_component.current_amount)
 
 
 @pytest.mark.parametrize('profile', ['normal', 'testing'])

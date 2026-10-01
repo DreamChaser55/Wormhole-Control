@@ -70,7 +70,7 @@ def test_repeated_setup_closes_owned_handlers_without_duplicate_output(
             contents = (tmp_path / "game.log").read_text()
             assert contents.count(message) == 1
             if index:
-                assert f"application-record-{index - 1}" not in contents
+                assert contents.count(f"application-record-{index - 1}") == 1
 
 
 def test_replacement_closes_old_file_before_opening_new_one(monkeypatch):
@@ -84,6 +84,22 @@ def test_replacement_closes_old_file_before_opening_new_one(monkeypatch):
 
     monkeypatch.setattr(logging, "FileHandler", open_after_close)
     game_logging.setup_logging(log_to_file=True)
+
+
+def test_append_preserves_a_live_writers_records_without_sparse_gaps(tmp_path):
+    path = tmp_path / 'game.log'
+    with path.open('a', encoding='utf-8') as writer:
+        writer.write('existing campaign\n')
+        writer.flush()
+        game_logging.setup_logging(log_to_file=True)
+        logging.getLogger('wormhole_logging_test').info('new session — appended')
+        writer.write('older writer continues\n')
+        writer.flush()
+    data = path.read_bytes()
+    assert b'\x00' not in data
+    text = data.decode('utf-8')
+    assert 'existing campaign' in text and 'older writer continues' in text
+    assert text.count('new session — appended') == 1
 
 
 def test_detached_owned_file_is_closed_and_released(tmp_path):

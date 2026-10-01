@@ -63,6 +63,26 @@ def summary_html(summary):
     return "<br><br>".join(lines)
 
 
+def current_travel_html(game, player):
+    """Current mission context is separate from the frozen historical briefing."""
+    from campaign_graph import iter_units
+    from game_ai.order_view import public_journey_progress, journey_summary_lines
+    if getattr(game, 'galaxy', None) is None:
+        return ''
+    rows = []
+    for unit, _ in iter_units(game.galaxy):
+        if unit.owner != player:
+            continue
+        journey = public_journey_progress(game, player, unit)
+        if journey:
+            rows.append(escape(f"{unit.name} (id:{unit.id}): " + '; '.join(journey_summary_lines(journey))))
+        if len(rows) >= 16:
+            break
+    if not rows:
+        return ''
+    return '<br><br><b>Current travel</b><br>Estimates assume sufficient fuel and unchanged conditions; action time and queued missions add time.<br><br>' + '<br><br>'.join(rows)
+
+
 class TurnBriefingWindow:
     def __init__(self, gui, player):
         self.gui, self.player = gui, player
@@ -82,7 +102,7 @@ class TurnBriefingWindow:
         pad = max(8, int(14 * gui.scale_x))
         button_height = max(28, int(38 * gui.scale_y))
         self.text = pygame_gui.elements.UITextBox(
-            html_text=summary_html(player.briefing.current),
+            html_text=summary_html(player.briefing.current) + current_travel_html(gui.game_instance, player),
             relative_rect=pygame.Rect(pad, pad, content_width - 2 * pad, content_height - button_height - 3 * pad),
             manager=gui.manager, container=self.window, object_id="#turn_briefing_text")
         button_width = max(100, int(155 * gui.scale_x))

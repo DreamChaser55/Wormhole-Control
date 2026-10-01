@@ -56,6 +56,9 @@ that mode. Other target checks retain the recording default, as described in the
 - one deduplicated construction-template catalog;
 - diplomatic message history grouped by partner faction in chronological order (`conversations`).
 
+Antimatter amount and storage capacity are private to owned/allied units. Visible
+enemy component details expose weapons and defenses, without fuel or tank size.
+
 Observations give full body detail in systems containing friendly
 units, adjacent systems, and systems with visible enemy activity. Remote systems
 retain exact stars, friendly colonies, currently sensed worlds and previously
@@ -203,11 +206,17 @@ receipts are retained whole, dropping the oldest turns in their entirety when th
 total limit is exceeded. Text and list counts are bounded before serialization.
 Save JSON and memory sidecars use atomic replacement.
 
-Lesson patches merge distinct entries into the most recent 16 durable lessons;
-an empty lesson list does not erase learned constraints. Other patched sections
-replace their previous contents. Planning instructions require objectives and
-commitments to match the orders actually issued and to preserve useful ongoing
-missions when choosing replacements.
+Lesson patches merge up to 16 durable lessons. Equivalent generic advice about
+preserving work or using disclosed targets shares one entry; concrete command,
+field, carrier and blocker constraints take retention priority. Public semantic
+repair errors produce lessons keyed by command/error/actor (and ability where
+applicable), including the carrier's disclosed slot indices. They persist only
+after a repaired plan commits successfully; rejected model memory patches never
+apply. An empty lesson list does not erase learned constraints. Other patched
+sections replace their previous contents. Planning instructions require objectives
+and commitments to match accepted orders, compare mission value with remaining
+travel before replacement, and consult terminal history before repeating failures.
+Zero-command plans are valid when useful work should continue.
 
 ### Planning context and measurement
 
@@ -263,7 +272,11 @@ weapons and defenses, and functioning marines. Enemy fuel availability is checke
 at execution, since it is private. Unit-target abilities may approach when route and
 movement capability allow it; direct activation requires current local range.
 
-Attack discovery and preflight use shared route feasibility. Wings cannot cross
+Attack and utility-target discovery/preflight use shared route feasibility,
+including mining, colony travel, docking, repair, trade and fuel exchange.
+Known impossible approaches are omitted from actor-specific options and rejected
+before replacing orders. Mining uses a surface approach within mining range.
+Wings cannot cross
 sectors, local craft require a functional drive for sector changes, and stationary
 platforms cannot approach out-of-range targets. A stationary platform can fire an
 eligible longer turret without closing for its shorter battery. Estimates and known
@@ -272,7 +285,11 @@ authoritative when previously unknown or changed conditions obstruct travel.
 
 Active public approaches include `progress.journey`: phase, remaining local approach
 distance, current route leg, remaining planned legs, drive status/recharge, and a
-conditional estimate capped at 10,000 owner turns. Hidden target references and
+conditional estimate capped at 10,000 owner turns. Estimated remaining antimatter,
+the next movement step's cost and a specific fuel/storage wait explain stalled
+travel. The human sidebar and briefing show the same authorized journey summary,
+separately from the frozen historical event report. Estimates cover remaining
+travel; action time and subsequent queued missions add time. Hidden target references and
 private agent approach geometry suppress this view. Estimates use current equipment
 and known terrain, assume sufficient fuel and unchanged conditions, and never advance
 orders, record discoveries or draw randomness. Slow advancing work should be preserved.
@@ -631,6 +648,17 @@ fresh executable game fixture for each run and `compare_gateway_reasoning_effort
 reports real gateway acceptance, attempts, repairs used, aggregate latency, and
 input/output tokens at each reasoning effort. Transport and commit failures are
 not retried by this harness, matching production behavior.
+`playtest_gateway_cases` supplies executable four-slot/eight-slot carrier,
+missing-slot-index and out-of-range ability cases from the September playtest.
+The ability case retains an ongoing wing attack through repair. Deterministic
+providers exercise observed mistakes in CI; these checks do not measure live
+model reliability or API cost.
+
+Run `python scripts/benchmark_mission_pacing.py` for reproducible Normal-opening
+travel estimates (five fixed seeds, two radius-3 systems). The nearby colony
+sample spans 40–49 owner turns, with median 47 across 12 routes. These estimates
+exclude loading/action/queued time and assume enough fuel and unchanged terrain;
+they support clearer travel feedback without changing balance values.
 Keep fixed observations, seeds, model snapshots, and game balance constants
 with any published result so regressions can be reproduced.
 

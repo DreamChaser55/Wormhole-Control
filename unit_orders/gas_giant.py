@@ -23,7 +23,7 @@ def within_gas_giant_range(unit: 'Unit', target: Any) -> bool:
 
 
 class EnterGasGiantOrder(Order):
-    target_fields = (OrderTargetField('target_id', 'unit', public=True),)
+    target_fields = (OrderTargetField('target_id', 'celestial', public=True),)
 
     def __init__(self, unit: 'Unit', parameters: Dict[str, Any] = None, parent_order: Optional[Order] = None):
         super().__init__(unit, OrderType.ENTER_GAS_GIANT, parameters, parent_order)

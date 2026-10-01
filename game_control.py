@@ -140,6 +140,9 @@ def _wait_for_server(port: int, timeout: float, process: subprocess.Popen) -> No
     last_error: Exception | None = None
     while time.monotonic() < deadline:
         if process.poll() is not None:
+            from application_instance import ALREADY_RUNNING_EXIT_CODE
+            if process.returncode == ALREADY_RUNNING_EXIT_CODE:
+                raise ClientError("Wormhole Control is already running. Close the existing game before launching on another port.")
             raise ClientError(f"game.py exited during startup with code {process.returncode}.")
         probe = {
             "protocol_version": PROTOCOL_VERSION,

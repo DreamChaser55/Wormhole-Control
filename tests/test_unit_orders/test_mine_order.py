@@ -17,6 +17,7 @@ def test_mine_order():
     target.in_system = "Sol"
     target.in_hex = (0, 0)
     target.position = Position(0, 0)
+    target.collision_radius = 0.0
     
     unit.in_system = "Sol"
     unit.in_hex = (0, 0)

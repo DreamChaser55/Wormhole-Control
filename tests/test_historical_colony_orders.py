@@ -18,7 +18,7 @@ from tests.support.campaigns import campaign, ship
 from unit_components.antimatter import AntimatterStorage
 from unit_components.colony import ColonyComponent
 from unit_components.intelligence import IntelligenceComponent
-from unit_components.movement import Engines
+from unit_components.movement import Engines, Hyperdrive
 from unit_components.planetary import TroopTransportComponent, SiegeBatteryComponent
 from unit_orders.base import OrderStatus
 from unit_orders.movement import MoveOrder
@@ -194,6 +194,7 @@ def test_save_load_preserves_historical_orders_without_effects(kind, approaching
 @pytest.mark.parametrize('unknown', [False, True])
 def test_stale_in_range_load_is_conditional_and_cannot_finance_replacement(unknown):
     game, source, unit = scenario('load_colonists')
+    unit.add_component(Hyperdrive(unit))
     destination = Moon((1, 0), 'Sol')
     game.galaxy.systems['Sol'].add_celestial_body(destination)
     if not unknown:

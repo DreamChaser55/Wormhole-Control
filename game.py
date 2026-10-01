@@ -49,11 +49,13 @@ class Game:
 
 
     def __init__(self, *, control_port: typing.Optional[int] = None,
-                 display_config: typing.Optional[DisplayConfig] = None):
+                 display_config: typing.Optional[DisplayConfig] = None,
+                 instance_path: typing.Optional[Path] = None):
         from gui import GUI_Handler
         from renderer import Renderer
         from input_processor import InputProcessor
 
+        self.instance_path = instance_path
         if display_config is not None:
             configure_dpi_awareness()
         self.display_config = display_config or discover_display_config()
@@ -125,10 +127,14 @@ class Game:
         self.turn_processor = TurnProcessor(self, presentation=self.turn_presentation)
         self.ai_coordinator = AgentTurnCoordinator(self)
         self.control_service = ControlService(self, port=control_port)
+        from application_instance import AlreadyRunningError
         try:
             self.control_service.start()
-        except OSError:
+        except (OSError, AlreadyRunningError):
             logger.error("Could not start the Codex control server.", exc_info=True)
+            self.ai_coordinator.shutdown()
+            pygame.quit()
+            raise
 
         # Initialize the main menu UI
         self.gui.show_main_menu()
@@ -844,8 +850,9 @@ class Game:
         logger.info(f"[Developer Feedback] Turn {turn_number} - {player_name} (Agent {agent_id}): {clean_text}")
         return True
 
-# Application entry point
-if __name__ == '__main__':
+def main(argv=None, *, instance_path=None):
+    """Acquire exclusive process ownership before logging or application startup."""
+    from application_instance import acquire_instance, AlreadyRunningError, ALREADY_RUNNING_EXIT_CODE
     parser = argparse.ArgumentParser(description="Run Wormhole Control.")
     parser.add_argument(
         "--port",
@@ -864,7 +871,7 @@ if __name__ == '__main__':
         default=5,
         help="number of frames to execute during --smoke-test (default: 5)",
     )
-    arguments = parser.parse_args()
+    arguments = parser.parse_args(argv)
     if arguments.port is not None and not 0 <= arguments.port <= 65535:
         parser.error("--port must be between 0 and 65535")
     if arguments.smoke_test_frames < 1:
@@ -875,13 +882,28 @@ if __name__ == '__main__':
         os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
         os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 
-    setup_logging(log_to_file=True)
-    logger.debug("Initializing Game...")
-    control_port = arguments.port if arguments.port is not None else (0 if arguments.smoke_test else None)
-    game = Game(control_port=control_port)
-    if arguments.smoke_test:
-        logger.info(f"Running launch smoke test for {arguments.smoke_test_frames} frames...")
-        game.run(max_frames=arguments.smoke_test_frames)
-    else:
-        logger.debug("Starting Game Loop...")
-        game.run()
+    try:
+        lease = acquire_instance(instance_path)
+    except AlreadyRunningError as exc:
+        print(str(exc), file=sys.stderr)
+        return ALREADY_RUNNING_EXIT_CODE
+    with lease:
+        setup_logging(log_to_file=True)
+        logger.debug("Initializing Game...")
+        control_port = arguments.port if arguments.port is not None else (0 if arguments.smoke_test else None)
+        try:
+            game = Game(control_port=control_port, instance_path=instance_path)
+        except OSError:
+            print("Could not start the Codex control server; check whether its port is already occupied.", file=sys.stderr)
+            return 1
+        if arguments.smoke_test:
+            logger.info(f"Running launch smoke test for {arguments.smoke_test_frames} frames...")
+            game.run(max_frames=arguments.smoke_test_frames)
+        else:
+            logger.debug("Starting Game Loop...")
+            game.run()
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

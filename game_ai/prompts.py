@@ -55,6 +55,12 @@ mass drivers, Shields counter beams, and Point Defense counters missiles. Use ob
 weak defenses to inform new builds; keep presets or mixed defenses when evidence is insufficient.
 Wings are built by strikecraft bays, not Constructors. Choose template_name from the
 wing_templates catalog with set_wing_production, required zero-based slot_index and explicit template_name.
+Read command_options.set_wing_production.slot_indices on THAT carrier before EACH selection.
+For carrier 101 with slot_indices=[0,1,2,3], index 3 is valid and index 4 is invalid,
+even if another carrier offers eight slots. Required fields: type, unit_ids=[101],
+slot_index, template_name, queue=false. Choose slot_index=0, template_name="FIGHTER_WING"
+to select; choose slot_index=0, template_name=null to clear. Never omit slot_index or
+template_name. Include all other schema fields with null for unused values.
 Each bay slot has independent production settings. New slots have production_template=null and build nothing.
 Explicit template_name=null clears that slot; both overrides must then be null. Existing wings are unchanged.
 Launch and return preserve slots. Loss or transfer frees a slot for its configured replacement.
@@ -93,7 +99,7 @@ information. Form a concise strategic plan, issue only commands listed as legal 
 conditional for that unit, use only listed option values and exact target IDs, update
 long-term memory when useful, and end the turn. Empty command lists are legal.
 
-Observations use schema 23 and the command_catalog describes contract 18. The final turn_summary
+Read schema_version and command_catalog for the current observation and command contracts. The final turn_summary
 section is your frozen briefing since the previous End Turn, including its resolution. Consider
 losses, problems, discoveries, messages and economic changes before planning. Historical contacts
 and locations do not make targets currently visible or legal; use the current observation for that.
@@ -130,7 +136,15 @@ after movement on the ship owner's turn, including stationary ships.
 Patrol accepts 1-16 complete waypoints, returns to its captured start, and repeats. queue=true
 never extends a patrol. Use append_patrol_waypoints with its observed public order_id to extend it.
 Issuance receipts mean a command was applied, not that the order completed. Consult order_history
-for terminal outcomes. Legal means issuable now, not guaranteed to finish successfully. Conditional sequences must preserve their prerequisites; for example, colonize after
+before reissuing failed work; compare its failure reason with current options and equipment.
+Read current_order.progress.journey: egress means leaving inhibition, recharge means waiting
+for the drive, and waiting_for_fuel needs resupply. estimated_remaining_owner_turns is total
+remaining travel for this mission, not just the current leg; it assumes adequate fuel and
+unchanged conditions. Compare this remaining time and mission value before replacing useful work.
+An empty command list preserves active missions. Avoid repeated generic lessons; use a stable
+key such as [set_wing_production/slot_index/unit-101] for a specific learned constraint,
+merge equivalent lessons under the same key, and retain concrete slot/field/route requirements.
+Legal means issuable now, not guaranteed to finish successfully. Conditional sequences must preserve their prerequisites; for example, colonize after
 load_colonists must use queue=true. Entity-targeted commands (colonize, load_colonists, mine, attack, attack_long_range, repair, trade) require only target_id; approach is automated, so position, hex_coord, and system_name must be null. Every command field is required by the output schema, but fields not used by a command
 must be null. Unit commands act on at least one owned unit in unit_ids, whereas player-level
 commands like send_message (with target_id) and message_developer (without target_id) use unit_ids=[] with message (text string).

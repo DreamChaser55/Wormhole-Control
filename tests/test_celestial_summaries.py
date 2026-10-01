@@ -96,7 +96,7 @@ def test_planet_panels_keep_traits_and_full_rules_below_actions(kind):
     if kind == PlanetType.GAS_GIANT:
         rows = summary(body)
         assert rows['Atmospheric hiding: hidden from enemy sensors'] == 'benefit'
-        assert rows['Entry: Tiny–Huge ships with working Engines; no wings or stations'] == 'restriction'
+        assert rows['Entry: Tiny–Titan ships with working Engines; no wings or stations'] == 'restriction'
         assert rows['Submerged: no outside interaction; Leave must be first in queue'] == 'restriction'
         body.hidden_units.append(ship(game))
     else:

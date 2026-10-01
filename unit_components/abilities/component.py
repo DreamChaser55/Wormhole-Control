@@ -166,30 +166,36 @@ class AbilityComponent(UnitComponent):
         Projection may bypass the live balance with resources=False, but cannot
         bypass the presence/functionality of the equipment that must pay.
         """
+        return self.availability(ability_type, ignore_reservations=ignore_reservations, resources=resources) is None
+
+    def availability(self, ability_type: AbilityType, *, ignore_reservations=False, resources=True):
+        """Return a public readiness blocker, keeping cooldown distinct from damage."""
         from dismantling import offline
         if offline(self.unit):
-            return False
+            return 'capability_unavailable'
         from tactical_abilities import SPECS, availability
         if ability_type.value in SPECS:
             galaxy = self.unit.in_galaxy or getattr(self.unit.game, "galaxy", None)
-            return availability(self.unit, ability_type.value, galaxy, ignore_reservations=ignore_reservations, resources=resources) is None
+            return availability(self.unit, ability_type.value, galaxy, ignore_reservations=ignore_reservations, resources=resources)
         if self.is_destroyed:
-            return False
+            return 'capability_unavailable'
         instance = self.abilities.get(ability_type)
         if not instance:
-            return False
+            return 'ability_unavailable'
         if instance.definition.activation_mode == 'toggle':
-            return False
-        if not instance.is_ready:
-            return False
+            return 'capability_unavailable'
+        if instance.cooldown_remaining > 0:
+            return 'cooldown_active'
+        if instance.is_active:
+            return 'ability_active'
         am_comp = self.unit.antimatter_component
         cost = instance.definition.antimatter_cost
         if cost > 0:
             if am_comp is None or am_comp.is_destroyed:
-                return False
+                return 'capability_unavailable'
             if resources and am_comp.current_amount < cost:
-                return False
-        return True
+                return 'insufficient_resources'
+        return None
 
     def activate(
         self,

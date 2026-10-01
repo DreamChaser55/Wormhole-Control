@@ -156,17 +156,30 @@ class ControlService:
     def start(self) -> None:
         if self._server is not None:
             return
-        server = _ThreadingControlServer((self.host, self.port), _ControlRequestHandler)
+        from application_instance import acquire_instance
+        lease = acquire_instance(getattr(self.game, "instance_path", None))
+        try:
+            server = _ThreadingControlServer((self.host, self.port), _ControlRequestHandler)
+        except BaseException:
+            lease.close()
+            raise
         server.control_service = self  # type: ignore[attr-defined]
-        self.port = int(server.server_address[1])
-        self._server = server
-        self._thread = threading.Thread(
+        thread = threading.Thread(
             target=server.serve_forever,
             kwargs={"poll_interval": 0.1},
             name="wormhole-control",
             daemon=True,
         )
-        self._thread.start()
+        try:
+            thread.start()
+        except BaseException:
+            server.server_close()
+            lease.close()
+            raise
+        self._instance_lease = lease
+        self.port = int(server.server_address[1])
+        self._server = server
+        self._thread = thread
         logger.info("Codex control server listening on %s:%s", self.host, self.port)
 
     def pump(self, *, max_requests: int = 32) -> None:
@@ -228,6 +241,10 @@ class ControlService:
         if self._thread is not None:
             self._thread.join(timeout=1.0)
             self._thread = None
+        lease = getattr(self, "_instance_lease", None)
+        if lease is not None:
+            lease.close()
+            self._instance_lease = None
 
     def _dispatch_or_wait(self, payload: dict[str, Any], future: Future) -> dict[str, Any] | None:
         action, request_id = self._validate_envelope(payload)

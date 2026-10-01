@@ -30,7 +30,7 @@ from component_visibility import public_components
 from order_history import history_view
 from turn_briefing import summary_view
 
-OBSERVATION_SCHEMA_VERSION = 28
+OBSERVATION_SCHEMA_VERSION = 29
 COMMAND_HELP = {name: spec.description for name, spec in COMMAND_SPECS.items()}
 
 
@@ -303,13 +303,13 @@ def _unit_view(
         },
         "disabled": bool(getattr(unit, "is_disabled", False)),
         "components": components,
-        "antimatter": _component_amount(getattr(unit, "antimatter_component", None)),
         **order_layers(unit, relation, {u.id for u in visible_units} | {d.id for d in visible_deployables(game, player)}, {b.id for b in exact_bodies}),
     }
     if getattr(unit, "is_hidden_in_gas_giant", False):
         data["is_hidden_in_gas_giant"] = True
         data["hidden_in_gas_giant_id"] = getattr(unit, "hidden_in_gas_giant_id", None)
     if relation in {"self", "ally"}:
+        data["antimatter"] = _component_amount(getattr(unit, "antimatter_component", None))
         transport = getattr(unit, "troop_transport_component", None)
         if transport:
             data["troop_cargo"] = {"current": transport.troops, "capacity": transport.capacity}

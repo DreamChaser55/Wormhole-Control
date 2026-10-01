@@ -16,7 +16,7 @@ def point(value):
     return list(value) if isinstance(value, (tuple, list)) and len(value) == 2 else None
 
 
-def journey_progress(unit, order, known_targets):
+def journey_progress(unit, order, known_targets, known_body_ids=None):
     """Describe the active planned leg using public intent and current equipment."""
     from types import SimpleNamespace
     from geometry import distance
@@ -25,8 +25,10 @@ def journey_progress(unit, order, known_targets):
     nodes, node = [], order
     for _ in range(7):
         reference = node.primary_target_reference()
-        if reference is not None and reference[1] not in known_targets:
-            return None
+        if reference is not None:
+            allowed = (known_body_ids if reference[0] == 'celestial' else known_targets) if known_body_ids is not None else known_targets
+            if reference[1] not in allowed:
+                return None
         nodes.append(node)
         children = list(node.sub_orders)
         if not children:
@@ -69,14 +71,72 @@ def journey_progress(unit, order, known_targets):
                                  in_hex=root_params['destination_hex_coord'])
         estimate = estimate_approach(unit, galaxy, target, approach_range=5.0, known_only=True)
     turns = min(10000, estimate.turns + max(0, recharge)) if estimate else None
+    from custom_unit_templates import (get_sublight_antimatter_cost_per_turn,
+                                      get_hyperdrive_hex_jump_cost, get_hyperdrive_system_jump_cost)
+    from environmental_effects import sublight_speed, modifiers_for_unit
+    fuel_step = 0.0
+    if local and distance(unit.position, destination) > 5.0:
+        fuel_step = get_sublight_antimatter_cost_per_turn(unit.hull_size, sublight_speed(unit)) * modifiers_for_unit(unit).fuel_multiplier
+    elif not local and recharge <= 0:
+        fuel_step = (get_hyperdrive_system_jump_cost(unit.hull_size) if unit.in_system != system_name
+                     else get_hyperdrive_hex_jump_cost(unit.hull_size))
+    storage = getattr(unit, 'antimatter_component', None)
+    waiting_reason = None
+    if fuel_step > 0:
+        if storage is None or storage.is_destroyed:
+            phase, waiting_reason = 'blocked', 'storage_unavailable'
+        elif storage.current_amount < fuel_step:
+            phase, waiting_reason = 'waiting_for_fuel', 'insufficient_antimatter'
     return {'phase': phase, 'remaining_approach_distance': round(distance(unit.position, destination), 2) if local else None,
             'route_leg': {'system_name': system_name, 'hex_coord': point(coord), 'position': point(destination)},
             'remaining_route_legs': len(moves[0].sub_orders),
             'drive_status': enum_name(drive.jump_status) if drive else None,
             'drive_recharge_owner_turns': recharge,
             'estimated_remaining_owner_turns': turns,
+            'estimated_remaining_antimatter': round(estimate.fuel, 2) if estimate else None,
+            'next_step_antimatter': round(fuel_step, 2),
+            'waiting_reason': waiting_reason,
             'estimate_conditional': True,
             'estimate_note': 'Current route and equipment; assumes unchanged targets/terrain and sufficient fuel. Future blockers may delay arrival.'}
+
+
+def public_journey_progress(game, viewer, unit):
+    """Read an authorized current journey for human travel summaries."""
+    from domain.players import are_allies
+    from visibility import VisibilityService
+    from .rules import detailed_system_names, body_is_notable
+    if not are_allies(viewer, unit.owner):
+        return None
+    galaxy = getattr(game, 'galaxy', None)
+    if galaxy is None or not getattr(unit.commander_component, 'current_order', None):
+        return None
+    snapshot = VisibilityService.compute(galaxy, viewer, record_intel=False)
+    visible = [actor for system in galaxy.systems.values() for sector in system.hexes.values()
+               for actor in sector.units if are_allies(viewer, actor.owner) or actor.id in snapshot.visible_enemy_unit_ids]
+    full = detailed_system_names(galaxy, viewer, visible, snapshot.presence_hexes)
+    bodies = {body.id for name, system in galaxy.systems.items() for sector in system.hexes.values()
+              for body in sector.celestial_bodies if name in full or body_is_notable(viewer, body, snapshot)}
+    layers = order_layers(unit, 'self' if unit.owner == viewer else 'ally', {actor.id for actor in visible}, bodies)
+    return (layers.get('current_order') or {}).get('progress', {}).get('journey')
+
+
+def journey_summary_lines(journey):
+    phase = journey['phase']
+    labels = {'egress': 'Leaving inhibition field', 'recharge': 'Waiting for drive recharge',
+              'jump': 'Jumping to next sector', 'arrival': 'Approaching after arrival',
+              'approach': 'Approaching destination', 'waiting_for_fuel': 'Waiting for antimatter',
+              'blocked': 'Antimatter Storage unavailable'}
+    lines = [labels.get(phase, phase.replace('_', ' ').title())]
+    if phase == 'recharge':
+        lines[0] += f" ({journey['drive_recharge_owner_turns']} owner turns)"
+    if journey.get('waiting_reason'):
+        lines.append(f"Next movement step needs {journey['next_step_antimatter']:g} AM")
+    turns = journey.get('estimated_remaining_owner_turns')
+    if turns is not None:
+        lines.append(f"Estimated travel remaining: about {turns:,}{'+' if turns == 10000 else ''} owner turns")
+    else:
+        lines.append('Remaining travel estimate unavailable')
+    return lines
 
 
 def order_layers(unit, relation, visible_ids, body_ids):
@@ -196,7 +256,7 @@ def order_layers(unit, relation, visible_ids, body_ids):
             if phase:
                 progress['phase'] = phase
         if root and active and actionable and not hidden and not private_agent_order:
-            journey = journey_progress(unit, order, visible_ids | body_ids)
+            journey = journey_progress(unit, order, visible_ids, body_ids)
             if journey is not None:
                 progress['journey'] = journey
         data["progress"] = progress

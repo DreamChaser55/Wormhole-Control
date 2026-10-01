@@ -20,7 +20,7 @@ from .adapters.base import (
 from .adapters.openai_responses import OpenAIResponsesProvider
 from .commands import CommandGateway, CommandResult
 from .contracts import TurnPlan, ContractError
-from .memory import AgentMemory, write_memory_sidecar
+from .memory import AgentMemory, write_memory_sidecar, rejection_lessons
 from .observation import build_observation
 from .planning_runtime import AsyncPlanningRuntime, PlanningHandle, PlanningRetirementError
 from .runtime import (
@@ -57,6 +57,7 @@ class AgentTurnCoordinator:
         self._base_request: PlanningRequest | None = None
         self._turn_token: tuple[str, str, int] | None = None
         self._repair_attempts_used = 0
+        self._rejection_lessons = []
         self._max_repair_retries = DEFAULT_REPAIR_RETRIES
         self.state = "idle"
         self.status_message = ""
@@ -87,6 +88,7 @@ class AgentTurnCoordinator:
         )
         self._base_request = request
         self._repair_attempts_used = 0
+        self._rejection_lessons = []
         self._max_repair_retries = normalize_repair_retries(
             getattr(player, "ai_repair_retries", DEFAULT_REPAIR_RETRIES)
         )
@@ -234,6 +236,8 @@ class AgentTurnCoordinator:
                         for error in command_result.errors
                     ),
                 )
+                self._rejection_lessons.extend(rejection_lessons(
+                    result.plan, repair_context.errors, self._base_request.observation))
                 self._submit(self._repair_request(repair_context), repairing=True)
                 return
             if command_result.failure_stage == "commit":
@@ -250,6 +254,7 @@ class AgentTurnCoordinator:
             result.plan.memory_patch,
             turn=int(getattr(self.game, "turn_number", 1)),
         )
+        memory.apply_patch({'lessons': self._rejection_lessons}, turn=int(getattr(self.game, "turn_number", 1)))
         receipt = (
             "; ".join(command_result.receipts)
             if command_result.receipts
@@ -293,6 +298,8 @@ class AgentTurnCoordinator:
         self._record_output_error(error, will_retry=will_retry)
         if will_retry:
             self._repair_attempts_used += 1
+            if error.code == 'invalid_contract':
+                self._rejection_lessons.append('[output/invalid_contract] Include every schema field; set_wing_production requires slot_index and explicit template_name. Unused fields are null.')
             context = RepairContext(
                 rejected_plan=None,
                 errors=(RepairIssue(None, error.code, str(error)),),

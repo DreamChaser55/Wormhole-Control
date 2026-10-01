@@ -97,9 +97,13 @@ def availability(unit, kind, galaxy, *, ignore_reservations=False, resources=Tru
     if offline(unit) or not deployed(unit, galaxy) or not inst or unit.ability_component.is_destroyed or unit.is_disabled or getattr(unit, 'is_hidden_in_gas_giant', False):
         return 'capability_unavailable'
     if kind == 'multiply_antimatter' and unit.multiply_cast_ready_round > getattr(unit.game, 'turn_number', 1):
+        return 'cooldown_active'
+    if not equipment_ready(unit, spec):
         return 'capability_unavailable'
-    if not inst.is_ready or not equipment_ready(unit, spec):
-        return 'capability_unavailable'
+    if inst.cooldown_remaining > 0:
+        return 'cooldown_active'
+    if inst.is_active:
+        return 'ability_active'
     am = unit.antimatter_component
     reserved = list(pending_casts(unit)) if not ignore_reservations else []
     if any(k == kind for k, _ in reserved):

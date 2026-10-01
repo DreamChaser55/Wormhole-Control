@@ -55,6 +55,11 @@ The CLI adds `protocol_version: 4` and a random `request_id` when omitted. Suppl
 - `ControlService(host=...)` rejects any host other than `127.0.0.1` with
   `ValueError` before creating a socket.
 - Port: pass `--port PORT` to either script or set `WORMHOLE_CONTROL_PORT`. An explicit CLI flag wins.
+- One game process may run per user, across ports and checkouts. A second launch
+  fails before opening logs or windows; `game.py` exits with code `3` and the CLI
+  reports the existing game. Close it before launching on another port.
+- An OS-held lease releases on normal exit or a crash. Its stale temporary file
+  is harmless and must not be deleted to bypass a running process.
 - Framing: one UTF-8 JSON object followed by a newline, with one response per connection.
 - Request limit: 1 MiB. Protocol responses may be larger because observations contain visible game state.
 - Version: every direct socket request must contain `"protocol_version": 4`.
@@ -176,7 +181,7 @@ Requires the active player to be controlled by Codex. It returns a new opaque tu
 ```
 
 ```json
-{"data":{"turn_token":"opaque-value","observation":{"schema_version":28}}}
+{"data":{"turn_token":"opaque-value","observation":{"schema_version":29}}}
 ```
 
 Treat the observation as the only permitted source of game facts. Never infer hidden targets from saves, source files, logs, rendered pixels, or previous campaigns. IDs and available options in an old observation may be stale.
@@ -546,6 +551,9 @@ IDs and sectors grant no authority to command currently hidden targets.
 The same briefing appears in the human modal and built-in AI prompt. Conversation
 history includes all messages received so far, including the current round.
 No acknowledgement command is required from Codex.
+The human modal additionally shows current authorized travel summaries. Read
+`current_order.progress.journey` for that context; it is separate from historical
+events and includes conditional remaining travel, recharge and fuel waits.
 
 
 ## Planetary commands

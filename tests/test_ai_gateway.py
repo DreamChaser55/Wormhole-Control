@@ -24,6 +24,13 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
         units = [_unit(10 + index, player) for index in range(unit_count)]
         for unit in units:
             from geometry import Position
+            from constants import HullSize
+            from unit_components.enums import HyperdriveType
+            unit.hull_size = HullSize.SMALL
+            unit.xp_multiplier = lambda bonus: 1.0
+            unit.engines_component = SimpleNamespace(speed=100.0, effective_speed=100.0, is_operational=True, is_destroyed=False)
+            unit.hyperdrive_component = SimpleNamespace(is_functional=True, is_destroyed=False,
+                drive_type=HyperdriveType.BASIC, jump_range=3, RECHARGE_DURATION=2)
             unit.position = Position(2000, 0)  # Loading is pending travel in this fixture.
             unit.colony_component = SimpleNamespace(
                 population_cargo=0,
@@ -198,7 +205,8 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
 
         unit_view = observation["units"][0]
         inhibitor = unit_view["capability_details"]["inhibitor"]
-        self.assertEqual(observation["schema_version"], 28)
+        from game_ai.observation import OBSERVATION_SCHEMA_VERSION
+        self.assertEqual(observation["schema_version"], OBSERVATION_SCHEMA_VERSION)
         self.assertIn("toggle_inhibitor", unit_view["supported_commands"])
         self.assertNotIn("toggle_inhibitor", unit_view["legal_commands"])
         self.assertFalse(inhibitor["can_activate"])
@@ -515,13 +523,14 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
 
     def test_observation_reports_colony_legality_and_capacity(self):
         player, units, source, target, game = self._colony_fixture()
-        hex_obj = SimpleNamespace(
-            celestial_bodies=[source, target], units=units, minefields=[]
-        )
+        from galaxy import Hex
+        hex_obj, target_hex = Hex(0, 0, 'Sol'), Hex(1, 0, 'Sol')
+        hex_obj.celestial_bodies, hex_obj.units = [source], units
+        target_hex.celestial_bodies = [target]
         system = SimpleNamespace(
             position=SimpleNamespace(x=1, y=2),
             radius=2,
-            hexes={(0, 0): hex_obj},
+            hexes={(0, 0): hex_obj, (1, 0): target_hex},
         )
         game.galaxy.systems = {"Sol": system}
         game.galaxy.system_graph = {"Sol": {}}
@@ -535,7 +544,7 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
         with patch("visibility.VisibilityService.compute", return_value=snapshot):
             observation = build_observation(game, player)
         unit_view = observation["units"][0]
-        self.assertEqual(observation["schema_version"], 28)
+        self.assertEqual(observation["schema_version"], 29)
         self.assertNotIn("celestial_bodies", observation)
         self.assertIn("colonize", unit_view["supported_commands"])
         self.assertNotIn("colonize", unit_view["legal_commands"])

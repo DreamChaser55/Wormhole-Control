@@ -34,8 +34,10 @@ def availability(unit, kind, galaxy, *, ignore_reservations=False, resources=Tru
     if not source_ready(unit, kind, galaxy):
         return 'capability_unavailable'
     inst = instance(unit, kind)
-    if inst.is_active or unit.titan_cooldowns.get(kind, 0) > now(unit):
-        return 'capability_unavailable'
+    if unit.titan_cooldowns.get(kind, 0) > now(unit):
+        return 'cooldown_active'
+    if inst.is_active:
+        return 'ability_active'
     if kind == 'fleet_jump':
         from unit_components.enums import HyperdriveType, JumpStatus
         drive = unit.hyperdrive_component

@@ -96,7 +96,7 @@ def body_summary(body: CelestialBody, description: BodyDescription) -> list[Summ
     if isinstance(body, Planet) and body.planet_type == PlanetType.GAS_GIANT:
         rows.extend((
             SummaryRow('Atmospheric hiding: hidden from enemy sensors', 'benefit'),
-            SummaryRow('Entry: Tiny–Huge ships with working Engines; no wings or stations', 'restriction'),
+            SummaryRow('Entry: Tiny–Titan ships with working Engines; no wings or stations', 'restriction'),
             SummaryRow('Submerged: no outside interaction; Leave must be first in queue', 'restriction'),
         ))
     if isinstance(body, Wormhole):

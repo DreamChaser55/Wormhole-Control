@@ -133,6 +133,12 @@ remembered per body and campaign during the application session, not in saves.
 
 ### Turn-start briefing
 
+Current travel appears in the ship's order sidebar and briefing: leaving an
+inhibition field, drive recharge, approach, or waiting for antimatter. Remaining
+travel estimates use current equipment and known terrain, assuming enough fuel
+and unchanged conditions. Loading, mission actions and later queued orders add
+time. Preserve advancing work unless a replacement is worth the lost progress.
+
 A scrollable briefing opens at the start of each human turn according to
 **Settings → Turn summary mode**, available from the main and in-game menus:
 

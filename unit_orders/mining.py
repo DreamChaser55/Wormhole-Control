@@ -4,7 +4,7 @@ from game_logging import format_unit_for_log
 import typing
 from typing import Dict, Optional, Any, TYPE_CHECKING
 
-from geometry import distance, hex_distance, position_at_distance_from_target
+from geometry import distance, hex_distance
 from pathfinding import find_intersystem_path
 from .base import Order, OrderStatus, OrderType
 from .movement import MoveOrder
@@ -47,17 +47,13 @@ class MineOrder(Order):
 
         if not in_range:
             if not self.has_active_sub_orders():
-                if at_location:
-                    dest_pos = position_at_distance_from_target(self.unit.position, target.position, self.unit.mining_component.mining_range - 5.0)
-                else:
-                    dest_pos = target.position
-
-                move_params = {
-                    "destination_system_name": target.in_system,
-                    "destination_hex_coord": target.in_hex,
-                    "destination_position": dest_pos
-                }
-                move_order = MoveOrder(self.unit, move_params, parent_order=self)
+                # Mining range is measured from the center; celestial movement
+                # takes a surface standoff and must never aim at a solid center.
+                radius = getattr(target, 'collision_radius', getattr(target, 'radius', 0.0))
+                move_order = MoveOrder.for_celestial_approach(
+                    self.unit, target, max(50.0, self.unit.mining_component.mining_range - radius - 5.0),
+                    parent_order=self,
+                )
                 self.add_sub_order(move_order)
 
                 mine_sub_order = MineOrder(self.unit, self.parameters, parent_order=self)
@@ -228,7 +224,9 @@ class ContinuousMineOrder(Order):
                         is_metal_ref = getattr(u, 'metal_refinery_component', None) is not None
                         is_crystal_ref = getattr(u, 'crystal_refinery_component', None) is not None
                         if (has_metal and is_metal_ref) or (has_crystal and is_crystal_ref):
-                            friendly_refineries.append(u)
+                            from unit_targeting import utility_approach_blocker
+                            if utility_approach_blocker(self.unit, u, galaxy_ref, 'unload_resources') is None:
+                                friendly_refineries.append(u)
 
         if not friendly_refineries:
             return None

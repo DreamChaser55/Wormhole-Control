@@ -2007,6 +2007,14 @@ class CommandGateway:
         if hidden and command.type != "leave_gas_giant":
             raise _Rejected("invalid_state", "Submerged units cannot execute orders while hidden in a gas giant atmosphere.")
 
+        from unit_targeting import UTILITY_BODY_COMMANDS, UTILITY_UNIT_COMMANDS, utility_approach_blocker
+        if command.type in UTILITY_BODY_COMMANDS | UTILITY_UNIT_COMMANDS:
+            target = (self._body(command.target_id) if command.type in UTILITY_BODY_COMMANDS
+                      else self._visible_unit(unit.owner, command.target_id))
+            error = utility_approach_blocker(unit, target, self.game.galaxy, command.type)
+            if error:
+                raise _Rejected(error, "Utility approach unavailable: " + error.replace('_', ' ') + ".")
+
         if command.type == "stabilize_wormhole":
             from wormhole_stabilization import blocker
             error = blocker(self.game, unit.owner, unit, self._body(command.target_id))
@@ -2229,9 +2237,10 @@ class CommandGateway:
             instance = unit.ability_component.abilities.get(ability_type)
             if instance and unit.antimatter_component and projection.tactical_budget(unit) < instance.definition.antimatter_cost:
                 raise _Rejected('insufficient_resources', 'Ability fuel is already spent or reserved.')
-            if not unit.ability_component.can_use(ability_type, resources=False):
+            blocker = unit.ability_component.availability(ability_type, resources=False)
+            if blocker:
                 raise _Rejected(
-                    "capability_unavailable",
+                    blocker,
                     f"Ability {command.ability} is unavailable on unit {unit.id}.",
                 )
             from unit_targeting import LEGACY_UNIT_ABILITIES, legacy_target_blocker
