@@ -30,6 +30,7 @@ def world():
     payer.credits = ally.credits = 100000
     galaxy = Galaxy()
     galaxy.systems['Sol'] = StarSystem('Sol', Position(0, 0))
+    galaxy.systems['Sol'].hexes[(0, 0)].celestial_bodies.clear()
     game = SimpleNamespace(galaxy=galaxy, players=[payer, ally], current_player_index=0,
                            gui=None, event_bus=EventBus(), sidebar_needs_update=False)
     game.display_config = DisplayConfig()

@@ -39,6 +39,7 @@ def isolated_process_state(monkeypatch):
     from unit_components.intelligence import Agent
     from unit_orders.base import Order
     from unit_templates import UNIT_TEMPLATES, PRIVATE_TEMPLATES
+    import application_instance
     import save_manager
 
     owners = ((GameObject, "object_counter"), (Player, "player_counter"),
@@ -59,6 +60,7 @@ def isolated_process_state(monkeypatch):
         library.mkdir()
         (library / "custom_unit_templates.json").write_text("{}", encoding="utf-8")
         monkeypatch.setenv("WORMHOLE_USER_DATA_DIR", str(library))
+        monkeypatch.setattr(application_instance, 'instance_lock_path', lambda: library / 'instance.lock')
         monkeypatch.setattr(save_manager, "SAVES_DIR", str(library / "saves"))
         yield
     finally:

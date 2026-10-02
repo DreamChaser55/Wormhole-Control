@@ -56,6 +56,10 @@ that mode. Other target checks retain the recording default, as described in the
 - one deduplicated construction-template catalog;
 - diplomatic message history grouped by partner faction in chronological order (`conversations`).
 
+Hull enums use readable uppercase names consistently: `hull_size`, connection
+`maximum_hull`, wormhole `diameter`, and field limits use values such as `MEDIUM`,
+`LARGE` and `STRIKECRAFT_WING`, rather than numeric strings.
+
 Antimatter amount and storage capacity are private to owned/allied units. Visible
 enemy component details expose weapons and defenses, without fuel or tank size.
 
@@ -256,6 +260,12 @@ replaces explicit work after preflight succeeds. Immediate commands apply their
 own documented effect rather than implicitly replacing orders. Preserve a queued
 prerequisite by appending its dependent order instead of replacing it.
 
+Move, positional Defend and Patrol endpoints must stay within radius 5000 and
+clear solid bodies by 50 units. Shared navigation validation rejects disclosed
+obstructions before cancellation or payment changes; execution checks all actual
+geometry. Ordinary Move cannot land inside a solid body. Specialized celestial
+approaches resolve safe surface destinations before this check.
+
 Each catalog command includes `required_presence` (including `type` and selected
 unit IDs where needed) and separate `nullable_fields`. `required` remains the list
 of required non-null action fields for existing clients. For `set_wing_production`,
@@ -293,6 +303,8 @@ travel; action time and subsequent queued missions add time. Hidden target refer
 private agent approach geometry suppress this view. Estimates use current equipment
 and known terrain, assume sufficient fuel and unchanged conditions, and never advance
 orders, record discoveries or draw randomness. Slow advancing work should be preserved.
+Tankless strikecraft wings report zero sublight propulsion cost and no storage
+blocker, matching actual flight. Other equipment consumption still applies.
 
 Preflight uses shared legality queries against live state plus preceding projected
 effects. Commit callbacks and executing orders recheck applicable live conditions,
@@ -455,6 +467,13 @@ Issuance receipts are separate from terminal outcomes. Each player (regardless o
 retains at most 128 events and 32,000 serialized characters, dropping oldest whole events.
 Monotonic event IDs and retention metadata identify duplicates and missing history. An
 observation exposes only its active player's journal, not an ally's entire history.
+
+Observe after positional issuance and inspect current orders plus `order_history`:
+a successful receipt can already have a synchronous terminal outcome. Launch a
+docked craft in its own batch, observe it as a deployed actor, then command it in
+a later batch. Deployment options expose `requires_observation_after` and a
+sequencing note; newly launched actors are not projected into the issuing batch.
+Launch placement can fail, so acceptance alone does not establish actor availability.
 
 Order identities, history and charge ownership persist under the
 [save restoration contract](SAVE_FORMAT.md#component-and-ability-schemas).
@@ -658,7 +677,12 @@ Run `python scripts/benchmark_mission_pacing.py` for reproducible Normal-opening
 travel estimates (five fixed seeds, two radius-3 systems). The nearby colony
 sample spans 40–49 owner turns, with median 47 across 12 routes. These estimates
 exclude loading/action/queued time and assume enough fuel and unchanged terrain;
-they support clearer travel feedback without changing balance values.
+the empty starting Colonizer remains near its population source. The script also
+compares the former and current Constructor/Harvester positions: across 20 samples,
+median home-field egress falls from 23 to 2 owner turns. This measures departure,
+not complete missions or live AI strength. Stable planning instructions now cover
+idle builders, parallel production, distinct colony assignments, population loading,
+and balancing fortifications with reconnaissance, mobile defense and logistics.
 Keep fixed observations, seeds, model snapshots, and game balance constants
 with any published result so regressions can be reproduced.
 
@@ -902,6 +926,8 @@ and position-targeted abilities, as for Move and positional Defend/Patrol. Abili
 requirements are conditional on target kind; entity and self targets keep their
 existing forms. Partial locations fail the [shared validation contract](#shared-order-contract);
 UI adapters apply the same location validation before replacing orders.
+Travel coordinates also follow the [navigation limits](#shared-order-contract);
+Construct and abilities retain their own placement and action rules.
 Factories preserve the supplied site rather than binding it to the acting unit.
 Observations expose complete authorized order destinations and ability location
 requirements. Local-only abilities revalidate sector identity when they execute.
@@ -955,6 +981,8 @@ suppresses weapons and stance activity. Only `rename_unit` remains legal. Confli
 commands reject with `wing_service_required`; carrier Attack Run and Emergency
 Recovery cannot replace the return. The [shared order contract](#shared-order-contract)
 applies to this lock, including docking followed by relaunch in one batch.
+Both live servicing state and projected same-batch docking reject relaunch with
+`wing_service_required`, including bulk wing deployment.
 
 See [endurance and servicing](REFERENCE.md#strikecraft-endurance-and-servicing) for
 return, expiration and docking rules. Briefings report forced returns and expiration;

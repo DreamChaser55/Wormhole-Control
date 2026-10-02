@@ -3,7 +3,8 @@ import logging
 from game_logging import format_unit_for_log
 from typing import Dict, Optional, Any, TYPE_CHECKING
 
-from geometry import distance, position_at_distance_from_target
+from geometry import distance
+from unit_targeting import intelligence_distance
 from .base import Order, OrderStatus, OrderType
 from .movement import MoveOrder
 from .colony import ColonyContactOrder
@@ -144,27 +145,17 @@ class InfiltratePlanetOrder(ColonyContactOrder):
 
         if self.unit.in_system != target_system or self.unit.in_hex != target_hex:
             if not self.has_active_sub_orders():
-                dest_pos = position_at_distance_from_target(target_body.position, self.unit.position, INTELLIGENCE_OPERATIONAL_RANGE - 50.0)
-                move_sub_order = MoveOrder(
-                    self.unit,
-                    parameters={"destination_system_name": target_system,
-                                "destination_hex_coord": target_hex, "destination_position": dest_pos},
-                    parent_order=self
-                )
+                move_sub_order = MoveOrder.for_celestial_approach(
+                    self.unit, target_body, INTELLIGENCE_OPERATIONAL_RANGE - 50.0, parent_order=self)
                 self.add_sub_order(move_sub_order)
                 self.add_sub_order(InfiltratePlanetOrder(self.unit, self.parameters, parent_order=self))
             return
 
-        dist = distance(self.unit.position, target_body.position)
+        dist = intelligence_distance(self.unit, target_body)
         if dist > INTELLIGENCE_OPERATIONAL_RANGE:
             if not self.has_active_sub_orders():
-                dest_pos = position_at_distance_from_target(target_body.position, self.unit.position, INTELLIGENCE_OPERATIONAL_RANGE - 50.0)
-                move_sub_order = MoveOrder(
-                    self.unit,
-                    parameters={"destination_system_name": target_system,
-                                "destination_hex_coord": target_hex, "destination_position": dest_pos},
-                    parent_order=self
-                )
+                move_sub_order = MoveOrder.for_celestial_approach(
+                    self.unit, target_body, INTELLIGENCE_OPERATIONAL_RANGE - 50.0, parent_order=self)
                 self.add_sub_order(move_sub_order)
                 self.add_sub_order(InfiltratePlanetOrder(self.unit, self.parameters, parent_order=self))
             return
@@ -207,7 +198,6 @@ class RelocateAgentOrder(Order):
         # Find agent and source target
         agent: Optional['Agent'] = None
         source_target = None
-        source_pos = None
         source_sys = None
         source_hex = None
 
@@ -218,7 +208,6 @@ class RelocateAgentOrder(Order):
                         if a.id == agent_id:
                             agent = a
                             source_target = unit
-                            source_pos = unit.position
                             source_sys = sys_name
                             source_hex = u_hex
                             break
@@ -230,7 +219,6 @@ class RelocateAgentOrder(Order):
                         if a.id == agent_id:
                             agent = a
                             source_target = body
-                            source_pos = body.position
                             source_sys = sys_name
                             source_hex = h_coord
                             break
@@ -281,7 +269,7 @@ class RelocateAgentOrder(Order):
             logger.debug(f"[{format_unit_for_log(self.unit)}] RELOCATE_AGENT failed: destination is in different sector.")
             return
 
-        if distance(source_pos, dest_target.position) > INTELLIGENCE_OPERATIONAL_RANGE:
+        if intelligence_distance(source_target, dest_target) > INTELLIGENCE_OPERATIONAL_RANGE:
             self.status = OrderStatus.FAILED
             logger.debug(f"[{format_unit_for_log(self.unit)}] RELOCATE_AGENT failed: destination target out of range (> {INTELLIGENCE_OPERATIONAL_RANGE}).")
             return
@@ -445,7 +433,7 @@ class CISweepOrder(Order):
         for body in hex_obj.celestial_bodies:
             body_owner = getattr(body, 'owner', None)
             if are_allies(self.unit.owner, body_owner) and hasattr(body, 'infiltrating_agents'):
-                if distance(self.unit.position, body.position) <= INTELLIGENCE_OPERATIONAL_RANGE:
+                if intelligence_distance(self.unit, body) <= INTELLIGENCE_OPERATIONAL_RANGE:
                     for agent in body.infiltrating_agents:
                         if are_enemies(self.unit.owner, agent.owner):
                             agent.is_discovered = True
@@ -486,7 +474,6 @@ class EliminateAgentOrder(Order):
         # Find agent & host
         agent: Optional['Agent'] = None
         host_target = None
-        host_pos = None
         host_sys = None
         host_hex = None
         host_is_unit = False
@@ -498,7 +485,6 @@ class EliminateAgentOrder(Order):
                         if a.id == agent_id:
                             agent = a
                             host_target = u
-                            host_pos = u.position
                             host_sys = sys_name
                             host_hex = u_hex
                             host_is_unit = True
@@ -511,7 +497,6 @@ class EliminateAgentOrder(Order):
                         if a.id == agent_id:
                             agent = a
                             host_target = b
-                            host_pos = b.position
                             host_sys = sys_name
                             host_hex = h_coord
                             break
@@ -543,16 +528,13 @@ class EliminateAgentOrder(Order):
                         parent_order=self,
                     )
                 else:
-                    move_sub_order = MoveOrder(self.unit, {
-                        "destination_system_name": host_sys,
-                        "destination_hex_coord": host_hex,
-                        "destination_position": host_pos,
-                    }, parent_order=self)
+                    move_sub_order = MoveOrder.for_celestial_approach(
+                        self.unit, host_target, INTELLIGENCE_OPERATIONAL_RANGE - 50.0, parent_order=self)
                 self.add_sub_order(move_sub_order)
                 self.add_sub_order(EliminateAgentOrder(self.unit, self.parameters, parent_order=self))
             return
 
-        dist = distance(self.unit.position, host_pos)
+        dist = intelligence_distance(self.unit, host_target)
         if dist > INTELLIGENCE_OPERATIONAL_RANGE:
             if not self.has_active_sub_orders():
                 if host_is_unit:
@@ -563,16 +545,8 @@ class EliminateAgentOrder(Order):
                         parent_order=self,
                     )
                 else:
-                    dest_pos = position_at_distance_from_target(
-                        self.unit.position,
-                        host_pos,
-                        INTELLIGENCE_OPERATIONAL_RANGE - 50.0,
-                    )
-                    move_sub_order = MoveOrder(self.unit, {
-                        "destination_system_name": host_sys,
-                        "destination_hex_coord": host_hex,
-                        "destination_position": dest_pos,
-                    }, parent_order=self)
+                    move_sub_order = MoveOrder.for_celestial_approach(
+                        self.unit, host_target, INTELLIGENCE_OPERATIONAL_RANGE - 50.0, parent_order=self)
                 self.add_sub_order(move_sub_order)
                 self.add_sub_order(EliminateAgentOrder(self.unit, self.parameters, parent_order=self))
             return
@@ -622,7 +596,6 @@ class ExtractAgentOrder(Order):
         # Locate agent
         agent: Optional['Agent'] = None
         host_target = None
-        host_pos = None
         host_sys = None
         host_hex = None
         host_is_unit = False
@@ -634,7 +607,6 @@ class ExtractAgentOrder(Order):
                         if a.id == agent_id:
                             agent = a
                             host_target = u
-                            host_pos = u.position
                             host_sys = sys_name
                             host_hex = u_hex
                             host_is_unit = True
@@ -647,7 +619,6 @@ class ExtractAgentOrder(Order):
                         if a.id == agent_id:
                             agent = a
                             host_target = b
-                            host_pos = b.position
                             host_sys = sys_name
                             host_hex = h_coord
                             break
@@ -678,16 +649,13 @@ class ExtractAgentOrder(Order):
                         parent_order=self,
                     )
                 else:
-                    move_sub_order = MoveOrder(self.unit, {
-                        "destination_system_name": host_sys,
-                        "destination_hex_coord": host_hex,
-                        "destination_position": host_pos,
-                    }, parent_order=self)
+                    move_sub_order = MoveOrder.for_celestial_approach(
+                        self.unit, host_target, INTELLIGENCE_OPERATIONAL_RANGE - 50.0, parent_order=self)
                 self.add_sub_order(move_sub_order)
                 self.add_sub_order(ExtractAgentOrder(self.unit, self.parameters, parent_order=self))
             return
 
-        dist = distance(self.unit.position, host_pos)
+        dist = intelligence_distance(self.unit, host_target)
         if dist > INTELLIGENCE_OPERATIONAL_RANGE:
             if not self.has_active_sub_orders():
                 if host_is_unit:
@@ -698,16 +666,8 @@ class ExtractAgentOrder(Order):
                         parent_order=self,
                     )
                 else:
-                    dest_pos = position_at_distance_from_target(
-                        self.unit.position,
-                        host_pos,
-                        INTELLIGENCE_OPERATIONAL_RANGE - 50.0,
-                    )
-                    move_sub_order = MoveOrder(self.unit, {
-                        "destination_system_name": host_sys,
-                        "destination_hex_coord": host_hex,
-                        "destination_position": dest_pos,
-                    }, parent_order=self)
+                    move_sub_order = MoveOrder.for_celestial_approach(
+                        self.unit, host_target, INTELLIGENCE_OPERATIONAL_RANGE - 50.0, parent_order=self)
                 self.add_sub_order(move_sub_order)
                 self.add_sub_order(ExtractAgentOrder(self.unit, self.parameters, parent_order=self))
             return

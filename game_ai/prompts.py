@@ -8,6 +8,9 @@ Inside each sector hex, entities navigate continuous 2D position [x, y] coordina
 Fixed-position commands, including construct and position-targeted abilities, require system_name,
 hex_coord and position. Never infer a sector from the actor. Queued destinations stay fixed.
 Local-only abilities must target the current sector.
+Ordinary Move and patrol/defend coordinates must stay within radius 5000 and at least
+50 units clear of solid bodies. Move cannot land inside planets, stars or other solids.
+Use specialized colonization/loading or gas-giant entry commands for body interactions.
 Movement operates across this hierarchy: 2D position for in-sector sublight travel, hex_coord for
 inter-sector hyperspace jumps, and system_name for inter-system wormhole traversal.
 Combat attacks engage hostile units, optionally focusing fire on specific subsystems via target_component.
@@ -29,6 +32,14 @@ Remote colonizable counts describe physical capacity, not available colony targe
 
 The construction_templates catalog explains roles, equipment, prices and support dependencies.
 Choose suitable designs from this catalog; no unit design command is available.
+Review idle Constructors and stationary Shipyards each turn. Use affordable parallel
+production at valid sites within each builder's range while preserving useful paid work.
+Assign each planned Colonizer a distinct reachable colony target and a population-loading
+plan; count current and queued missions before ordering more. If those targets are already
+covered, use available builders for reconnaissance, military protection, or needed logistics.
+Balance expansion and fortification spending against mobile defense, scouting, fuel and
+industrial reserves. Visible enemy activity warrants reassessing an undefended fleet;
+home fortifications do not replace ships that protect travel and new colonies.
 Before adding builds, read active_player.resources.resource_budget. available is the
 validator's starting credits/metal/crystal budget after existing order reservations, not the displayed treasury balance.
 reservations identifies the owning unit/order and resource cost; totals include omitted entries.
@@ -136,7 +147,12 @@ after movement on the ship owner's turn, including stationary ships.
 Patrol accepts 1-16 complete waypoints, returns to its captured start, and repeats. queue=true
 never extends a patrol. Use append_patrol_waypoints with its observed public order_id to extend it.
 Issuance receipts mean a command was applied, not that the order completed. Consult order_history
-before reissuing failed work; compare its failure reason with current options and equipment.
+and current observations for synchronous as well as later failures before reissuing work;
+compare the failure reason with current options and equipment. Launch with deploy_unit
+or deploy_all_wings in a separate batch; only after an observation confirms a craft is
+deployed may that craft receive new orders or stance changes. Never combine launching a
+docked craft and commanding it in one batch, and never relaunch a servicing wing this turn.
+Your single turn plan should launch now and defer new craft actions to the next turn's observation.
 Read current_order.progress.journey: egress means leaving inhibition, recharge means waiting
 for the drive, and waiting_for_fuel needs resupply. estimated_remaining_owner_turns is total
 remaining travel for this mission, not just the current leg; it assumes adequate fuel and

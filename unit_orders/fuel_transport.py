@@ -240,10 +240,19 @@ class ContinuousFuelDeliveryOrder(Order):
         if not self.sub_orders:
             return True
         child = self.sub_orders[0]
-        # Moving depots are followed by identity, including while already travelling.
-        if child.parameters.get("logistics_anchor") != self._anchor(target):
+        anchor = self._anchor(target)
+        previous = child.parameters.get("logistics_anchor")
+        local = self.unit.in_system == target.in_system and self.unit.in_hex == target.in_hex
+        # Preserve egress/jump/recharge progress when only a remote endpoint's
+        # coordinates change. Rebind local pursuit immediately, so a moving
+        # endpoint cannot repeatedly replace a pending child before it starts.
+        if previous != anchor and (previous is None or previous[:2] != anchor[:2]
+                                   or local or child.status == OrderStatus.PENDING):
             self._clear_approach()
-            return True
+            self._approach(target, galaxy, source=self.phase == self.loading_phase)
+            if not self.sub_orders:
+                return self.status == OrderStatus.IN_PROGRESS
+            child = self.sub_orders[0]
         if child.status == OrderStatus.PENDING:
             child.execute(galaxy)
         if child.status == OrderStatus.IN_PROGRESS:

@@ -590,9 +590,11 @@ def test_inter_system_jump_drive_type_validation():
 
 
 def test_handle_jump_interhex_same_hex_different_system():
+    from galaxy import Hex
     event_bus = EventBus()
     game = MagicMock()
     game.display_config = DisplayConfig()
+    game.galaxy.systems = {'Rigel': MagicMock(hexes={(0, 5): Hex(0, 5, 'Rigel')})}
     order_sys = OrderSystem(game, event_bus)
     
     unit = ComponentUnit()

@@ -251,11 +251,15 @@ def spawn_units(
             # 2. Constructor Ship
             # 3. Colonizer Ship
             # 4. Antimatter Harvester Ship
+            world = game.galaxy.get_celestial_body_by_id(player.homeworld_id)
+            # Builders and their products need only a short egress to jump.
+            # Keep the empty Colonizer close to its initial population source.
+            orbit = world.inhibition_field_radius - 200.0
             normal_spawn_entries = [
-                ("SHIPYARD_MK1", planet_pos.x, planet_pos.y - 650.0),
-                ("CONSTRUCTOR_MK1", planet_pos.x - 250.0, planet_pos.y - 750.0),
+                ("SHIPYARD_MK1", planet_pos.x, planet_pos.y - orbit),
+                ("CONSTRUCTOR_MK1", planet_pos.x - 250.0, planet_pos.y - orbit),
                 ("COLONIZER_MK1", planet_pos.x + 250.0, planet_pos.y - 750.0),
-                ("ANTIMATTER_HARVESTER", planet_pos.x, planet_pos.y - 900.0),
+                ("ANTIMATTER_HARVESTER", planet_pos.x + 250.0, planet_pos.y - orbit),
             ]
 
             for template_key, x_pos, y_pos in normal_spawn_entries:

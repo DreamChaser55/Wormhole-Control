@@ -86,6 +86,13 @@ class ReachWaypointOrder(Order):
             logger.debug(f"[{format_unit_for_log(self.unit)}] REACH_WAYPOINT(id:{self.local_order_id}): FAILED (incomplete destination parameters).")
             return
             
+        from location_validation import navigation_location
+        try:
+            navigation_location(dest_system, dest_hex, dest_position, galaxy_ref)
+        except NoSafePathError:
+            self.fail("path_unavailable")
+            return
+
         # Hex jumps require a hyperdrive. Sub-light movement engines are disabled.
         if current_system == dest_system and current_hex != dest_hex:
             if not self.unit.hyperdrive_component or not self.unit.hyperdrive_component.is_functional:
@@ -794,6 +801,13 @@ class MoveOrder(Order):
         if dest_system is None or dest_hex is None or dest_position is None:
             self.fail("invalid_parameters")
             logger.debug(f"[{format_unit_for_log(self.unit)}] MOVE(id:{self.local_order_id}): plan_route: FAILED (incomplete destination parameters).")
+            return
+
+        from location_validation import navigation_location
+        try:
+            navigation_location(dest_system, dest_hex, dest_position, galaxy_ref)
+        except NoSafePathError:
+            self.fail("path_unavailable")
             return
 
         if current_system == dest_system and current_hex == dest_hex and distance(current_position, dest_position) < 0.01:

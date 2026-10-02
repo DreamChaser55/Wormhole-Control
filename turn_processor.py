@@ -211,7 +211,8 @@ class TurnProcessor:
         Rejected payment records a private problem and leaves navigation unchanged.
         """
         storage = unit.antimatter_component
-        if sublight and unit.hull_size == HullSize.STRIKECRAFT_WING and storage is None:
+        from movement_costs import fuel_free_sublight
+        if sublight and fuel_free_sublight(unit):
             return True
         if cost <= 0:
             return True

@@ -40,7 +40,7 @@ class TestInGameErrorDialogs(unittest.TestCase):
         )
         unit.add_component(Commander(unit))
         self.game.order_system.handle_issue_move_order(
-            IssueMoveOrderEvent([unit], "Sol", HexCoord(0, 0), Position(100, 100), False)
+            IssueMoveOrderEvent([unit], "Sol", HexCoord(0, 0), Position(3500, 0), False)
         )
         self.assertGreater(len(self.gui.active_dialogs), 0)
         dlg = self.gui.active_dialogs[-1]
@@ -57,10 +57,10 @@ class TestInGameErrorDialogs(unittest.TestCase):
         unit.add_component(engines)
 
         self.game.order_system.handle_issue_move_order(
-            IssueMoveOrderEvent([unit], "Sol", HexCoord(0, 0), Position(100, 100), False)
+            IssueMoveOrderEvent([unit], "Sol", HexCoord(0, 0), Position(3500, 0), False)
         )
         self.game.order_system.handle_issue_patrol_order(
-            IssuePatrolOrderEvent([unit], "Sol", HexCoord(0, 0), Position(100, 100), False)
+            IssuePatrolOrderEvent([unit], "Sol", HexCoord(0, 0), Position(3500, 0), False)
         )
 
         self.assertEqual(unit.commander_component.get_active_orders_count(), 0)
@@ -180,7 +180,7 @@ class TestInGameErrorDialogs(unittest.TestCase):
         move_order = MoveOrder(unit, {
             "destination_system_name": "Alpha Centauri",
             "destination_hex_coord": HexCoord(0, 0),
-            "destination_position": Position(0, 0)
+            "destination_position": Position(3500, 0)
         })
         move_order.execute(self.game.galaxy)
         self.assertGreater(len(self.gui.active_dialogs), 0)
@@ -262,7 +262,7 @@ class TestInGameErrorDialogs(unittest.TestCase):
         unit.add_component(Engines(unit, speed=100))
 
         self.game.order_system.handle_issue_move_order(
-            IssueMoveOrderEvent([unit], "Sol", HexCoord(1, 0), Position(0, 0), False)
+            IssueMoveOrderEvent([unit], "Sol", HexCoord(1, 0), Position(3500, 0), False)
         )
         # Order should be blocked
         self.assertEqual(unit.commander_component.get_active_orders_count(), 0)

@@ -40,6 +40,20 @@ def ability_target_kind(value):
     return definition.target_kind
 
 
+def navigation_location(system_name, hex_coord, position, galaxy, *, bodies=None):
+    """Validate a travel endpoint; callers may restrict bodies to disclosed geometry."""
+    from constants import SECTOR_CIRCLE_RADIUS_LOGICAL
+    from geometry import Circle, validate_destination_clearance
+    site = location(system_name, hex_coord, position, galaxy)
+    if bodies is None:
+        bodies = galaxy.systems[site[0]].hexes[site[1]].celestial_bodies
+    obstacles = [Circle(body.position, body.collision_radius) for body in bodies
+                 if getattr(body, 'collision_radius', 0) > 0]
+    validate_destination_clearance(site[2], obstacles,
+                                   boundary=Circle(Position(0, 0), SECTOR_CIRCLE_RADIUS_LOGICAL))
+    return site
+
+
 def order_locations(kind, parameters, galaxy=None):
     """Return copied parameters with validated fixed destinations, including routes."""
     if not isinstance(parameters, Mapping):

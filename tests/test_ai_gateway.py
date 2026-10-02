@@ -10,7 +10,7 @@ from game_ai.adapters.base import (
 )
 from game_ai.commands import CommandGateway
 from game_ai.contracts import Command, CommandBatch
-from game_ai.observation import build_observation
+from game_ai.observation import OBSERVATION_SCHEMA_VERSION, build_observation
 from tests.support.ai import _Player, _unit
 
 
@@ -544,7 +544,7 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
         with patch("visibility.VisibilityService.compute", return_value=snapshot):
             observation = build_observation(game, player)
         unit_view = observation["units"][0]
-        self.assertEqual(observation["schema_version"], 29)
+        self.assertEqual(observation["schema_version"], OBSERVATION_SCHEMA_VERSION)
         self.assertNotIn("celestial_bodies", observation)
         self.assertIn("colonize", unit_view["supported_commands"])
         self.assertNotIn("colonize", unit_view["legal_commands"])

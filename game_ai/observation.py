@@ -30,7 +30,7 @@ from component_visibility import public_components
 from order_history import history_view
 from turn_briefing import summary_view
 
-OBSERVATION_SCHEMA_VERSION = 29
+OBSERVATION_SCHEMA_VERSION = 30
 COMMAND_HELP = {name: spec.description for name, spec in COMMAND_SPECS.items()}
 
 
@@ -779,6 +779,8 @@ def _position(position: Any) -> list[float]:
 def _enum_value(value: Any) -> str | None:
     if value is None:
         return None
+    if isinstance(value, HullSize):
+        return value.name
     raw = getattr(value, "value", value)
     return str(raw)
 

@@ -181,7 +181,7 @@ Requires the active player to be controlled by Codex. It returns a new opaque tu
 ```
 
 ```json
-{"data":{"turn_token":"opaque-value","observation":{"schema_version":29}}}
+{"data":{"turn_token":"opaque-value","observation":{"schema_version":30}}}
 ```
 
 Treat the observation as the only permitted source of game facts. Never infer hidden targets from saves, source files, logs, rendered pixels, or previous campaigns. IDs and available options in an old observation may be stale.
@@ -200,7 +200,7 @@ the turn, so several calls may build the turn incrementally.
   "request_id": "turn-1-orders-a",
   "turn_token": "opaque-value",
   "commands": [
-    {"type":"move","unit_ids":[17],"system_name":"Sol","hex_coord":[1,0],"position":[0,0]},
+    {"type":"move","unit_ids":[17],"system_name":"Sol","hex_coord":[1,0],"position":[3500,0]},
     {"type":"set_stance","unit_ids":[17],"stance":"attack_weapon_range"}
   ]
 }
@@ -213,6 +213,12 @@ and preflight rejection retain the token. A commit failure invalidates it and
 returns `turn_token: null`; a successful fresh observation is required before
 another command or socket end-turn. See [recovery distinctions](#recovery-distinctions)
 for request-ID handling after transport uncertainty.
+
+Choose travel coordinates from disclosed geometry. Move, positional Defend and
+Patrol must stay within radius 5000 and outside solid bodies plus 50 units of
+clearance. Ordinary Move cannot land inside a solid body. Known impossible
+destinations reject before replacing paid or queued work. Observe after issuance:
+unknown obstacles or other execution conditions can still cause synchronous failure.
 
 ### `end_turn`
 
@@ -401,6 +407,59 @@ Example command objects (wrap in a `command` request with a fresh request ID and
 Use the [shared patrol and cancellation rules](AGENTIC_AI.md#shared-order-contract)
 when choosing between appending waypoints and queueing a new root. If an edit
 returns `order_unavailable`, observe current roots rather than guessing identities.
+
+### Controller lifecycle example
+
+This sketch assumes `rpc(request)` returns a decoded response and implements
+transport retries using the identical request ID and payload. Keep the event
+cursor per campaign, and reset it when switching campaigns. Use only currently
+observed IDs and options; the numeric coordinates above are examples.
+
+```python
+from uuid import uuid4
+
+event_cursor = 0
+
+def observe():
+    global event_cursor
+    data = rpc({'protocol_version': 4, 'action': 'observe', 'request_id': str(uuid4())})['data']
+    history = data['observation']['order_history']
+    if (history['oldest_event_id'] or 1) > event_cursor + 1:
+        print('Older outcomes were omitted; reconcile current orders.')
+    for event in history['events']:
+        if event['event_id'] > event_cursor:
+            print(event['order_id'], event['outcome'], event['reason'])
+    event_cursor = history['latest_event_id']
+    return data
+
+def issue_then_observe(state, commands):
+    result = rpc({'protocol_version': 4, 'action': 'command', 'request_id': str(uuid4()),
+                  'turn_token': state['turn_token'], 'commands': commands})
+    if not result['ok']:
+        print(result['error'])
+    return observe()  # Includes orders that failed/completed during issuance.
+
+def preserve_travel(unit):
+    root = unit['current_order'] or {}
+    journey = root.get('progress', {}).get('journey')
+    return root.get('status') == 'in_progress' and journey and not journey['waiting_reason']
+
+def launch_then_configure(state, carrier, craft_id):
+    state = issue_then_observe(state, [
+        {'type': 'deploy_unit', 'unit_ids': [carrier['id']], 'target_id': craft_id}])
+    craft = next((u for u in state['observation']['units'] if u['id'] == craft_id), None)
+    if craft and 'set_stance' in craft['legal_commands']:
+        stance = craft['command_options']['set_stance']['values'][0]
+        state = issue_then_observe(state, [
+            {'type': 'set_stance', 'unit_ids': [craft_id], 'stance': stance}])
+    return state
+```
+
+Preserve useful advancing journeys when planning new work; a long estimate alone
+does not justify replacing a mission. Select launch IDs from the carrier's
+`command_options.deploy_unit.target_ids`. Deployment options advertise
+`requires_observation_after`: newly launched actors become commandable only in
+a later batch after deployment is observed. Blocked craft can remain docked.
 
 ## Recovery distinctions
 

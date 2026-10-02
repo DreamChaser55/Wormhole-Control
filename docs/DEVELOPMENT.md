@@ -87,10 +87,10 @@ changing the others. The table is generated from their runtime constants.
 | Contract | Current version / identifier | Source |
 | --- | --- | --- |
 | Campaign save | 4.21 | [CURRENT_SAVE_VERSION](../save_manager.py) |
-| Observation | 29 | [OBSERVATION_SCHEMA_VERSION](../game_ai/observation.py) |
-| Command contract | 23 | [CONTRACT_VERSION](../game_ai/command_spec.py) |
+| Observation | 30 | [OBSERVATION_SCHEMA_VERSION](../game_ai/observation.py) |
+| Command contract | 24 | [CONTRACT_VERSION](../game_ai/command_spec.py) |
 | Response schema | wormhole_control_turn_v15 | [TURN_PLAN_SCHEMA_NAME](../game_ai/schema.py) |
-| Prompt cache | wormhole-control-turn-v29 | [PROMPT_CACHE_KEY](../game_ai/adapters/openai_responses.py) |
+| Prompt cache | wormhole-control-turn-v30 | [PROMPT_CACHE_KEY](../game_ai/adapters/openai_responses.py) |
 | Local socket protocol | 4 | [PROTOCOL_VERSION](../game_control_protocol.py) |
 | Constructor component | 5 | [Constructor.SCHEMA_VERSION](../unit_components/constructor.py) |
 | Commander component | 2 | [Commander.SCHEMA_VERSION](../unit_components/commander.py) |
@@ -354,6 +354,15 @@ python -m pytest tests/test_reference_generation.py
 ```
 
 ### Shared celestial rules
+
+`location_validation.navigation_location` and
+`geometry.validate_destination_clearance` share endpoint rules between human
+controls, command preflight and order execution. Public preflight checks only
+disclosed solids; execution checks actual geometry. Navigation may escape an
+obstructed start but cannot land inside solids. Celestial Defend and intelligence
+missions use surface approaches, with intelligence range checks shared through
+`unit_targeting.intelligence_distance`. `movement_costs.fuel_free_sublight` owns
+the tankless-wing exception used by payment and journey previews.
 
 `StarSystem.spawn_celestial_bodies` in `galaxy.py` places the central star, draws
 independent radius-based planet and secondary-body budgets, places planets by

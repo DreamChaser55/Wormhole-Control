@@ -354,5 +354,8 @@ def test_clearance_band_escape_and_destination_rejection():
     assert_clear([*route, end], [obstacle])
     with pytest.raises(NoSafePathError):
         compute_avoidance_waypoints(end, start, [obstacle])
-    assert compute_avoidance_waypoints(Position(0, 0), end, [obstacle]) == []
-    assert compute_avoidance_waypoints(end, Position(0, 0), [obstacle]) == []
+    escape = compute_avoidance_waypoints(Position(0, 0), end, [obstacle])
+    assert escape and escape[0].x >= 150
+    assert_clear([*escape, end], [obstacle])
+    with pytest.raises(NoSafePathError):
+        compute_avoidance_waypoints(end, Position(0, 0), [obstacle])

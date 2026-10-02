@@ -6,6 +6,7 @@ from game_logging import format_unit_for_log
 from typing import Dict, Optional, Any, TYPE_CHECKING
 
 from geometry import Position, distance
+from constants import DEFAULT_STANDOFF_DISTANCE
 from .base import Order, OrderStatus, OrderType
 from .movement import MoveOrder
 from .combat import AttackOrder, discard_lost_attack_engagement
@@ -21,7 +22,7 @@ DEFAULT_DEFEND_GUARD_RADIUS = 1000.0
 
 class DefendOrder(Order):
     """Order instructing a unit to move to and defend a specific position, hex, or celestial body."""
-    target_fields = (OrderTargetField('target_unit_id', 'unit', public=True), OrderTargetField('target_id', 'unit', public=True),)
+    target_fields = (OrderTargetField('target_unit_id', 'unit', public=True), OrderTargetField('target_id', 'object', public=True),)
 
 
     def __init__(
@@ -85,6 +86,22 @@ class DefendOrder(Order):
 
         return dest_system, dest_hex, dest_pos
 
+    def _post_range(self, galaxy_ref):
+        target_id = self.parameters.get('target_id')
+        body = galaxy_ref.get_celestial_body_by_id(target_id) if target_id is not None else None
+        return body.collision_radius + DEFAULT_STANDOFF_DISTANCE if body is not None else 30.0
+
+    def _move_to_post(self, galaxy_ref, dest_system, dest_hex, dest_pos):
+        target_id = self.parameters.get('target_id')
+        body = galaxy_ref.get_celestial_body_by_id(target_id) if target_id is not None else None
+        if body is not None:
+            return MoveOrder.for_celestial_approach(self.unit, body, parent_order=self)
+        return MoveOrder(self.unit, {
+            'destination_system_name': dest_system,
+            'destination_hex_coord': dest_hex,
+            'destination_position': dest_pos,
+        }, parent_order=self)
+
     def execute(self, galaxy_ref: 'Galaxy') -> None:
         from location_validation import validate_order
         if not validate_order(self, galaxy_ref):
@@ -101,13 +118,8 @@ class DefendOrder(Order):
         in_same_hex = self.unit.in_hex == dest_hex
         dist = distance(self.unit.position, dest_pos) if in_same_system and in_same_hex else float('inf')
 
-        if not in_same_system or not in_same_hex or dist > 30.0:
-            move_params = {
-                "destination_system_name": dest_system,
-                "destination_hex_coord": dest_hex,
-                "destination_position": dest_pos,
-            }
-            self.add_sub_order(MoveOrder(self.unit, move_params, parent_order=self))
+        if not in_same_system or not in_same_hex or dist > self._post_range(galaxy_ref):
+            self.add_sub_order(self._move_to_post(galaxy_ref, dest_system, dest_hex, dest_pos))
 
     def _find_nearby_enemy(self, galaxy_ref: 'Galaxy', dest_system: str, dest_hex: tuple[int, int], dest_pos: Position) -> Optional['Unit']:
         weapons = self.unit.weapons_component
@@ -235,20 +247,16 @@ class DefendOrder(Order):
                     else float("inf")
                 )
 
-                if has_movement_order and in_same_system_and_hex and dist_to_target <= 30.0:
+                post_range = self._post_range(galaxy_ref)
+                if has_movement_order and in_same_system_and_hex and dist_to_target <= post_range:
                     logger.debug(f"[{format_unit_for_log(self.unit)}] Arrived at defended post. Holding position.")
                     if self.sub_orders:
                         self.sub_orders[0].cancel()
                         self.sub_orders.popleft()
                     has_movement_order = False
 
-                if not has_movement_order and (not in_same_system_and_hex or dist_to_target > 30.0):
-                    move_params = {
-                        "destination_system_name": dest_system,
-                        "destination_hex_coord": dest_hex,
-                        "destination_position": Position(dest_pos.x, dest_pos.y),
-                    }
-                    self.add_sub_order(MoveOrder(self.unit, move_params, parent_order=self))
+                if not has_movement_order and (not in_same_system_and_hex or dist_to_target > post_range):
+                    self.add_sub_order(self._move_to_post(galaxy_ref, dest_system, dest_hex, dest_pos))
 
         super().update(galaxy_ref)
 

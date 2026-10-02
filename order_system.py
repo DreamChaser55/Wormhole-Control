@@ -141,17 +141,18 @@ class OrderSystem:
                 logger.debug(f"  Unit {format_unit_for_log(unit)} stopped and stance reset via event.")
         self.game.sidebar_needs_update = True
 
-    def _event_location(self, system_name, hex_coord, position):
-        from location_validation import location
+    def _event_location(self, system_name, hex_coord, position, *, navigation=False):
+        from location_validation import location, navigation_location
         try:
-            return location(system_name, hex_coord, position, self.game.galaxy)
+            validator = navigation_location if navigation else location
+            return validator(system_name, hex_coord, position, self.game.galaxy)
         except ValueError as exc:
             if getattr(self.game, 'gui', None):
                 self.game.gui.show_warning_dialog(str(exc), title="Invalid destination")
             return None
 
     def handle_issue_move_order(self, event: IssueMoveOrderEvent):
-        site = self._event_location(event.system_name, event.sector_coord, event.destination)
+        site = self._event_location(event.system_name, event.sector_coord, event.destination, navigation=True)
         if site is None:
             return
         event.system_name, event.sector_coord, event.destination = site
@@ -199,7 +200,7 @@ class OrderSystem:
         self.game.sidebar_needs_update = True
 
     def handle_issue_patrol_order(self, event: IssuePatrolOrderEvent):
-        site = self._event_location(event.system_name, event.sector_coord, event.destination)
+        site = self._event_location(event.system_name, event.sector_coord, event.destination, navigation=True)
         if site is None:
             return
         event.system_name, event.sector_coord, event.destination = site
@@ -266,6 +267,9 @@ class OrderSystem:
                     "destination_hex_coord": event.target_hex,
                     "destination_position": random_point_in_sector()
                 }
+                if self._event_location(event.system_name, event.target_hex,
+                                        move_params['destination_position'], navigation=True) is None:
+                    continue
                 if not self.validate_antimatter_for_unit(unit, event.system_name, event.target_hex, move_params["destination_position"]):
                     continue
                 move_order = MoveOrder(unit, move_params)
@@ -299,6 +303,9 @@ class OrderSystem:
                         "destination_hex_coord": exit_wormhole.in_hex,
                         "destination_position": exit_wormhole.position 
                     }
+                    if self._event_location(exit_system_name, exit_wormhole.in_hex,
+                                            exit_wormhole.position, navigation=True) is None:
+                        continue
                     if not self.validate_antimatter_for_unit(unit, exit_system_name, exit_wormhole.in_hex, exit_wormhole.position):
                         continue
                     move_order = MoveOrder(unit, move_params)

@@ -545,7 +545,7 @@ class _BatchProjection:
         return agent, host
 
     def project_relocation(self, agent_id: int, target: Any) -> tuple[Any, Any]:
-        from geometry import distance
+        from unit_targeting import intelligence_distance
         from unit_orders.intelligence import INTELLIGENCE_OPERATIONAL_RANGE
 
         agent, host = self.owned_agent(agent_id)
@@ -556,7 +556,7 @@ class _BatchProjection:
         if (
             getattr(host, "in_system", None) != getattr(target, "in_system", None)
             or getattr(host, "in_hex", None) != getattr(target, "in_hex", None)
-            or distance(host.position, target.position) > INTELLIGENCE_OPERATIONAL_RANGE
+            or intelligence_distance(host, target) > INTELLIGENCE_OPERATIONAL_RANGE
         ):
             raise _Rejected("target_unavailable", "The target is unavailable.")
         self._agent_hosts[agent_id] = target
@@ -1942,18 +1942,29 @@ class CommandGateway:
                             else 'The target is unavailable for this colony action.')
 
     def _waypoints(self, raw):
-        from geometry import Position
         result = []
         for waypoint in raw:
-            system = self.game.galaxy.systems.get(waypoint["system_name"])
-            coord = tuple(waypoint["hex_coord"])
-            if system is None or coord not in system.hexes:
-                raise _Rejected("invalid_destination", "The destination hex does not exist.")
-            result.append({"system_name": waypoint["system_name"], "hex_coord": coord, "position": Position(*waypoint["position"])})
+            system, coord, position = self._navigation_location(
+                waypoint["system_name"], waypoint["hex_coord"], waypoint["position"])
+            result.append({"system_name": system, "hex_coord": coord, "position": position})
         return result
+
+    def _navigation_location(self, system_name, hex_coord, position):
+        from location_validation import location, navigation_location
+        from .rules import body_is_public
+        try:
+            site = location(system_name, hex_coord, position, self.game.galaxy)
+            bodies = [body for body in self.game.galaxy.systems[site[0]].hexes[site[1]].celestial_bodies
+                      if getattr(body, 'collision_radius', 0) > 0
+                      and body_is_public(self.game, self._viewer, body, self._selected_units)]
+            return navigation_location(*site, self.game.galaxy, bodies=bodies)
+        except ValueError as exc:
+            raise _Rejected("invalid_destination", str(exc)) from exc
 
     def _destination(self, command: Any):
         from location_validation import location
+        if command.type in {'move', 'patrol', 'defend'}:
+            return self._navigation_location(command.system_name, command.hex_coord, command.position)[2]
         try:
             return location(command.system_name, command.hex_coord, command.position, self.game.galaxy)[2]
         except ValueError as exc:
@@ -2151,7 +2162,7 @@ class CommandGateway:
             if getattr(docked_unit, "hull_size", None) == HullSize.STRIKECRAFT_WING:
                 from strikecraft_abilities import round_now
                 if docked_unit.strikecraft_wing_component and docked_unit.strikecraft_wing_component.recovery_ready_round > round_now(self.game.galaxy):
-                    raise _Rejected('capability_unavailable', 'Recovered wing cannot relaunch until next owner turn.')
+                    raise _Rejected('wing_service_required', 'Recovered wing cannot relaunch until next owner turn.')
                 if is_position_in_magnetic_storm(self.game.galaxy, unit.in_system, unit.in_hex, unit.position):
                     raise _Rejected(
                         "hazard_blocked", "Cannot launch strikecraft wings in a magnetic storm."
@@ -2165,7 +2176,7 @@ class CommandGateway:
                 )
             from strikecraft_abilities import round_now
             if bay.docked_units and all(w.strikecraft_wing_component and w.strikecraft_wing_component.recovery_ready_round > round_now(self.game.galaxy) for w in bay.docked_units):
-                raise _Rejected('capability_unavailable', 'Recovered wings cannot relaunch until next owner turn.')
+                raise _Rejected('wing_service_required', 'Recovered wings cannot relaunch until next owner turn.')
             from domain.celestials import is_position_in_magnetic_storm
             if is_position_in_magnetic_storm(self.game.galaxy, unit.in_system, unit.in_hex, unit.position):
                 raise _Rejected(

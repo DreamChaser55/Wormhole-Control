@@ -6,7 +6,7 @@ from copy import deepcopy
 import math
 from construction_customization import TURRET_TYPES, DEFENSE_TYPES, validate_override_values
 
-CONTRACT_VERSION = 23
+CONTRACT_VERSION = 24
 MAX_COMMANDS = 40
 MAX_UNITS = 12
 MAX_WAYPOINTS = 16
@@ -46,11 +46,11 @@ COMMAND_SPECS = {
     "clear_explicit_orders": _spec("Cancel explicit work, preserving the stance; it resumes when idle.", queued=False),
     "cancel_order": _spec("Cancel one current or queued explicit root, promoting the next order.", ("order_id",), queued=False, single_unit=True),
     "append_patrol_waypoints": _spec("Append waypoints to an existing explicit patrol without interrupting its leg.", ("order_id", "waypoints"), queued=False, single_unit=True),
-    "move": _spec("Move to a destination. Explicit movement suspends stance combat.", DESTINATION, capability=("engines_component",)),
-    "patrol": _spec("Loop through waypoints then return to the starting position. Queuing creates a separate loop.", (*DESTINATION, "waypoints"), (), capability=("engines_component",)),
+    "move": _spec("Move to a destination within sector radius 5000 and at least 50 units clear of solid bodies. Ordinary Move cannot land inside a body; use dedicated colony or gas-giant commands. Known impossible endpoints reject before replacing work. Explicit movement suspends stance combat. Observe after issuance for current status and terminal history.", DESTINATION, capability=("engines_component",)),
+    "patrol": _spec("Loop through waypoints within sector radius 5000 and at least 50 units clear of solid bodies, then return to the starting position. Queuing creates a separate loop.", (*DESTINATION, "waypoints"), (), capability=("engines_component",)),
     "attack": _spec("Approach until all eligible turrets are in range and attack a visible enemy, optionally selecting a publicly visible subsystem. Subsystem targeting halves each turret's hull range for approach and firing; each turret holds fire until strictly inside its subsystem range, without firing at the hull instead.", ("target_id", "target_component"), ("target_id",), capability=("weapons_component",)),
     "attack_long_range": _spec("Requires a Long Range turret eligible for the target. Approach until all eligible Long Range turrets are in range; all eligible turrets may fire if in range. Does not retreat. Optionally select a publicly visible subsystem. Subsystem targeting halves each turret's hull range for approach and firing; each turret holds fire until strictly inside its subsystem range, without firing at the hull instead.", ("target_id", "target_component"), ("target_id",), capability=("weapons_component",)),
-    "defend": _spec("Hold a destination or target location, engaging intruders within the guard radius.", (*DESTINATION, "target_id"), (), capability=("engines_component", "weapons_component")),
+    "defend": _spec("Hold a destination or target location, engaging intruders within the guard radius. Positional destinations must stay within sector radius 5000 and at least 50 units clear of solids; body targets use a surface approach.", (*DESTINATION, "target_id"), (), capability=("engines_component", "weapons_component")),
     "protect": _spec("Escort a friendly unit and engage nearby enemies.", ("target_id",), capability=("engines_component",)),
     "colonize": _spec("Colonize a colonizable body with unknown or disclosed unowned status; queue behind a required colonist load. Known occupied bodies are ineligible. Effects wait for current contact and confirmed unowned status.", ("target_id",), capability=("colony_component",)),
     "load_colonists": _spec("Load a positive amount of colonists from a self-owned colony. Current or last-known ownership permits approach; effects wait for current contact.", ("target_id", "amount"), capability=("colony_component",)),
@@ -62,8 +62,8 @@ COMMAND_SPECS = {
     "unload_resources": _spec("Unload cargo at a friendly refinery.", ("target_id",), capability=("mining_component",)),
     "dock_in_hangar": _spec("Dock a tiny ship in a friendly hangar.", ("target_id",)),
     "dock_in_strikecraft_bay": _spec("Dock a wing in a friendly strikecraft bay.", ("target_id",)),
-    "deploy_unit": _spec("Deploy the identified docked craft.", ("target_id",)),
-    "deploy_all_wings": _spec("Deploy all docked wings.", capability=("strikecraft_bay_component",)),
+    "deploy_unit": _spec("Deploy the identified docked craft. Observe deployment before commanding newly launched actors in a separate batch; launch placement can fail. Servicing wings cannot relaunch until next owner turn.", ("target_id",)),
+    "deploy_all_wings": _spec("Deploy all ready docked wings. Observe which wings launched before commanding them in a separate batch; blocked wings remain docked. Servicing wings cannot relaunch until next owner turn.", capability=("strikecraft_bay_component",)),
     "transfer_antimatter": _spec("Transfer antimatter to a friendly unit.", ("target_id",), capability=("antimatter_component",)),
     "take_antimatter": _spec("Approach a friendly source and take antimatter without changing its orders.", ("target_id",), capability=("antimatter_component",)),
     "continuous_antimatter_transport": _spec("Load at source_id (unit). Deliver to target_id (owned/allied unit), or omit/null target_id to automatically supply nearest reachable owned units galaxy-wide, visiting multiple recipients per load with return fuel reserved. No demand waits; manual destination loss fails.", ("source_id", "target_id"), ("source_id",), capability=("antimatter_component", "engines_component"), single_unit=True),
@@ -76,12 +76,12 @@ COMMAND_SPECS = {
     "toggle_cloaking": _spec("Immediately flip a functioning cloak.", queued=False, capability=("cloaking_component",)),
     "toggle_ability": _spec("Immediately enable or disable an equipped environmental resistance without changing orders. Enabling checks combined upkeep; payment occurs before owner-turn hazards.", ("ability",), queued=False, single_unit=True),
     "infiltrate_unit": _spec("Deploy an agent onto a visible enemy unit.", ("target_id",), capability=("intelligence_component",)),
-    "infiltrate_planet": _spec("Deploy an agent onto an exact enemy colony. Current or last-known ownership permits approach; effects wait for current contact.", ("target_id",), capability=("intelligence_component",)),
-    "extract_agent": _spec("Recover an owned embedded agent into this Intelligence ship.", ("agent_id",), capability=("intelligence_component",), single_unit=True),
-    "ci_sweep": _spec("Immediately spend credits and antimatter to discover enemy agents on nearby friendly assets.", queued=False, capability=("intelligence_component",)),
-    "eliminate_agent": _spec("Approach and eliminate a discovered enemy agent on a friendly asset.", ("agent_id",), capability=("intelligence_component",), single_unit=True),
+    "infiltrate_planet": _spec("Deploy an agent onto an exact enemy colony within 500 units of its surface, approaching without landing. Current or last-known ownership permits approach; effects wait for current contact.", ("target_id",), capability=("intelligence_component",)),
+    "extract_agent": _spec("Recover an owned embedded agent into this Intelligence ship. Colony-host range is measured from the surface.", ("agent_id",), capability=("intelligence_component",), single_unit=True),
+    "ci_sweep": _spec("Immediately spend credits and antimatter to discover enemy agents within 500 units on friendly assets. Colony-host range is measured from the surface.", queued=False, capability=("intelligence_component",)),
+    "eliminate_agent": _spec("Approach and eliminate a discovered enemy agent on a friendly asset. Colony-host range is measured from the surface.", ("agent_id",), capability=("intelligence_component",), single_unit=True),
     "sabotage": _spec("Immediately set an owned embedded agent's sabotage operation.", ("agent_id", "sabotage_type"), queued=False, player_level=True),
-    "relocate_agent": _spec("Immediately relocate an owned embedded agent to a visible in-range enemy host.", ("agent_id", "target_id"), queued=False, player_level=True),
+    "relocate_agent": _spec("Immediately relocate an owned embedded agent to a visible enemy host within 500 units between hosts' surfaces.", ("agent_id", "target_id"), queued=False, player_level=True),
     "cancel_ability": _spec("Cancel an active link, Aegis Field, Siege Lance charge, Deep Scan or Carrier Supremacy without refund or cooldown reset.", ("ability",), queued=False, single_unit=True),
     "use_ability": _spec("Use an ability; target requirements are provided in ability options.", ("ability", "target_id", *DESTINATION), ("ability",), capability=("ability_component",)),
     "enter_gas_giant": _spec("Hide eligible ships in a gas giant atmosphere.", ("target_id",), capability=("engines_component",)),

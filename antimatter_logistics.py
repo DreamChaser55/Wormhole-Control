@@ -125,6 +125,7 @@ def estimate_approach(unit, galaxy, target, origin=None, *, approach_range=ANTIM
     from unit_components.enums import HyperdriveType
     from celestial_descriptions import describe_body
     from constants import HullSize, SECTOR_CIRCLE_RADIUS_LOGICAL
+    from movement_costs import fuel_free_sublight
 
     system, coord, point = origin or (unit.in_system, unit.in_hex, unit.position)
     fuel, turns = 0.0, 0
@@ -177,7 +178,7 @@ def estimate_approach(unit, galaxy, target, origin=None, *, approach_range=ANTIM
                         )
             duration = math.ceil(distance(point, end) / (speed * drag))
             fuel += duration * (
-                get_sublight_antimatter_cost_per_turn(unit.hull_size, speed) + upkeep
+                (0.0 if fuel_free_sublight(unit) else get_sublight_antimatter_cost_per_turn(unit.hull_size, speed)) + upkeep
             )
             turns += duration
             point = end

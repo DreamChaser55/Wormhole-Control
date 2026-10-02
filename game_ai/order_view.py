@@ -26,7 +26,10 @@ def journey_progress(unit, order, known_targets, known_body_ids=None):
     for _ in range(7):
         reference = node.primary_target_reference()
         if reference is not None:
-            allowed = (known_body_ids if reference[0] == 'celestial' else known_targets) if known_body_ids is not None else known_targets
+            allowed = known_targets
+            if known_body_ids is not None:
+                allowed = (known_body_ids if reference[0] == 'celestial' else known_targets
+                           if reference[0] == 'unit' else known_targets | known_body_ids)
             if reference[1] not in allowed:
                 return None
         nodes.append(node)
@@ -74,8 +77,9 @@ def journey_progress(unit, order, known_targets, known_body_ids=None):
     from custom_unit_templates import (get_sublight_antimatter_cost_per_turn,
                                       get_hyperdrive_hex_jump_cost, get_hyperdrive_system_jump_cost)
     from environmental_effects import sublight_speed, modifiers_for_unit
+    from movement_costs import fuel_free_sublight
     fuel_step = 0.0
-    if local and distance(unit.position, destination) > 5.0:
+    if local and distance(unit.position, destination) > 5.0 and not fuel_free_sublight(unit):
         fuel_step = get_sublight_antimatter_cost_per_turn(unit.hull_size, sublight_speed(unit)) * modifiers_for_unit(unit).fuel_multiplier
     elif not local and recharge <= 0:
         fuel_step = (get_hyperdrive_system_jump_cost(unit.hull_size) if unit.in_system != system_name

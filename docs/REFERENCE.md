@@ -53,6 +53,9 @@ bridge setup and the play loop.
 
 **Normal** gives each player a distinct home system, an owned homeworld, and four
 starter units: a Shipyard, Constructor, Colonizer, and Antimatter Harvester.
+The Shipyard, Constructor and Harvester start about 200 units inside the
+homeworld's inhibition boundary, shortening departure for them and newly built
+ships. The empty Colonizer starts near the homeworld to load population first.
 There must be at least as many generated systems as players. Specified homes must
 be unique, with enough unclaimed systems left for random assignments.
 
@@ -886,8 +889,9 @@ resupply does not automatically reactivate it.
 
 Positive-cost movement requires functioning Antimatter Storage and successful
 payment before displacement. Ordinary ships without storage cannot move for free;
-tankless strikecraft wings retain their fuel-free sublight flight. Sublight fuel
-is charged once per turn with positive displacement, including a shortened final
+tankless strikecraft wings retain their fuel-free sublight flight. Fuel previews
+and journey estimates apply this same wing exception. Sublight fuel is charged
+once per turn with positive displacement, including a shortened final
 step, using the normal speed and terrain modifiers. Fuel shortages leave sublight
 orders waiting. Failed jumps follow the normal order-failure behavior. Rejected
 relocation refunds its fuel payment and starts neither recharge nor wormhole
@@ -896,12 +900,18 @@ instability damage.
 Ships automatically route around solid bodies and fields that exclude their hull
 size. Navigation keeps 50 units of clearance and stays inside the sector. A route
 that cannot be completed fails with `path_unavailable`; it does not pass through
-an obstacle. Destinations in the clearance band just outside a solid surface are rejected.
+an obstacle. Ordinary Move, positional Defend and Patrol destinations must be
+outside every solid body and its 50-unit clearance band, within radius 5000.
+Known impossible destinations are rejected before replacing existing work.
+Execution rechecks actual geometry; previously unknown obstacles can still fail
+an issued order. An obstructed starting position can escape outward, but ordinary
+Move cannot land inside a solid body.
 
 Approach orders stop at their operational range. Protect maintains 150 units from
 the target; Attack, Dock, Repair, Refit, Construct, trade, transfers, intelligence and targeted
 abilities use their respective ranges. Colonization and loading colonists stop
 150 units beyond the body's surface, approaching automatically if necessary.
+Defend orders targeting a body hold outside its surface at the same distance.
 Microjump and carrier deployment also respect hull-blocking fields and storms.
 
 Carrier launches search up to 100 positions 20–50 units from the carrier. Every
@@ -1492,6 +1502,9 @@ reject allies.
 ### Agents and sabotage
 
 Intelligence ships deploy agents onto enemy units or colonies within 500 units.
+For colony hosts, intelligence ranges are measured from the body's surface;
+infiltration, extraction and elimination approach outside it. Relocation measures
+the gap between hosts' surfaces, and Counter-Intelligence uses the same colony rule.
 Orders in operational range execute immediately; otherwise the ship approaches.
 Agents can relocate between enemy hosts or be extracted into an owned Intelligence
 ship with free capacity. They share the host's sensor coverage with their owner

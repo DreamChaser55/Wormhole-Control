@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Iterable, Iterator
 
-from geometry import distance
+from unit_targeting import intelligence_distance
 from unit_components.enums import SabotageType
 from unit_orders.intelligence import INTELLIGENCE_OPERATIONAL_RANGE
 
@@ -120,7 +120,7 @@ def relocation_target_ids(
             continue
         if getattr(target, "in_hex", None) != getattr(host, "in_hex", None):
             continue
-        if distance(host.position, target.position) > INTELLIGENCE_OPERATIONAL_RANGE:
+        if intelligence_distance(host, target) > INTELLIGENCE_OPERATIONAL_RANGE:
             continue
         result.append(int(target.id))
     return sorted(set(result))

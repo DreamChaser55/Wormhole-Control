@@ -366,6 +366,9 @@ def colony_opening_gateway_case() -> GatewayEvaluationCase:
             players=[player], turn_number=4,
         )
         unit.game = game
+        # These fixture bodies replace generated terrain in their sectors.
+        for body in (source, target):
+            game.galaxy.systems['Sol'].hexes[body.in_hex].celestial_bodies.clear()
         game.galaxy.systems['Sol'].add_unit(unit)
         game.galaxy.systems['Sol'].add_celestial_body(source)
         game.galaxy.systems['Sol'].add_celestial_body(target)

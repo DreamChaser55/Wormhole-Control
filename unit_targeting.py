@@ -11,6 +11,13 @@ UTILITY_UNIT_COMMANDS = frozenset({"protect", "repair", "unload_resources", "tra
                                    "transfer_antimatter", "take_antimatter"})
 
 
+def intelligence_distance(first, second):
+    """Intelligence works from colony surfaces without requiring ships to land."""
+    from domain.celestials import CelestialBody
+    radii = sum(target.collision_radius for target in (first, second) if isinstance(target, CelestialBody))
+    return max(0.0, distance(first.position, second.position) - radii)
+
+
 def utility_approach_blocker(unit, target, galaxy, command_type):
     """Use the job's action range when checking a disclosed utility destination.
 
@@ -33,6 +40,8 @@ def utility_approach_blocker(unit, target, galaxy, command_type):
     elif command_type in {"infiltrate_unit", "infiltrate_planet"}:
         from unit_orders.intelligence import INTELLIGENCE_OPERATIONAL_RANGE
         reach = INTELLIGENCE_OPERATIONAL_RANGE
+        if command_type == 'infiltrate_planet':
+            reach += target.collision_radius
     elif command_type in {"transfer_antimatter", "take_antimatter"}:
         reach = ANTIMATTER_TRANSFER_RANGE
     elif command_type in {"colonize", "load_colonists", "enter_gas_giant"}:

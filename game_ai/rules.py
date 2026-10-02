@@ -552,10 +552,12 @@ def command_guidance(
                     continue
                 docked.append(du)
         target_ids = sorted({docked_unit.id for docked_unit in docked})
-        options["deploy_unit"] = {"target_ids": target_ids}
+        options["deploy_unit"] = {"target_ids": target_ids, "requires_observation_after": True,
+                                  "sequencing_note": "Observe successful deployment before issuing commands to newly launched actors in a separate batch."}
         if target_ids:
             legal.add("deploy_unit")
     if "deploy_all_wings" in supported:
+        options["deploy_all_wings"] = {"requires_observation_after": True}
         from domain.celestials import is_position_in_magnetic_storm
         galaxy_ref = getattr(getattr(unit, "game", None), "galaxy", None)
         in_mag_storm = is_position_in_magnetic_storm(galaxy_ref, unit.in_system, unit.in_hex, unit.position)

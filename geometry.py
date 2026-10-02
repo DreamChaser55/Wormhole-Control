@@ -196,6 +196,16 @@ class NoSafePathError(ValueError):
     """A bounded search could not produce a verified collision-free route."""
 
 
+def validate_destination_clearance(end, obstacles, margin=NAVIGATION_CLEARANCE, boundary=None):
+    """Reject obstructed destinations using the same limits as route planning."""
+    if margin < 0:
+        raise ValueError("Navigation clearance must be non-negative")
+    if boundary is not None and distance(end, boundary.center) > boundary.radius + GEOMETRY_TOLERANCE:
+        raise NoSafePathError("Destination is outside the sector")
+    if any(distance(end, obs.center) < obs.radius + margin - GEOMETRY_TOLERANCE for obs in obstacles):
+        raise NoSafePathError("Destination is inside an obstacle or its clearance band")
+
+
 def segment_clearance(start: Position, end: Position, center: Position) -> float:
     """Minimum center distance anywhere along a segment, including endpoints."""
     delta = end - start
@@ -216,14 +226,12 @@ def compute_avoidance_waypoints(
 ) -> typing.List[Position]:
     """Return verified intermediate waypoints, or raise NoSafePathError.
 
-    Tangency to the expanded obstacles is legal. Only original endpoints inside
-    physical bodies receive the legacy landing/departure exception. A start in
-    the clearance band may escape outward; a destination in that band is invalid.
+    Tangency to the expanded obstacles is legal. An obstructed start may escape
+    outward, but every destination must clear the obstacle and its clearance band.
     The optional circular boundary contains the entire route, including endpoints.
     """
     eps = GEOMETRY_TOLERANCE
-    if margin < 0:
-        raise ValueError("Navigation clearance must be non-negative")
+    validate_destination_clearance(end, obstacles, margin, boundary)
     expanded = [Circle(obs.center, obs.radius + margin) for obs in obstacles]
 
     def in_bounds(p):
@@ -232,33 +240,25 @@ def compute_avoidance_waypoints(
     if not in_bounds(start) or not in_bounds(end):
         raise NoSafePathError("Route endpoint is outside the sector")
 
-    def endpoint_exception(a, b, original):
-        return ((a == start and distance(start, original.center) <= original.radius + eps)
-                or (b == end and distance(end, original.center) <= original.radius + eps))
-
-    for original, expanded_obstacle in zip(obstacles, expanded):
-        d = distance(end, original.center)
-        if original.radius + eps < d < expanded_obstacle.radius - eps:
-            raise NoSafePathError("Destination lies inside an obstacle clearance band")
-
-    band = [obs for original, obs in zip(obstacles, expanded)
-            if original.radius + eps < distance(start, obs.center) < obs.radius - eps]
+    band = [obs for obs in expanded if distance(start, obs.center) < obs.radius - eps]
     escape = None
     if band:
         # One outward segment must clear all bands without moving deeper into any.
         for obs in band:
-            candidate = obs.center + (start - obs.center).normalize() * (obs.radius + eps * 4)
+            outward = start - obs.center
+            direction = outward.normalize() if outward.magnitude_sq() > eps ** 2 else Position(1, 0)
+            candidate = obs.center + direction * (obs.radius + eps * 4)
             delta = candidate - start
             if not in_bounds(candidate):
                 continue
             valid = True
-            for original, other in zip(obstacles, expanded):
+            for other in expanded:
                 if other in band:
                     offset = start - other.center
                     if (distance(candidate, other.center) < other.radius - eps
                             or offset.x * delta.x + offset.y * delta.y < -eps):
                         valid = False
-                elif not endpoint_exception(start, candidate, original):
+                else:
                     valid = valid and segment_clearance(start, candidate, other.center) >= other.radius - eps
             if valid:
                 escape = candidate
@@ -266,15 +266,15 @@ def compute_avoidance_waypoints(
         if escape is None:
             raise NoSafePathError("Cannot escape the obstacle clearance band")
 
-    def exempt(a, b, original, obs):
-        return endpoint_exception(a, b, original) or (a == start and b == escape and obs in band)
+    def exempt(a, b, obs):
+        return a == start and b == escape and obs in band
 
     def first_blocker(a, b):
         best, best_t = None, float('inf')
         delta = b - a
         length_sq = delta.magnitude_sq()
-        for original, obs in zip(obstacles, expanded):
-            if exempt(a, b, original, obs):
+        for obs in expanded:
+            if exempt(a, b, obs):
                 continue
             if segment_clearance(a, b, obs.center) >= obs.radius - eps:
                 continue
