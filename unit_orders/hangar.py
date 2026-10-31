@@ -87,13 +87,20 @@ class DockOrder(Order):
             self.add_sub_order(dock_sub_order)
             return
 
-        success = docking_component.dock(self.unit, galaxy_ref)
+        success = docking_component.dock(self.unit, galaxy_ref, on_docked=self.complete_docking)
         if success:
             self.status = OrderStatus.COMPLETED
             logger.debug(f"Unit {format_unit_for_log(self.unit)} successfully docked to {format_unit_for_log(target_carrier)}.")
         else:
             self.fail("target_unavailable")
             logger.debug(f"Docking of {format_unit_for_log(self.unit)} to {format_unit_for_log(target_carrier)} failed.")
+
+    def complete_docking(self):
+        """Settle the docking chain after success, before stored-unit cleanup."""
+        order = self
+        while isinstance(order, DockOrder):
+            order.status = OrderStatus.COMPLETED
+            order = order.parent_order
 
     def check_completion_conditions(self) -> None:
         if self.status != OrderStatus.IN_PROGRESS:

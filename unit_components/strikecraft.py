@@ -432,7 +432,7 @@ class StrikecraftBayComponent(UnitComponent):
             return unit in self.launched_units
         return bool(self.free_slot_indices())
 
-    def dock(self, unit: 'Unit', galaxy_ref: 'Galaxy') -> bool:
+    def dock(self, unit: 'Unit', galaxy_ref: 'Galaxy', *, on_docked=None) -> bool:
         if not self.can_dock(unit):
             return False
         
@@ -466,6 +466,8 @@ class StrikecraftBayComponent(UnitComponent):
         deactivate(unit)
         from wormhole_stabilization import interrupt
         interrupt(unit)
+        if on_docked is not None:
+            on_docked()
         if unit.commander_component:
             unit.commander_component.clear_explicit_orders()
             unit.commander_component.suspend_stance_activity("docked")

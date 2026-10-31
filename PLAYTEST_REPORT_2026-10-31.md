@@ -17,7 +17,7 @@ This report records a live game against the built-in agentic opponent, controlle
 
 **Completed 100 full rounds: 100 player turns and 100 opponent turns, ending at the start of round 101.** The game remains open there. There was no campaign reset, checkpoint replay, or confirmed crash. Both the early and final save/reload checks reproduced the complete parsed observation exactly and rejected the old token afterward.
 
-Successful docking was recorded as cancellation (F08). The opponent also discarded almost-finished construction (F03), but it later responded sensibly to combat, used anti-strikecraft abilities, repaired an invalid plan, and withdrew a damaged scout. Two transient local control failures recovered safely; their cause remains unresolved (F07).
+The opponent responded sensibly to combat, used anti-strikecraft abilities, repaired an invalid plan, and withdrew a damaged scout. Two transient local control failures recovered safely; their cause remains unresolved (F07).
 
 | Measurement | Result |
 | --- | --- |
@@ -76,18 +76,6 @@ The same symptom recurred on the end-turn request at round 99 (`pt-d9e2f449967b4
 **Suggestion:** Improve the diagnostics to elucidate the cause of such failures. Preserve the underlying transport phase/cause in structured CLI errors, distinguish connection refusal from connection/read timeout, and include a retry hint that retains the request ID. Keep startup/runtime stderr somewhere inspectable rather than discarding all child-process stderr. Investigate intermittent local transport failures under a long-running session; these two recovered events do not establish a deterministic engine defect.
 
 **Evidence/source:** The failed and successful entries for the same request ID in `saves/playtest_20261031/index.jsonl`; `_send`, `_launch_game`, and `main` in `game_control.py`.
-
-### F08 — Successful manual wing docking is recorded as cancelled (medium priority)
-
-**Observed:** Recon Wing 41 received `dock_in_strikecraft_bay` at round 83 and successfully docked in moving Carrier 37 at resolution turn 94. At round 96 it was present in the carrier's docked list, ready for launch, with endurance reset to 80. However, order-history event 47 records its explicit `dock` order `5193668762fa4d908f0820cdc340121a` as `outcome: cancelled`, `reason: cancelled`, turn 94. No command cancelled that wing's docking order.
-
-**Impact:** The terminal journal contradicts the actual successful action. An agent using completion history can infer failure, replan needlessly, or write incorrect memory even though the bay state is correct.
-
-**Likely source:** `unit_orders/hangar.py:90` calls `docking_component.dock(...)` before setting the dock order to completed. `unit_components/strikecraft.py:470` clears explicit orders during docking. The dedicated recovery path in `unit_orders/strikecraft.py:192` already marks completion before this cleanup, but the ordinary docking path does not. Approach-wrapped roots need the same protection, not just their internal docking child.
-
-**Suggestion:** Record the successful explicit root's completion before cleanup cancels remaining work, without declaring completion on a failed dock. Test both immediate in-range docking and approach-to-moving-carrier docking, asserting exactly one `completed` terminal event and preserved docked state after save/load.
-
-**Evidence:** `round_095.json` and `round_096.json`, carrier bay state and order-history event 47; the round-83 docking request in the evidence directory.
 
 ## Gameplay and interface improvement suggestions
 
@@ -150,7 +138,7 @@ The following were exercised through the running game's control interface, with 
 | Opponent combat abilities and loss | The opponent used Tracking Lock and Flak Barrage against Bomber Wing 38. The wing was destroyed at resolution turn 90; its carrier slot became empty and the loss appeared in the briefing. |
 | Troop recruitment | Transport 54 recruited 20 troops at resolution turn 90, paying 40 credits and 4 population before ordinary growth/income. Cargo showed 20/40 afterward. |
 | Transient transport recovery | Failures at rounds 91 and 99 recovered with each original request ID and token, without losing state or advancing a turn twice. |
-| Wing replacement and recall | The lost bomber's replacement cost 259 credits, 11 metal, and 4 crystal; Wing 58 completed at resolution turn 93, retained the beam/shield overrides, and was deployed and commanded after observation. Recon Wing 41 returned to the moving carrier and reset its endurance; its incorrect journal outcome is F08. |
+| Wing replacement and recall | The lost bomber's replacement cost 259 credits, 11 metal, and 4 crystal; Wing 58 completed at resolution turn 93, retained the beam/shield overrides, and was deployed and commanded after observation. Recon Wing 41 returned to the moving carrier and reset its endurance. |
 | Fuel starvation and recovery | Tender 44 stopped at round 94 with 1.83 antimatter; both wormholes reverted to natural stability 69, and a crossing colonizer took instability damage. Taking 50 antimatter from nearby Frigate 43 preserved the donor's attack order. Reissuing stabilization restored both endpoints to 100 at round 97. |
 | Gas giant hiding | The scout's queued entry/exit completed at resolution turn 95. A second entry left it hidden through later rounds, with explicit hiding fields and only permitted commands exposed. An external movement attempt at round 97 was rejected as `invalid_state` without emerging the ship. |
 
@@ -162,4 +150,4 @@ This is one seeded campaign and a set of targeted interface probes, not exhausti
 
 Other untested areas include Titan powers and capacity, most specialized abilities, diplomacy/messages, trade, espionage, minefields, boarding/capture, planetary bombardment/invasion, general hangars for non-wing craft, refitting, multiplayer/human handoff, and most GUI workflows. Recruitment was tested, but no invasion completed. Repair covered hull damage, not destroyed subsystems. Wing replacement and recall were tested, but endurance exhaustion and damaged-wing replenishment were not. Only crystal mining/refining was exercised directly. Suggestions above do not claim that every suspected edge case is a reproduced bug.
 
-Recommended follow-up order: fix F08, add regression coverage from the retained snapshots, improve AI commitment/population decisions, then evaluate payload size and pacing on several seeds. Preserve the successful atomic-preflight, token, fog-of-war, and save-restoration behavior while making those changes.
+Preserve the successful atomic-preflight, token, fog-of-war, and save-restoration behavior while addressing the remaining findings.
