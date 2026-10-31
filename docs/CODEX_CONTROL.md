@@ -29,9 +29,12 @@ Run commands from the repository root. `game_control.py` connects to an existing
 python .\game_control.py '{"action":"status"}'
 ```
 
-For requests that are inconvenient to quote, pipe one JSON object through stdin:
+For requests that are inconvenient to quote, pipe one UTF-8 JSON object through stdin.
+Set PowerShell's pipeline encoding before sending non-ASCII text (including in
+Windows PowerShell, whose default pipeline encoding is ASCII):
 
 ```powershell
+$OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 @'
 {
   "action": "new_game",
@@ -65,7 +68,13 @@ The CLI adds `protocol_version: 4` and a random `request_id` when omitted. Suppl
 - Version: every direct socket request must contain `"protocol_version": 4`.
 - Shutdown: exiting the GUI closes the listener and resolves pending requests with `server_stopping`.
 
-`game_control.py` writes exactly one compact JSON response to stdout. Launch and error diagnostics go to stderr. Its exit statuses are:
+`game_control.py` reads stdin as strict UTF-8 and writes exactly one compact UTF-8
+JSON response followed by a newline to stdout, preserving readable Unicode.
+This applies on every platform, including redirected Windows streams, independently
+of the locale and `PYTHONIOENCODING`. Callers must encode piped requests and decode
+responses as UTF-8. Malformed UTF-8 or invalid Unicode request text produces an
+`invalid_cli_input` response before connecting or launching the game.
+Launch and error diagnostics go to UTF-8 stderr. Its exit statuses are:
 
 | Exit | Meaning |
 |---:|---|

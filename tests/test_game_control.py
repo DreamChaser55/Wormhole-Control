@@ -2,7 +2,13 @@ from __future__ import annotations
 from game_actions.turn_presentation import ApplicationTurnPresentation
 import io
 import json
+import os
+from pathlib import Path
 import socket
+import socketserver
+import subprocess
+import sys
+from threading import Thread
 import time
 import unittest
 from concurrent.futures import Future
@@ -382,6 +388,133 @@ class ControlCliTests(unittest.TestCase):
         self.assertEqual(response["error"]["code"], "transport_error")
         self.assertIn("incompatible service", diagnostics)
         launch.assert_not_called()
+
+    @patch("game_control._send", side_effect=game_control.ClientError("Transport \u2013 \u0394 \ud800"))
+    def test_unencodable_diagnostics_preserve_the_json_error_response(self, _send):
+        with io.BytesIO() as output, io.BytesIO() as errors:
+            with io.TextIOWrapper(output, encoding="cp1252") as stdout:
+                with io.TextIOWrapper(errors, encoding="cp1252") as stderr:
+                    with patch.object(game_control.sys, "stdin", io.StringIO()):
+                        with redirect_stdout(stdout), redirect_stderr(stderr):
+                            code = game_control.main(['{"action":"status"}', "--no-launch"])
+                    stdout.flush()
+                    stderr.flush()
+                    response = json.loads(output.getvalue().decode("utf-8"))
+                    diagnostics = errors.getvalue().decode("utf-8")
+        self.assertEqual(code, 2)
+        self.assertEqual(response["error"]["code"], "transport_error")
+        self.assertEqual(response["error"]["message"], "Transport \u2013 \u0394 \ud800")
+        self.assertIn("Transport \u2013 \u0394 \\ud800", diagnostics)
+
+
+@pytest.fixture
+def cli_stub_server():
+    """Answer real CLI connections without launching a campaign or AI provider."""
+    class Handler(socketserver.StreamRequestHandler):
+        def handle(self):
+            self.connection.settimeout(5)
+            payload = json.loads(self.rfile.readline(MAX_REQUEST_BYTES + 1).decode("utf-8"))
+            self.server.requests.append(payload)
+            response = {
+                "service": "wormhole-control",
+                "protocol_version": PROTOCOL_VERSION,
+                "request_id": payload["request_id"],
+                "action": payload["action"],
+                "ok": self.server.ok,
+                "state": None,
+                "data": {"name": "PT Yard \u0394", "description": "Orders \u2013 move"},
+            }
+            if not self.server.ok:
+                response["error"] = {"code": "invalid_state", "message": "Unavailable \u2013 \u0394"}
+            raw = json.dumps(response, ensure_ascii=False).encode("utf-8") + b"\n"
+            self.wfile.write(raw)
+
+    with socketserver.TCPServer(("127.0.0.1", 0), Handler) as server:
+        server.requests = []
+        server.ok = True
+        thread = Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
+        thread.start()
+        try:
+            yield server
+        finally:
+            server.shutdown()
+            thread.join(timeout=5)
+
+
+def _run_redirected_cli(server, *arguments, stdin=b"", legacy_encoding="cp1252"):
+    root = Path(__file__).resolve().parents[1]
+    result = subprocess.run(
+        [sys.executable, str(root / "game_control.py"), "--no-launch",
+         "--port", str(server.server_address[1]), *arguments],
+        input=stdin,
+        capture_output=True,
+        env=dict(os.environ, PYTHONIOENCODING=legacy_encoding, PYTHONUTF8="0",
+                 PYGAME_HIDE_SUPPORT_PROMPT="1"),
+        timeout=20,
+    )
+    text = result.stdout.decode("utf-8")
+    diagnostics = result.stderr.decode("utf-8")
+    assert result.stdout.endswith(b"\n"), diagnostics
+    assert len(text.splitlines()) == 1, diagnostics
+    assert "Traceback" not in diagnostics
+    return result, json.loads(text), diagnostics
+
+
+@pytest.mark.parametrize("legacy_encoding", ["cp1252", "ascii"])
+@pytest.mark.parametrize("request_source", ["positional", "stdin_dash", "stdin_default"])
+@pytest.mark.parametrize("accepted", [True, False])
+def test_redirected_cli_preserves_utf8_requests_and_responses(
+    cli_stub_server, legacy_encoding, request_source, accepted,
+):
+    cli_stub_server.ok = accepted
+    request = _request(
+        "command", "rename-\u0394",
+        commands=[{"type": "rename_unit", "unit_ids": [1], "new_name": "PT Yard \u0394"}],
+    )
+    raw = json.dumps(request, ensure_ascii=False)
+    arguments = [raw] if request_source == "positional" else ["-"] if request_source == "stdin_dash" else []
+    result, response, diagnostics = _run_redirected_cli(
+        cli_stub_server, *arguments,
+        stdin=b"" if request_source == "positional" else raw.encode("utf-8"),
+        legacy_encoding=legacy_encoding,
+    )
+    assert result.returncode == (0 if accepted else 1)
+    assert response["ok"] is accepted
+    assert response["request_id"] == request["request_id"]
+    assert response["data"] == {"name": "PT Yard \u0394", "description": "Orders \u2013 move"}
+    assert "PT Yard \u0394".encode("utf-8") in result.stdout
+    assert "Orders \u2013 move".encode("utf-8") in result.stdout
+    assert cli_stub_server.requests == [request]
+    assert not diagnostics
+
+
+@pytest.mark.parametrize(("arguments", "stdin"), [
+    (["-"], b'{"action":"status","name":"\xff"}'),
+    (["-"], b'{"action":"status","name":"\\ud800"}'),
+    (['{"action":"status","name":"\\ud800"}'], b""),
+])
+def test_redirected_cli_rejects_invalid_unicode_before_connecting(cli_stub_server, arguments, stdin):
+    result, response, diagnostics = _run_redirected_cli(cli_stub_server, *arguments, stdin=stdin)
+    assert result.returncode == 2
+    assert response["error"]["code"] == "invalid_cli_input"
+    assert diagnostics
+    assert cli_stub_server.requests == []
+
+
+@pytest.mark.parametrize(("arguments", "error_code"), [
+    (["--unknown-\u0394"], "invalid_cli_arguments"),
+    (["--port", "0", '{"action":"status"}'], "invalid_port"),
+    (["not-json"], "invalid_cli_input"),
+])
+def test_redirected_cli_input_errors_keep_utf8_json_and_diagnostics(cli_stub_server, arguments, error_code):
+    result, response, diagnostics = _run_redirected_cli(cli_stub_server, *arguments)
+    assert result.returncode == 2
+    assert response["error"]["code"] == error_code
+    assert diagnostics
+    if error_code == "invalid_cli_arguments":
+        assert "\u0394".encode("utf-8") in result.stdout
+        assert "\u0394" in diagnostics
+    assert cli_stub_server.requests == []
 
 
 @pytest.mark.parametrize('host', ['localhost', '0.0.0.0', '::1', '192.0.2.1', None])

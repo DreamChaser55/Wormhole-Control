@@ -28,6 +28,23 @@ class ClientError(RuntimeError):
     pass
 
 
+def _configure_stdio() -> None:
+    """Use UTF-8 even for redirected Windows streams and legacy locales."""
+    for stream, errors in (
+        (sys.stdin, "strict"),
+        (sys.stdout, "backslashreplace"),
+        (sys.stderr, "backslashreplace"),
+    ):
+        # Injected text streams such as StringIO already carry Unicode directly.
+        reconfigure = getattr(stream, "reconfigure", None)
+        if callable(reconfigure):
+            reconfigure(encoding="utf-8", errors=errors)
+
+
+def _write_response(response: dict[str, Any]) -> None:
+    print(json.dumps(response, separators=(",", ":"), ensure_ascii=False))
+
+
 def _reject_non_json_constant(value: str) -> None:
     raise ValueError(f"{value} is not valid JSON.")
 
@@ -55,7 +72,10 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def _read_request(raw_argument: str | None) -> dict[str, Any]:
-    raw = sys.stdin.read() if raw_argument in (None, "-") else raw_argument
+    try:
+        raw = sys.stdin.read() if raw_argument in (None, "-") else raw_argument
+    except UnicodeDecodeError as exc:
+        raise ClientError("Request JSON must be UTF-8 encoded.") from exc
     if not raw.strip():
         raise ClientError("Request JSON is empty.")
     try:
@@ -68,7 +88,10 @@ def _read_request(raw_argument: str | None) -> dict[str, Any]:
         raise ClientError("Request JSON must be an object.")
     payload.setdefault("protocol_version", PROTOCOL_VERSION)
     payload.setdefault("request_id", uuid.uuid4().hex)
-    encoded = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    try:
+        encoded = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    except UnicodeEncodeError as exc:
+        raise ClientError("Request JSON must contain valid Unicode text.") from exc
     if len(encoded) > MAX_REQUEST_BYTES:
         raise ClientError("Request exceeds 1 MiB.")
     return payload
@@ -177,12 +200,13 @@ def _client_error_response(payload: dict[str, Any] | None, code: str, message: s
 
 
 def main(argv: list[str] | None = None) -> int:
+    _configure_stdio()
     payload: dict[str, Any] | None = None
     try:
         args = _parser().parse_args(argv)
     except ClientError as exc:
         response = _client_error_response(None, "invalid_cli_arguments", str(exc))
-        print(json.dumps(response, separators=(",", ":")))
+        _write_response(response)
         print(str(exc), file=sys.stderr)
         return 2
     try:
@@ -193,13 +217,13 @@ def main(argv: list[str] | None = None) -> int:
             raise ValueError
     except ValueError:
         response = _client_error_response(None, "invalid_port", "Port must be an integer from 1 to 65535.")
-        print(json.dumps(response, separators=(",", ":")))
+        _write_response(response)
         print("Invalid control port.", file=sys.stderr)
         return 2
     try:
         payload = _read_request(args.request_json)
     except ClientError as exc:
-        print(json.dumps(_client_error_response(payload, "invalid_cli_input", str(exc)), separators=(",", ":")))
+        _write_response(_client_error_response(payload, "invalid_cli_input", str(exc)))
         print(str(exc), file=sys.stderr)
         return 2
 
@@ -208,7 +232,7 @@ def main(argv: list[str] | None = None) -> int:
     except (ConnectionRefusedError, TimeoutError, socket.timeout):
         if args.no_launch:
             response = _client_error_response(payload, "connection_failed", "No Wormhole Control server is listening.")
-            print(json.dumps(response, separators=(",", ":"), ensure_ascii=False))
+            _write_response(response)
             print(response["error"]["message"], file=sys.stderr)
             return 2
         try:
@@ -218,16 +242,16 @@ def main(argv: list[str] | None = None) -> int:
             response = _send(payload, port)
         except (ClientError, OSError, socket.timeout) as exc:
             response = _client_error_response(payload, "launch_failed", str(exc))
-            print(json.dumps(response, separators=(",", ":"), ensure_ascii=False))
+            _write_response(response)
             print(str(exc), file=sys.stderr)
             return 2
     except (ClientError, OSError, socket.timeout) as exc:
         response = _client_error_response(payload, "transport_error", str(exc))
-        print(json.dumps(response, separators=(",", ":"), ensure_ascii=False))
+        _write_response(response)
         print(str(exc), file=sys.stderr)
         return 2
 
-    print(json.dumps(response, separators=(",", ":"), ensure_ascii=False))
+    _write_response(response)
     return 0 if response.get("ok") is True else 1
 
 
