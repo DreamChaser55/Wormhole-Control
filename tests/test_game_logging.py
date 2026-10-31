@@ -221,6 +221,34 @@ def test_file_open_failure_retains_owned_console_and_allows_retry(tmp_path, caps
     assert "file recovered" in path.read_text()
 
 
+@pytest.mark.parametrize('family', ['httpcore', 'httpcore2', 'httpx', 'httpx2'])
+def test_active_transport_header_traces_are_suppressed(family, capsys, tmp_path):
+    game_logging.setup_logging(log_to_file=True)
+    record = logging.LogRecord(family + '.http11', logging.DEBUG, __file__, 1,
+                               'receive_response_headers: %s',
+                               ([(b'openai-project', b'private-project')],), None)
+    logging.getLogger().handle(record)
+    assert 'private-project' not in capsys.readouterr().err
+    assert 'private-project' not in (tmp_path / 'game.log').read_text()
+
+
+@pytest.mark.parametrize('header', ['OpenAI-Organization', 'openai-project', 'x-request-id',
+                                     'x-ratelimit-remaining-tokens', 'Authorization', 'set-cookie'])
+def test_header_redaction_is_independent_of_package_and_level(header, capsys, tmp_path):
+    game_logging.setup_logging(log_to_file=True)
+    logger = logging.getLogger('wormhole_logging_test')
+    logger.warning('response headers: %s', [(header.encode(), b'private-value')])
+    try:
+        raise RuntimeError(f'{header}: private-exception-value')
+    except RuntimeError:
+        logger.exception('Transport failed')
+    logger.warning('ordinary diagnostic survives')
+    for output in (capsys.readouterr().err, (tmp_path / 'game.log').read_text()):
+        assert 'private-value' not in output and 'private-exception-value' not in output
+        assert output.count('[HTTP metadata redacted]') == 2
+        assert 'ordinary diagnostic survives' in output
+
+
 def test_flush_failure_still_closes_every_owned_handler(monkeypatch):
     game_logging.setup_logging(log_to_file=True)
     old_handlers = logging.getLogger().handlers[:]

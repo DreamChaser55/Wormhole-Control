@@ -43,16 +43,6 @@ Round numbers below refer to the observation at the start of the player's turn u
 
 ## Confirmed defects and actionable findings
 
-### F04 — Third-party logging filter misses the active `httpcore2` logger family (medium priority)
-
-**Observed:** `game.log` contains DEBUG HTTP response-header traces from `httpcore2.http11`, including account/project/request identifiers and rate metadata. The configured quiet list covers `httpcore` and `httpx2`, but not `httpcore2`. No API key or prompt-body leak was observed; this report deliberately omits the header values.
-
-**Impact:** Normal gameplay creates noisy diagnostic output and exposes more account metadata than expected when logs are shared for support.
-
-**Suggestion:** Include the active transport's logger hierarchy in the suppression policy and redact sensitive response metadata independently of package naming. Test representative `httpcore`, `httpcore2`, `httpx`, and `httpx2` records without real credentials.
-
-**Evidence/source:** `game_logging.py:7`; `httpcore2.http11` entries during this campaign in `game.log`.
-
 ### F05 — Wormhole approach is described as leaving an inhibition field (medium/low priority)
 
 **Observed:** At round 32, Carrier 37 was moving inward from approximately `[875.19, 0]` toward the entry wormhole center, but its journey reported `phase: egress`. The human label for that phase is “Leaving inhibition field.” The actual movement continued correctly in this case.

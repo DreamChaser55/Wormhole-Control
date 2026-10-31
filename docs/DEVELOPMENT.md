@@ -300,8 +300,11 @@ and quoted communications/developer feedback retain their existing formatting.
 Both file and console handlers receive the same formatted message.
 
 `setup_logging(log_to_file=True)` appends UTF-8 records to `game.log`, preserving
-earlier sessions and avoiding truncation beneath another writer. Application
-startup acquires `application_instance`'s per-user OS lease before configuring
+earlier sessions and avoiding truncation beneath another writer. Its handlers
+suppress verbose HTTP client records (including `httpcore2`) and redact
+records containing sensitive HTTP header metadata regardless of logger name or
+severity, including formatted exception details.
+Application startup acquires `application_instance`'s per-user OS lease before configuring
 logs or opening a window; `ControlService.start` also acquires it. Leases are
 reference-counted within one process, released on shutdown/bind failure, and
 released by the OS after a crash. Tests may inject a private `instance_path`.

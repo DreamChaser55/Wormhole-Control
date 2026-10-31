@@ -1,6 +1,8 @@
 """Application logging configuration for Wormhole Control."""
 from contextlib import ExitStack
+from copy import copy
 import logging
+import re
 
 
 THIRD_PARTY_LOGGERS = (
@@ -9,10 +11,19 @@ THIRD_PARTY_LOGGERS = (
     "httpx",
     "httpx2",
     "httpcore",
+    "httpcore2",
     "httpcore.connection",
     "httpcore.connection_pool",
     "httpcore.http11",
     "httpcore.proxy",
+)
+
+# Inspect rendered output as well as logger identity: transports can rename their
+# packages, and warning/error records can contain response headers or exceptions.
+_SENSITIVE_HTTP_METADATA = re.compile(
+    r"\b(?:authorization|(?:x-)?api-key|openai-(?:organization|project|processing-ms)|"
+    r"x-(?:request-id|client-request-id|ratelimit-[\w-]+)|set-cookie)\b",
+    re.IGNORECASE,
 )
 
 # Keep ownership independent of root attachment: callers may detach our handlers.
@@ -47,6 +58,17 @@ class GameLogFormatter(logging.Formatter):
     def __init__(self, fmt=None, datefmt=None, style='%'):
         super().__init__(fmt, datefmt, style)
         self.first_record = True
+
+    def format(self, record):
+        rendered = super().format(record)
+        if not _SENSITIVE_HTTP_METADATA.search(rendered):
+            return rendered
+        safe = copy(record)
+        safe.msg, safe.args = '[HTTP metadata redacted]', ()
+        safe.exc_info = safe.exc_text = safe.stack_info = None
+        # Preserve this record's already-formatted timestamp, including the date.
+        safe.message = safe.msg
+        return self.formatMessage(safe)
 
     def formatTime(self, record, datefmt=None):
         if self.first_record:
