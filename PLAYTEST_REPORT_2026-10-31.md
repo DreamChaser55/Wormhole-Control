@@ -43,18 +43,6 @@ Round numbers below refer to the observation at the start of the player's turn u
 
 ## Confirmed defects and actionable findings
 
-### F05 — Wormhole approach is described as leaving an inhibition field (medium/low priority)
-
-**Observed:** At round 32, Carrier 37 was moving inward from approximately `[875.19, 0]` toward the entry wormhole center, but its journey reported `phase: egress`. The human label for that phase is “Leaving inhibition field.” The actual movement continued correctly in this case.
-
-**Impact:** Both agents and users receive the opposite explanation of what the ship is doing.
-
-**Likely source:** `game_ai/order_view.py:59` classifies a local leg as egress whenever it is not in the final destination sector; `:69` reinforces that classification inside any known inhibition zone. `:129` supplies the human label.
-
-**Suggestion:** Distinguish entry-wormhole approach from departure escape and destination approach using the active leg's purpose. Validate phase labels against direction and waypoint semantics.
-
-**Evidence:** Carrier 37 in `round_032.json`.
-
 ### F07 — Two transient control failures; the error text does not identify the failure phase (unresolved, medium priority)
 
 **Observed:** At round 91, request `pt-91276a5376934dff9e7f6e1faec66a6f` returned CLI exit 2 and `connection_failed` after 6.169 seconds, with “No Wormhole Control server is listening.” A subsequent status request immediately found the same campaign, round, and token. It did not print the launch message. Retrying the original request with its original ID/token succeeded, and the game continued. No checkpoint replay was needed. No corresponding traceback appeared in `game.log`.

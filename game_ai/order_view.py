@@ -56,7 +56,7 @@ def journey_progress(unit, order, known_targets, known_body_ids=None):
     root_params = moves[0].parameters
     final_local = (unit.in_system == root_params.get('destination_system_name')
                    and unit.in_hex == root_params.get('destination_hex_coord'))
-    phase = 'approach' if final_local else 'egress'
+    phase = 'approach'
     if not local:
         phase = 'recharge' if recharge > 0 else 'jump'
     elif final_local and drive and enum_name(drive.jump_status) == 'charging':
@@ -64,9 +64,21 @@ def journey_progress(unit, order, known_targets, known_body_ids=None):
     sector = galaxy.systems[unit.in_system].hexes[unit.in_hex]
     from geometry import is_point_in_circle
     snapshot = VisibilityService.compute(galaxy, unit.owner, record_intel=False)
-    if local and not final_local and any(is_point_in_circle(unit.position, zone)
-            for zone in known_inhibition_zones(sector, unit.owner, snapshot)):
-        phase = 'egress'
+    if local:
+        # Inspect the next nonlocal leg, including when the active waypoint has
+        # its own avoidance children. A system crossing follows entry approach;
+        # a sector jump may require an outward escape first.
+        next_leg = next((sibling.parameters for parent in reversed(nodes[:-1])
+                         for sibling in list(parent.sub_orders)[1:]
+                         if sibling.parameters.get('destination_system_name') is not None
+                         and (sibling.parameters['destination_system_name'] != unit.in_system
+                              or sibling.parameters.get('destination_hex_coord') != unit.in_hex)), None)
+        if next_leg and next_leg['destination_system_name'] != unit.in_system:
+            phase = 'wormhole_approach'
+        elif next_leg and any(is_point_in_circle(unit.position, zone)
+                and not is_point_in_circle(destination, zone)
+                for zone in known_inhibition_zones(sector, unit.owner, snapshot)):
+            phase = 'egress'
     final = root_params.get('destination_position')
     estimate = None
     if final is not None:
@@ -126,7 +138,8 @@ def public_journey_progress(game, viewer, unit):
 
 def journey_summary_lines(journey):
     phase = journey['phase']
-    labels = {'egress': 'Leaving inhibition field', 'recharge': 'Waiting for drive recharge',
+    labels = {'egress': 'Leaving inhibition field', 'wormhole_approach': 'Approaching wormhole entrance',
+              'recharge': 'Waiting for drive recharge',
               'jump': 'Jumping to next sector', 'arrival': 'Approaching after arrival',
               'approach': 'Approaching destination', 'waiting_for_fuel': 'Waiting for antimatter',
               'blocked': 'Antimatter Storage unavailable'}

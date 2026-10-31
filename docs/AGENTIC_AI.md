@@ -298,7 +298,10 @@ distance, current route leg, remaining planned legs, drive status/recharge, and 
 conditional estimate capped at 10,000 owner turns. Estimated remaining antimatter,
 the next movement step's cost and a specific fuel/storage wait explain stalled
 travel. The human sidebar and briefing show the same authorized journey summary,
-separately from the frozen historical event report. Estimates cover remaining
+separately from the frozen historical event report. Local `wormhole_approach`
+means moving toward an entry before system
+transit; `egress` requires a known field escape before a sector jump. Destination
+approach, arrival, recharge and fuel waits remain separate phases. Estimates cover remaining
 travel; action time and subsequent queued missions add time. Hidden target references and
 private agent approach geometry suppress this view. Estimates use current equipment
 and known terrain, assume sufficient fuel and unchanged conditions, and never advance

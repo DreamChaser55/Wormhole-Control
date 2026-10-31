@@ -12,8 +12,9 @@ from custom_unit_templates import (
 from domain.celestials import Wormhole
 from galaxy import Hex, StarSystem
 from game_ai.contracts import Command
+from game_ai.order_view import public_journey_progress, journey_summary_lines
 from geometry import Circle, Position, distance, is_point_in_circle
-from save_manager import load_game_from_file, save_game_to_file
+from save_manager import load_game_from_file, save_game_to_file, serialize_order
 from tests.support.campaigns import campaign, ship
 from tests.support.commands import issue
 from turn_processor import TurnProcessor
@@ -87,6 +88,32 @@ def _advance(world):
     moved = TurnProcessor(world.game)._process_movement(world.unit.owner)
     world.unit.commander_component.update()
     return moved
+
+
+@pytest.mark.parametrize('multihop', [False, True])
+def test_entry_journey_describes_inward_approach_without_mutation(multihop):
+    world = _world(multihop=multihop)
+    world.unit.position = Position(875.19, 0)
+    assert issue(world.game, world.unit.owner, _move_to_target(world)).accepted
+    before = deepcopy(serialize_order(world.unit.commander_component.current_order))
+    journey = public_journey_progress(world.game, world.unit.owner, world.unit)
+    assert journey['phase'] == 'wormhole_approach'
+    assert journey['route_leg']['position'] == [0, 0]
+    assert journey_summary_lines(journey)[0] == 'Approaching wormhole entrance'
+    assert serialize_order(world.unit.commander_component.current_order) == before
+
+
+def test_journey_labels_outward_escape_and_final_destination_separately():
+    world = _world(entry_hex=(1, 0))
+    sector = world.game.galaxy.systems['Sol'].hexes[(0, 0)]
+    sector.static_inhibition_zones = [Circle(Position(0, 0), 1000)]
+    assert issue(world.game, world.unit.owner, _move_to_target(world)).accepted
+    journey = public_journey_progress(world.game, world.unit.owner, world.unit)
+    assert journey['phase'] == 'egress'
+    assert journey_summary_lines(journey)[0] == 'Leaving inhibition field'
+    command = Command('move', (world.unit.id,), system_name='Sol', hex_coord=(0, 0), position=(500, 0))
+    assert issue(world.game, world.unit.owner, command).accepted
+    assert public_journey_progress(world.game, world.unit.owner, world.unit)['phase'] == 'approach'
 
 
 def _replace_advancing_move(world, command_type):
