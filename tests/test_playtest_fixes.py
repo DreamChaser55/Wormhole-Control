@@ -13,7 +13,7 @@ from game_ai.adapters.base import PlanningRequest
 from game_ai.contracts import Command
 from game_ai.observation import build_observation
 from game_ai.order_view import order_layers
-from game_ai.prompt_context import planning_context
+from game_ai.prompt_context import planning_context, expand_shared_values
 from game_control_protocol import ControlService, PROTOCOL_VERSION
 from geometry import Position, distance
 from player_controller import PlayerController
@@ -47,7 +47,7 @@ def test_enemy_fuel_is_private_in_socket_and_provider_but_allied_fuel_remains(fu
     assert response['ok']
     socket = response['data']['observation']
     messages, _ = planning_context(PlanningRequest(game.campaign_id, player.agent_id, player.name, 1, socket, {}))
-    provider = json.loads(messages[-1]['content'])['observation']
+    provider = expand_shared_values(json.loads(messages[-1]['content']))['observation']
     for observed in (socket, provider):
         contact = next(unit for unit in observed['units'] if unit['id'] == target.id)
         assert 'antimatter' not in contact

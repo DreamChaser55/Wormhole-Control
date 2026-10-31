@@ -20,8 +20,12 @@ def main():
             game = prepare_new_campaign(settings).state
             player = game.players[0]
             observation = build_observation(game, player)
-            _, metrics = planning_context(PlanningRequest('benchmark', 'benchmark', player.name, 1,
-                                          observation, AgentMemory().to_dict()))
+            request = PlanningRequest('benchmark', 'benchmark', player.name, 1,
+                                      observation, AgentMemory().to_dict())
+            _, metrics = planning_context(request)
+            _, baseline = planning_context(request, compact=False)
+            metrics['unfactored_content_input_chars'] = baseline['content_input_chars']
+            metrics['content_reduction_fraction'] = round(1 - metrics['content_input_chars'] / baseline['content_input_chars'], 4)
             print(json.dumps({'profile': profile, 'seed': settings.seed, 'systems': 2,
                               'radius': 3, 'units_in_observation': len(observation['units']), **metrics}, sort_keys=True))
     return 0

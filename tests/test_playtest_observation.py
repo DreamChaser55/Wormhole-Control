@@ -11,7 +11,7 @@ import pytest
 from game_ai.adapters.base import PlanningRequest
 from game_ai.memory import AgentMemory
 from game_ai.observation import build_observation
-from game_ai.prompt_context import planning_context
+from game_ai.prompt_context import planning_context, expand_shared_values
 from game_ai.command_spec import command_catalog
 from game_control_protocol import ControlService, PROTOCOL_VERSION, _parse_new_game_settings, ProtocolError
 from game_settings import GameSettings, PlayerConfig
@@ -40,7 +40,7 @@ def test_prompt_catalog_prefix_stays_stable_and_price_exceptions_keep_informatio
     request = PlanningRequest('campaign', 'agent', 'AI', 1, observation, {})
     original = copy.deepcopy(request.to_dict())
     messages, metrics = planning_context(request)
-    compact = json.loads(messages[-1]['content'])
+    compact = expand_shared_values(json.loads(messages[-1]['content']))
     assert compact['observation']['units'][0]['command_options']['construct']['price_exceptions'] == []
     assert compact['observation']['units'][1]['command_options']['construct']['price_exceptions'] == [
         {'template_name': 'Scout', 'resource_cost': {'credits': 150, 'metal': 5, 'crystal': 2}, 'queued_shortfall': {'metal': 3}}]

@@ -658,6 +658,8 @@ def command_guidance(
             if target is unit or target.owner != player:
                 continue
             preview = evaluate(unit, target, game.galaxy)
+            if preview.blocker == 'capability_unavailable':
+                continue
             targets.append(dict(target_id=target.id, **preview.public()))
         options['dismantle_unit'] = {'targets': targets}
         if any(item['blocker'] is None for item in targets):

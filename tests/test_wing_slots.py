@@ -286,7 +286,8 @@ def test_socket_and_strict_provider_share_per_slot_configuration():
         schema = kwargs['text']['format']
         assert schema['strict'] and schema['name'] == 'wormhole_control_turn_v15'
         assert 'slot_index' in schema['schema']['properties']['commands']['items']['required']
-        assert kwargs['prompt_cache_key'] == 'wormhole-control-turn-v30'
+        from game_ai.adapters.openai_responses import PROMPT_CACHE_KEY
+        assert kwargs['prompt_cache_key'] == PROMPT_CACHE_KEY
         return SimpleNamespace(id='fake', output_text=json.dumps(output), usage=None)
 
     provider = OpenAIResponsesProvider(client=SimpleNamespace(responses=SimpleNamespace(create=fake_response)))

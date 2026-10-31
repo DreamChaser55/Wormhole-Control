@@ -238,9 +238,21 @@ Omitted shortfalls in this planning-only representation mean zero; per-unit buil
 names and currently issuable names still restrict construction. The ordinary socket
 observation and provider-neutral request remain complete.
 
+The planning representation factors repeated large JSON values into a message-local
+`shared_values` dictionary. `{"$shared":"d1"}` substitutes the exact value named
+`d1`, recursively; the preceding developer instructions describe this encoding.
+Static references remain in the stable prefix and tactical references in the changing
+message. No hidden data is introduced. `expand_shared_values` restores a message for
+offline inspection, and `planning_context(request, compact=False)` provides the
+unfactored planning representation. Dismantling options omit target previews whose
+executor lacks the required capability; hardware/schema discovery remains available.
+
 Telemetry records `prompt_metrics`: original/compact section character counts,
 stable catalog size, dynamic size and serialized/content input sizes. These are
-JSON character counts, not token estimates. Provider usage includes
+JSON character counts, not token estimates.
+`shared_value_savings_chars` reports the reduction from repeated values, and
+`dynamic_shared_values_chars` accounts for the changing message's reference table.
+Provider usage includes
 `cached_input_tokens` and `uncached_input_tokens` when cache details are returned.
 Neither metric set logs prompt contents. Run `python scripts/benchmark_observations.py`
 for fixed-seed, two-system radius-3 Normal/Testing character measurements without API

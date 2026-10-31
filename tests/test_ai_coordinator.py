@@ -15,7 +15,7 @@ from game_ai.adapters.base import (
     PlanningResult,
 )
 from game_ai.adapters.fake import FakePlanningProvider
-from game_ai.adapters.openai_responses import OpenAIResponsesProvider
+from game_ai.adapters.openai_responses import OpenAIResponsesProvider, PROMPT_CACHE_KEY
 from game_ai.commands import CommandError, CommandResult
 from game_ai.coordinator import AgentTurnCoordinator
 from game_ai.contracts import Command, CommandBatch, TurnPlan
@@ -69,7 +69,7 @@ class TestOpenAIAdapter(unittest.TestCase):
         self.assertEqual(responses.kwargs["reasoning"], {"effort": "high"})
         self.assertEqual(result.reasoning_effort, "high")
         self.assertNotIn("tools", responses.kwargs)
-        self.assertEqual(responses.kwargs["prompt_cache_key"], "wormhole-control-turn-v30")
+        self.assertEqual(responses.kwargs["prompt_cache_key"], PROMPT_CACHE_KEY)
         self.assertNotIn("previous_response_id", responses.kwargs)
 
     def test_responses_adapter_classifies_invalid_output_as_repairable(self):
