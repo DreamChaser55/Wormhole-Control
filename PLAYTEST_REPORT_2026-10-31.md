@@ -55,12 +55,6 @@ At round 89 the automatic harvester selected Refinery 45 (164.25/200 antimatter)
 
 Consider optional recipient priorities or an urgency score based on time until a unit stops working, plus a configurable minimum delivery load. Preserve the existing return-fuel reserve checks. The current manual-target and manual-transfer options are useful, but require intervention to protect continuous services.
 
-### S07 — Account for a new colony's growth when reusing its colonizer
-
-The opponent founded Moon 23 at resolution turn 90, then loaded 10 colonists from it on turn 91. That left approximately 0.1 population; the final save shows only 0.110462 at round 101. The action was legal and preserved the required residual population, but left the new colony with negligible growth and income for the remaining test.
-
-Consider an AI planning preference for a meaningful retained population, with exceptions for urgent evacuation or deliberate rapid expansion. Compare the value of a new expedition against the donor colony's recovery time. This is a strategy-quality suggestion, not a command-validation defect.
-
 ## Validation and coverage
 
 The following were exercised through the running game's control interface, with request/response records retained:

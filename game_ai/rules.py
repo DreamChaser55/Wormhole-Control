@@ -431,6 +431,7 @@ def command_guidance(
 
     colony = getattr(unit, "colony_component", None)
     if colony is not None:
+        from .colony_planning import colonist_load_advice
         cargo = float(getattr(colony, "population_cargo", 0))
         maximum = float(getattr(colony, "max_cargo", 0))
         remaining = max(0.0, maximum - cargo)
@@ -447,7 +448,8 @@ def command_guidance(
                     float(body.population) if colony_views[body.id].status == 'current' else remaining, remaining
                 ),
                 **({'preview_note': 'Cargo limit only; colony population is checked when contact returns.'}
-                   if colony_views[body.id].status == 'last_known' else {}),
+                   if colony_views[body.id].status == 'last_known' else
+                   {'population_advice': colonist_load_advice(body, remaining)}),
             }
             for body in known_bodies
             if colony_views[body.id].relation == 'self'

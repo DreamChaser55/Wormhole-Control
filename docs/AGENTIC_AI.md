@@ -221,6 +221,12 @@ sections replace their previous contents. Planning instructions require objectiv
 and commitments to match accepted orders, compare mission value with remaining
 travel before replacement, and consult terminal history before repeating failures.
 Zero-command plans are valid when useful work should continue.
+Colonist-loading options add advisory retained population, recommended load, growth
+and recovery rounds after the maximum integer load. Planning favors a meaningful
+seed on new colonies and retaining half a mature donor, comparing lost growth/income
+with expedition value. Evacuation and deliberate rapid expansion remain legal
+exceptions. Historical colonies omit these forecasts until contact returns; this
+guidance changes neither population validation nor engine growth rules.
 
 ### Planning context and measurement
 

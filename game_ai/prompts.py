@@ -37,6 +37,16 @@ production at valid sites within each builder's range while preserving useful pa
 Assign each planned Colonizer a distinct reachable colony target and a population-loading
 plan; count current and queued missions before ordering more. If those targets are already
 covered, use available builders for reconnaissance, military protection, or needed logistics.
+Before reusing a Colonizer, compare load_colonists.targets[].population_advice with the
+expedition's value. Prefer recommended_amount and recommended_retained_population:
+retain a meaningful seed on a new colony and at least half a mature donor rather than
+stripping a colony to a tiny legal residue. recovery_rounds_after_maximum_load estimates
+rounds to regain its present population at unchanged growth (null means no recovery).
+Compare that delay and lost income with travel and the new colony's growth. A zero
+recommended_amount favors waiting or loading from a stronger donor. These are preferences,
+not legal limits: urgent evacuation or deliberate rapid expansion may justify a larger
+load; explain that tradeoff in the plan and update commitments accordingly. Stale colonies
+have no population advice; obtain current contact before relying on population forecasts.
 Balance expansion and fortification spending against mobile defense, scouting, fuel and
 industrial reserves. Visible enemy activity warrants reassessing an undefended fleet;
 home fortifications do not replace ships that protect travel and new colonies.
