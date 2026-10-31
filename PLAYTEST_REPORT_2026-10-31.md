@@ -43,16 +43,6 @@ Round numbers below refer to the observation at the start of the player's turn u
 
 ## Confirmed defects and actionable findings
 
-### F03 — Opponent cancels a nearly completed build after inferring a completion that did not happen (medium priority)
-
-**Observed:** At AI turn 35, Shipyard 30 replaced a Colonizer build that had completed 17 of 18 construction turns with another Colonizer build at a different position. The cancellation refunded the paid resources, but discarded 17 turns of production. The memory snapshot after AI turn 34 correctly said to preserve the 16/18 build; the next memory incorrectly asserted that the previous Colonizer had completed, although no new unit appeared. The save's order history records the original order as cancelled at turn 35. Replacement Colonizer 47 finally completed at resolution turn 52.
-
-**Impact:** The opponent loses expansion time and undermines its own stated strategy. This was a decision-quality failure in an accepted plan, not an API or command-validation failure. Most other turns preserved existing work correctly.
-
-**Suggestion:** Treat the current order and explicit completion history as authoritative over remembered elapsed time. Expose a replacement consequence such as “cancels 17/18 completed construction turns” in options/receipts, and add this snapshot to planning evaluations. Consider a preflight warning for replacing paid work close to completion without preventing deliberate replacement.
-
-**Evidence:** `memory_round_035_580a1eaa.md`, `memory_round_036_580a1eaa.md`; cancelled root order `e3b7fc0e584a4e9ca54c5c8b22e7f15c` in the campaign save history; matching construction cancellation/start entries in `game.log`.
-
 ### F04 — Third-party logging filter misses the active `httpcore2` logger family (medium priority)
 
 **Observed:** `game.log` contains DEBUG HTTP response-header traces from `httpcore2.http11`, including account/project/request identifiers and rate metadata. The configured quiet list covers `httpcore` and `httpx2`, but not `httpcore2`. No API key or prompt-body leak was observed; this report deliberately omits the header values.
@@ -74,16 +64,6 @@ Round numbers below refer to the observation at the start of the player's turn u
 **Suggestion:** Distinguish entry-wormhole approach from departure escape and destination approach using the active leg's purpose. Validate phase labels against direction and waypoint semantics.
 
 **Evidence:** Carrier 37 in `round_032.json`.
-
-### F06 — Reset View does not frame a small generated galaxy usefully (low priority)
-
-**Observed:** The two-system galaxy at round 21 occupied a tiny cluster near the bottom-left of a 1707×960 game window, leaving most of the viewport empty. Reset View (`R`) retained that framing.
-
-**Likely source:** `game_camera.py`, `reset_galaxy_camera`, restores fixed zoom and zero pan rather than fitting occupied system bounds.
-
-**Suggestion:** Fit generated systems with padding, or offer separate “Fit systems” and “Full galaxy bounds” controls. Test both sparse two-system and dense maps.
-
-**Evidence:** `saves/playtest_20261031/galaxy_reset_round21.png`. Other UI workflows were not evaluated after computer-use was stopped.
 
 ### F07 — Two transient control failures; the error text does not identify the failure phase (unresolved, medium priority)
 
@@ -111,12 +91,6 @@ The same symptom recurred on the end-turn request at round 99 (`pt-d9e2f449967b4
 
 ## Gameplay and interface improvement suggestions
 
-### S01 — Early expansion and first contact take many low-decision turns
-
-The initial colony mission was issued at turn 1 after loading 20 colonists. It settled the second home-system planet at resolution turn 48, visible at round 49. The opponent's first additional colony also appeared around that point. Carrier 37, completed at turn 20, reached a useful position in the rival home sector only at resolution turn 61. These missions progressed; they were not frozen. The existing documentation already acknowledges slow travel.
-
-Consider a faster match preset, shorter early inhibition approaches, or starter propulsion tuned for smaller maps. Event-driven advancement could help quiet periods if it stops for contacts, combat, shortages, completed production, and failed orders. Retain explicit user control over irreversible turn advancement.
-
 ### S02 — Planning payloads repeat substantial static and inapplicable information
 
 The initial plan used about 51,000 input tokens despite a two-system map and four starting units. Early telemetry recorded a stable catalog of 109,211 characters and a dynamic section of 60,882 characters. Later observations exceeded 270 KB. Numerous actors repeat dismantling targets whose only result is `capability_unavailable`, and substantial rules/options recur across units.
@@ -132,10 +106,6 @@ Similarly, Harvester 29 reported `phase: harvesting` together with `waiting_reas
 ### S04 — Generate close-spaced sparse maps more reliably
 
 An initial valid two-system configuration with seed `20261031`, minimum spacing 50 and maximum spacing 100 failed after 100 placement attempts, placing only one system. The failure was safe and left the main menu intact. Default spacing succeeded. Consider sampling within valid annuli of existing systems rather than repeatedly sampling the full galaxy, or report the feasible region/placement constraints more explicitly. This is a generation robustness suggestion, not evidence of state corruption.
-
-### S05 — Consider a balanced starting-resource option
-
-This seed gave the player an ice homeworld and nearby crystal sources, but no local metal asteroid. The rival had a ferrous homeworld with metal income and a local metal asteroid. The starting metal reserve supports an initial fleet, but the player's ongoing metal supply requires travel or another strategy. Asymmetric starts can be intentional; an optional comparable-resource start would make competitive playtests easier to interpret.
 
 ### S06 — Offer fuel-service priorities and an optional partial-load departure threshold
 
