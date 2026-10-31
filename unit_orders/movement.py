@@ -761,6 +761,24 @@ class MoveOrder(Order):
                 self.handle_inhibited_waypoint(waypoint_hex, waypoint_pos, is_final_destination=is_final, system_name=system_name, galaxy_ref=galaxy_ref)
                 logger.debug(f"[{format_unit_for_log(self.unit)}] MOVE(id:{self.local_order_id}): plan_route->plan_hex_jump_sequence: Added waypoint {i+1}/{len(waypoints)} at hex {waypoint_hex}.")
 
+    def _plan_initial_inhibition_escape(self, galaxy_ref: 'Galaxy') -> None:
+        """Leave the starting field before an intra-system sector jump."""
+        current_system = self.unit.in_system
+        current_hex = self.unit.in_hex
+        current_position = self.unit.position
+        current_hex_obj = galaxy_ref.systems[current_system].hexes.get(current_hex)
+        if current_hex_obj:
+            for zone in current_hex_obj.get_all_inhibition_zones():
+                if is_point_in_circle(current_position, zone):
+                    escape_pos = get_closest_point_on_circle_edge(current_position, zone)
+                    logger.debug(f"[{format_unit_for_log(self.unit)}] MOVE(id:{self.local_order_id}): plan_route: Start position {current_position} is inhibited. Planning escape move to {escape_pos}.")
+                    self.add_sub_order(ReachWaypointOrder(self.unit, {
+                        "destination_system_name": current_system,
+                        "destination_hex_coord": current_hex,
+                        "destination_position": escape_pos
+                    }, parent_order=self))
+                    break
+
     def plan_route(self, galaxy_ref: 'Galaxy') -> None:
         """Prepare child movement legs from the unit's current location; return None.
 
@@ -827,22 +845,6 @@ class MoveOrder(Order):
             logger.debug(f"[{format_unit_for_log(self.unit)}] MOVE(id:{self.local_order_id}): plan_route: FAILED (unit size {self.unit.hull_size.name} cannot enter dense celestial field).")
             return
 
-        # If the unit starts inside an active inhibitor field, it cannot engage its hyperdrive.
-        # We must plan a sub-light escape move to the edge of the field before plotting the jump.
-        if current_system != dest_system or current_hex != dest_hex:
-            current_hex_obj = galaxy_ref.systems[current_system].hexes.get(current_hex)
-            if current_hex_obj:
-                for zone in current_hex_obj.get_all_inhibition_zones():
-                    if is_point_in_circle(current_position, zone):
-                        escape_pos = get_closest_point_on_circle_edge(current_position, zone)
-                        logger.debug(f"[{format_unit_for_log(self.unit)}] MOVE(id:{self.local_order_id}): plan_route: Start position {current_position} is inhibited. Planning escape move to {escape_pos}.")
-                        self.add_sub_order(ReachWaypointOrder(self.unit, {
-                            "destination_system_name": current_system,
-                            "destination_hex_coord": current_hex,
-                            "destination_position": escape_pos
-                        }, parent_order=self))
-                        break
-
         # Inter-system travel: Destination is in a different system.
         if current_system != dest_system:
             from unit_components.enums import HyperdriveType
@@ -870,6 +872,7 @@ class MoveOrder(Order):
 
                 # First, navigate to the entry wormhole.
                 if current_hex != direct_wormhole.in_hex:
+                    self._plan_initial_inhibition_escape(galaxy_ref)
                     self.plan_hex_jump_sequence(current_hex, direct_wormhole.in_hex, direct_wormhole.position, current_system, galaxy_ref)
                 else:
                     self.add_sub_order(ReachWaypointOrder(self.unit, {
@@ -967,6 +970,8 @@ class MoveOrder(Order):
 
                     # Navigate from the last leg's entry point to this leg's entry wormhole position.
                     if current_leg_arrival_hex != wormhole_for_leg.in_hex:
+                        if i == 0:
+                            self._plan_initial_inhibition_escape(galaxy_ref)
                         self.plan_hex_jump_sequence(current_leg_arrival_hex, wormhole_for_leg.in_hex, wormhole_for_leg.position, leg_origin_system, galaxy_ref)
                     else:
                         self.add_sub_order(ReachWaypointOrder(self.unit, {
@@ -1012,6 +1017,7 @@ class MoveOrder(Order):
 
         # Intra-system travel: Jump to a different hex in the same system.
         elif current_hex != dest_hex:
+            self._plan_initial_inhibition_escape(galaxy_ref)
             self.plan_hex_jump_sequence(current_hex, dest_hex, dest_position, current_system, galaxy_ref)
         
         # Intra-hex travel: Move directly using sub-light engines.

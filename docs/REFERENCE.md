@@ -869,8 +869,12 @@ The `OrderType` enum defines **45 order types**, including the persistent `STANC
 Tactical distances use logical sector units; each sector has radius **5000**.
 Sublight movement consumes fuel. Hyperdrives jump between sectors, with Advanced
 drives also using wormholes between systems. Natural and artificial inhibition
-fields block jump entry and exit; plan approach legs outside their boundaries.
-In Sector View, their jump-denial perimeters are drawn as red outlined circles.
+fields block intra-system jump entry and exit; plan approach legs outside their
+boundaries. A ship already in its selected entry wormhole's sector approaches
+the entrance locally and traverses it without first leaving its natural inhibition
+field. Reaching an entry in another sector still requires escaping any inhibition
+at the starting position. In Sector View, jump-denial perimeters are drawn as red
+outlined circles.
 
 **Interdiction Frigate** and **Interdiction Station** are lightly armed Medium
 specialists with 600- and 900-radius fields, consuming 6 and 9 AM per owner turn.

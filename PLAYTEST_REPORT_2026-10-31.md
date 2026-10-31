@@ -17,7 +17,7 @@ This report records a live game against the built-in agentic opponent, controlle
 
 **Completed 100 full rounds: 100 player turns and 100 opponent turns, ending at the start of round 101.** The game remains open there. There was no campaign reset, checkpoint replay, or confirmed crash. Both the early and final save/reload checks reproduced the complete parsed observation exactly and rejected the old token afterward.
 
-The strongest defects are the wormhole route detour (F02) and successful docking being recorded as cancellation (F08). The opponent also discarded almost-finished construction (F03), but it later responded sensibly to combat, used anti-strikecraft abilities, repaired an invalid plan, and withdrew a damaged scout. Two transient local control failures recovered safely; their cause remains unresolved (F07).
+Successful docking was recorded as cancellation (F08). The opponent also discarded almost-finished construction (F03), but it later responded sensibly to combat, used anti-strikecraft abilities, repaired an invalid plan, and withdrew a damaged scout. Two transient local control failures recovered safely; their cause remains unresolved (F07).
 
 | Measurement | Result |
 | --- | --- |
@@ -43,18 +43,6 @@ Round numbers below refer to the observation at the start of the player's turn u
 
 ## Confirmed defects and actionable findings
 
-### F02 — Replacing an order near a wormhole creates an unnecessary out-and-back detour (high priority)
-
-**Observed:** Artillery Frigate 43 was approaching Procyon's wormhole 25 and stood approximately `[175.19, 0]` from its center at round 59. Replacing its movement order with a legal long-range attack against visible enemy Shipyard 30 generated these first route legs: `[1875.19, 0]` in the same wormhole sector, then `[0, 0]` in that sector, then the destination wormhole in Kepler-186. The ship actually reversed direction: positions were approximately 375 at round 61, 475 at round 62, and 675 at round 64. The destination remained in the other system.
-
-**Impact:** A routine tactical order change adds roughly 3,400 units of unnecessary movement, about 34 owner turns at this ship's speed, plus fuel. This strongly discourages adapting orders during the already lengthy travel phase.
-
-**Likely source:** `unit_orders/movement.py:830` adds an inhibition escape before selecting the intersystem route. The direct-wormhole branch at `:871` then routes the same ship back to the wormhole center. Departure from the entry wormhole through that wormhole should not require first escaping its own field.
-
-**Suggestion:** Choose the actual next transport leg before applying departure inhibition. Skip the generic escape when the next leg is local approach to, or transit through, the current entry wormhole. Add a regression with a ship already inside the entry wormhole's field and an order replaced with a cross-system attack.
-
-**Evidence:** Artillery Frigate 43 in `round_059.json`, `round_061.json`, `round_062.json`, and `round_064.json` under the evidence directory.
-
 ### F03 — Opponent cancels a nearly completed build after inferring a completion that did not happen (medium priority)
 
 **Observed:** At AI turn 35, Shipyard 30 replaced a Colonizer build that had completed 17 of 18 construction turns with another Colonizer build at a different position. The cancellation refunded the paid resources, but discarded 17 turns of production. The memory snapshot after AI turn 34 correctly said to preserve the 16/18 build; the next memory incorrectly asserted that the previous Colonizer had completed, although no new unit appeared. The save's order history records the original order as cancelled at turn 35. Replacement Colonizer 47 finally completed at resolution turn 52.
@@ -79,7 +67,7 @@ Round numbers below refer to the observation at the start of the player's turn u
 
 **Observed:** At round 32, Carrier 37 was moving inward from approximately `[875.19, 0]` toward the entry wormhole center, but its journey reported `phase: egress`. The human label for that phase is “Leaving inhibition field.” The actual movement continued correctly in this case.
 
-**Impact:** Both agents and users receive the opposite explanation of what the ship is doing. This is separate from F02's actual detour.
+**Impact:** Both agents and users receive the opposite explanation of what the ship is doing.
 
 **Likely source:** `game_ai/order_view.py:59` classifies a local leg as egress whenever it is not in the final destination sector; `:69` reinforces that classification inside any known inhibition zone. `:129` supplies the human label.
 
@@ -204,4 +192,4 @@ This is one seeded campaign and a set of targeted interface probes, not exhausti
 
 Other untested areas include Titan powers and capacity, most specialized abilities, diplomacy/messages, trade, espionage, minefields, boarding/capture, planetary bombardment/invasion, general hangars for non-wing craft, refitting, multiplayer/human handoff, and most GUI workflows. Recruitment was tested, but no invasion completed. Repair covered hull damage, not destroyed subsystems. Wing replacement and recall were tested, but endurance exhaustion and damaged-wing replenishment were not. Only crystal mining/refining was exercised directly. Suggestions above do not claim that every suspected edge case is a reproduced bug.
 
-Recommended follow-up order: fix F02/F08, add regression coverage from the retained snapshots, improve AI commitment/population decisions, then evaluate payload size and pacing on several seeds. Preserve the successful atomic-preflight, token, fog-of-war, and save-restoration behavior while making those changes.
+Recommended follow-up order: fix F08, add regression coverage from the retained snapshots, improve AI commitment/population decisions, then evaluate payload size and pacing on several seeds. Preserve the successful atomic-preflight, token, fog-of-war, and save-restoration behavior while making those changes.
