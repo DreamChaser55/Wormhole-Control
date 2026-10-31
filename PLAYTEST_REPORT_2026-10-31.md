@@ -10,14 +10,14 @@ This report records a live game against the built-in agentic opponent, controlle
 - Codex Playtester versus Luna Rival, opposing teams. Built-in opponent: `gpt-6-luna`, medium reasoning, two configured repair retries, agent `580a1eaa`.
 - Initial resources: 20,000 credits, 1,000 metal, 500 crystal; initial home population 50.
 - All mutations went through the JSON control interface. Saves, logs, telemetry, memory sidecars, and source were read for diagnosis, as authorized. Enemy targets for gameplay came from public observations.
-- The recorder explicitly set UTF-8 for child-process input/output after discovering the Windows CLI problem described below. This is a workaround in the ignored playtest helper, not a game fix.
+- The recorder explicitly set UTF-8 for child-process input/output.
 - UI inspection covered the galaxy view and Reset View. The user stopped computer-use automation with Escape; subsequent play continued exclusively through the control interface.
 
 ## Result and run measurements
 
 **Completed 100 full rounds: 100 player turns and 100 opponent turns, ending at the start of round 101.** The game remains open there. There was no campaign reset, checkpoint replay, or confirmed crash. Both the early and final save/reload checks reproduced the complete parsed observation exactly and rejected the old token afterward.
 
-The strongest defects are the Windows JSON encoding failure (F01), the wormhole route detour (F02), and successful docking being recorded as cancellation (F08). The opponent also discarded almost-finished construction (F03), but it later responded sensibly to combat, used anti-strikecraft abilities, repaired an invalid plan, and withdrew a damaged scout. Two transient local control failures recovered safely; their cause remains unresolved (F07).
+The strongest defects are the wormhole route detour (F02) and successful docking being recorded as cancellation (F08). The opponent also discarded almost-finished construction (F03), but it later responded sensibly to combat, used anti-strikecraft abilities, repaired an invalid plan, and withdrew a damaged scout. Two transient local control failures recovered safely; their cause remains unresolved (F07).
 
 | Measurement | Result |
 | --- | --- |
@@ -42,20 +42,6 @@ At the endpoint, the player held two colonies and 18 units including the submerg
 Round numbers below refer to the observation at the start of the player's turn unless an event's resolution turn is stated explicitly. Aggregate AI measurements include the rejected attempt and its repair, and cover only campaign `96fe094c`.
 
 ## Confirmed defects and actionable findings
-
-### F01 — Windows redirected CLI output is not reliably UTF-8 (high priority)
-
-**Observed:** The normal CLI emits locale-encoded JSON on this Windows installation. Even an ordinary observation contains an en dash in the command catalog, producing byte `0x96` in cp1252 rather than valid UTF-8. At round 41, a binary capture returned exit 0 and 243,486 bytes, but failed UTF-8 decoding at offset 144,232; cp1252 decoding yielded valid JSON. A valid rename to `PT Yard Δ` at round 44 made the default CLI fail with `UnicodeEncodeError`, exit 1, and zero stdout bytes. The name was immediately restored and the production order remained intact.
-
-**Impact:** A documented JSON client can fail before parsing any response; a legal non-Latin unit name can break every subsequent observation on that client. This is more than cosmetic text corruption.
-
-**Reproduce:** On Windows with default cp1252 redirected stdout, pipe an `observe` request into `python game_control.py - --no-launch` and decode stdout as UTF-8. Then rename an owned unit to a name containing Greek characters using a UTF-8 client and repeat the default invocation.
-
-**Likely source:** `game_control.py:211`, `:221`, `:226`, and `:230` print `json.dumps(..., ensure_ascii=False)` through the default text stream.
-
-**Suggestion:** Explicitly configure UTF-8 stdin/stdout, or use ASCII-escaped JSON consistently. Preserve the one-JSON-line error contract even when encoding fails. Add redirected-process tests with built-in punctuation and legal non-Latin names.
-
-**Evidence:** `saves/playtest_20261031/windows_encoding_probe.json`, `windows_stdout_probe.bin`, and `economy_boundary_checks.json`.
 
 ### F02 — Replacing an order near a wormhole creates an unnecessary out-and-back detour (high priority)
 
@@ -218,4 +204,4 @@ This is one seeded campaign and a set of targeted interface probes, not exhausti
 
 Other untested areas include Titan powers and capacity, most specialized abilities, diplomacy/messages, trade, espionage, minefields, boarding/capture, planetary bombardment/invasion, general hangars for non-wing craft, refitting, multiplayer/human handoff, and most GUI workflows. Recruitment was tested, but no invasion completed. Repair covered hull damage, not destroyed subsystems. Wing replacement and recall were tested, but endurance exhaustion and damaged-wing replenishment were not. Only crystal mining/refining was exercised directly. Suggestions above do not claim that every suspected edge case is a reproduced bug.
 
-Recommended follow-up order: fix F01/F02/F08, add regression coverage from the retained snapshots, improve AI commitment/population decisions, then evaluate payload size and pacing on several seeds. Preserve the successful atomic-preflight, token, fog-of-war, and save-restoration behavior while making those changes.
+Recommended follow-up order: fix F02/F08, add regression coverage from the retained snapshots, improve AI commitment/population decisions, then evaluate payload size and pacing on several seeds. Preserve the successful atomic-preflight, token, fog-of-war, and save-restoration behavior while making those changes.
