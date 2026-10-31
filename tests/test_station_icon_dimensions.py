@@ -12,7 +12,7 @@ from display_config import DisplayConfig
 from domain.players import Player
 from domain.units import Unit
 from geometry import Position
-from rendering.drawing_utils import draw_shape
+from rendering.drawing_utils import darken_color, draw_shape
 from rendering.sector_renderer.sector_entity_renderer import SectorEntityRenderer
 from rendering.sector_renderer.sector_overlay_renderer import SectorOverlayRenderer
 
@@ -65,8 +65,13 @@ def test_station_annotations_and_brackets_follow_rendered_square(pygame_context,
     with patch('pygame.draw.rect', wraps=pygame.draw.rect) as rectangles, \
          patch('pygame.draw.circle', wraps=pygame.draw.circle) as circles:
         logical_radius = SectorEntityRenderer(parent).draw_unit(station, center, dynamic_radius)
-    square = pygame.Rect(rectangles.call_args_list[0].args[2])
-    health_bars = rectangles.call_args_list[1:]
+    square_fill, square_outline = rectangles.call_args_list[:2]
+    assert square_fill.args[1] == darken_color(BLUE)
+    assert square_outline.args[1] == BLUE
+    assert square_outline.args[3] == 1
+    square = pygame.Rect(square_outline.args[2])
+    assert pygame.Rect(square_fill.args[2]) == square
+    health_bars = rectangles.call_args_list[2:]
     assert len(health_bars) == (2 if selected else 0)
     for call in health_bars:
         bar = pygame.Rect(call.args[2])

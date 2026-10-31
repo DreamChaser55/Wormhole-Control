@@ -12,7 +12,7 @@ from galaxy import Hex
 from geometry import Position
 from rendering.planetary_intel import draw_ownership_ring
 from planetary_intel import displayed_owner
-from rendering.drawing_utils import draw_selection_brackets, selection_color_for, station_icon_rect
+from rendering.drawing_utils import darken_color, draw_selection_brackets, selection_color_for, station_icon_rect
 
 
 class SystemViewRenderer:
@@ -299,6 +299,7 @@ class SystemViewRenderer:
                         unit_screen_y = icon_center_y
                     
                     unit_color = unit.owner.color if unit.owner else WHITE
+                    interior_color = darken_color(unit_color)
                 
                     if shape_type == 'strikecraft_wing':
                         cx, cy = unit_screen_x, unit_screen_y
@@ -317,9 +318,15 @@ class SystemViewRenderer:
                         t3_p2 = (cx, cy + int(r * 0.6))
                         t3_p3 = (cx + int(r * 0.8), cy + int(r * 0.6))
                         
-                        pygame.draw.polygon(self.screen, unit_color, [t1_p1, t1_p2, t1_p3])
-                        pygame.draw.polygon(self.screen, unit_color, [t2_p1, t2_p2, t2_p3])
-                        pygame.draw.polygon(self.screen, unit_color, [t3_p1, t3_p2, t3_p3])
+                        t1 = [t1_p1, t1_p2, t1_p3]
+                        t2 = [t2_p1, t2_p2, t2_p3]
+                        t3 = [t3_p1, t3_p2, t3_p3]
+                        pygame.draw.polygon(self.screen, interior_color, t1)
+                        pygame.draw.polygon(self.screen, interior_color, t2)
+                        pygame.draw.polygon(self.screen, interior_color, t3)
+                        pygame.draw.polygon(self.screen, unit_color, t1, 1)
+                        pygame.draw.polygon(self.screen, unit_color, t2, 1)
+                        pygame.draw.polygon(self.screen, unit_color, t3, 1)
                         
                         main_shape_points = [t1_p1, t1_p2, t1_p3, t2_p1, t2_p2,
                                              t2_p3, t3_p1, t3_p2, t3_p3]
@@ -329,12 +336,14 @@ class SystemViewRenderer:
                         p2 = (unit_screen_x - int(current_icon_base_size * 0.8), unit_screen_y + int(current_icon_base_size * 0.6))
                         p3 = (unit_screen_x + int(current_icon_base_size * 0.8), unit_screen_y + int(current_icon_base_size * 0.6))
                         main_shape_points = [p1, p2, p3]
-                        pygame.draw.polygon(self.screen, unit_color, main_shape_points)
+                        pygame.draw.polygon(self.screen, interior_color, main_shape_points)
+                        pygame.draw.polygon(self.screen, unit_color, main_shape_points, 1)
                         
                     else: # 'square'
                         rect = station_icon_rect(Position(unit_screen_x, unit_screen_y), current_icon_base_size)
                         main_shape_points = [rect.topleft, rect.topright, rect.bottomright, rect.bottomleft]
-                        pygame.draw.rect(self.screen, unit_color, rect)
+                        pygame.draw.rect(self.screen, interior_color, rect)
+                        pygame.draw.rect(self.screen, unit_color, rect, 1)
 
                     if unit in self.game.selected_objects:
                         left = min(p[0] for p in main_shape_points)

@@ -12,7 +12,7 @@ from domain.players import Player
 from domain.units import Unit
 from geometry import Position
 from rendering.system_renderer import SystemViewRenderer
-from rendering.drawing_utils import draw_selection_brackets
+from rendering.drawing_utils import darken_color, draw_selection_brackets
 from unit_components.movement import Engines
 
 
@@ -48,8 +48,14 @@ def test_unit_brackets_enclose_actual_vertices(zoom, pan):
         renderer.draw_system_view()
     icons = [call.args[2] for call in polygons.call_args_list
              if call.args[0] is game.screen and call.args[1] == BLUE]
+    interior_icons = [call.args[2] for call in polygons.call_args_list
+                      if call.args[0] is game.screen and call.args[1] == darken_color(BLUE)]
+    assert interior_icons == icons
     square = next(pygame.Rect(call.args[2]) for call in rectangles.call_args_list
                   if call.args[0] is game.screen and call.args[1] == BLUE)
+    interior_square = next(pygame.Rect(call.args[2]) for call in rectangles.call_args_list
+                           if call.args[0] is game.screen and call.args[1] == darken_color(BLUE))
+    assert interior_square == square
     groups = [icons[0], [square.topleft, square.bottomright],
               sum((list(points) for points in icons[1:]), [])]
     assert len(brackets.call_args_list) == len(sector.units)

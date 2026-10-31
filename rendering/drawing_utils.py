@@ -4,6 +4,18 @@ from pygame import Color
 from geometry import Position
 from constants import SELECTION_HIGHLIGHT_COLOR
 
+UNIT_ICON_INTERIOR_DARKEN_FACTOR = 0.35
+
+
+def darken_color(color, factor: float = UNIT_ICON_INTERIOR_DARKEN_FACTOR):
+    """Scale RGB channels of a color by factor while preserving any alpha channel."""
+    r = max(0, min(255, round(color[0] * factor)))
+    g = max(0, min(255, round(color[1] * factor)))
+    b = max(0, min(255, round(color[2] * factor)))
+    if len(color) >= 4:
+        return (r, g, b, color[3])
+    return (r, g, b)
+
 
 def selection_color_for(obj, game=None):
     """Blend the current owner's color 20% toward white; keep unowned objects white."""
@@ -83,13 +95,14 @@ def station_icon_rect(center_pos: 'Position', radius: float) -> pygame.Rect:
 
 
 def draw_shape(surface: pygame.Surface, shape_type: str, color: Color, center_pos: 'Position', radius: float):
-    """Helper function to draw different shapes based on type."""
+    """Helper function to draw different shapes with a darker interior and full-color outline."""
     draw_radius = int(max(1, radius))
+    interior_color = darken_color(color)
 
     if shape_type == 'circle':
-        pygame.draw.circle(surface, color, (center_pos.x, center_pos.y), draw_radius)
+        pygame.draw.circle(surface, interior_color, (center_pos.x, center_pos.y), draw_radius)
     elif shape_type == 'square':
-        pygame.draw.rect(surface, color, station_icon_rect(center_pos, radius))
+        pygame.draw.rect(surface, interior_color, station_icon_rect(center_pos, radius))
     elif shape_type == 'strikecraft_wing':
         cx, cy = center_pos.x, center_pos.y
         r = draw_radius
@@ -107,16 +120,18 @@ def draw_shape(surface: pygame.Surface, shape_type: str, color: Color, center_po
         t3_p2 = (cx, cy + int(r * 0.6))
         t3_p3 = (cx + int(r * 0.8), cy + int(r * 0.6))
         
-        pygame.draw.polygon(surface, color, [t1_p1, t1_p2, t1_p3])
-        pygame.draw.polygon(surface, color, [t2_p1, t2_p2, t2_p3])
-        pygame.draw.polygon(surface, color, [t3_p1, t3_p2, t3_p3])
+        pygame.draw.polygon(surface, interior_color, [t1_p1, t1_p2, t1_p3])
+        pygame.draw.polygon(surface, interior_color, [t2_p1, t2_p2, t2_p3])
+        pygame.draw.polygon(surface, interior_color, [t3_p1, t3_p2, t3_p3])
     elif shape_type == 'triangle':
         p1 = (center_pos.x, center_pos.y - draw_radius) 
         p2 = (center_pos.x - int(draw_radius * 0.8), center_pos.y + int(draw_radius * 0.6)) 
         p3 = (center_pos.x + int(draw_radius * 0.8), center_pos.y + int(draw_radius * 0.6)) 
-        pygame.draw.polygon(surface, color, [p1, p2, p3])
+        pygame.draw.polygon(surface, interior_color, [p1, p2, p3])
     else:
-        pygame.draw.circle(surface, color, (center_pos.x, center_pos.y), draw_radius)
+        pygame.draw.circle(surface, interior_color, (center_pos.x, center_pos.y), draw_radius)
+
+    draw_wireframe_shape(surface, shape_type, color, center_pos, radius, width=1)
 
 
 def draw_wireframe_shape(surface: pygame.Surface, shape_type: str, color: Color, center_pos: 'Position', radius: float, width: int = 1):

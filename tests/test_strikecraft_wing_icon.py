@@ -4,30 +4,38 @@ import pygame
 
 from constants import BLUE
 from geometry import Position
-from rendering.drawing_utils import draw_shape, draw_wireframe_shape
+from rendering.drawing_utils import darken_color, draw_shape, draw_wireframe_shape
 
 
 def test_draw_shape_strikecraft_wing_draws_all_three_triangles():
-    """Verify draw_shape renders all 3 sub-triangles for strikecraft_wing."""
+    """Verify draw_shape renders all 3 sub-triangles with a darker fill and full-color outline."""
     surface = pygame.Surface((400, 400), pygame.SRCALPHA)
     center = Position(200, 200)
     radius = 50.0
+    expected_interior = darken_color(BLUE)
 
     with patch("pygame.draw.polygon", wraps=pygame.draw.polygon) as mock_polygon:
         draw_shape(surface, "strikecraft_wing", BLUE, center, radius)
 
-    assert mock_polygon.call_count == 3
-    calls = mock_polygon.call_args_list
+    assert mock_polygon.call_count == 6
+    fill_calls = mock_polygon.call_args_list[:3]
+    outline_calls = mock_polygon.call_args_list[3:]
 
-    # All calls target the same surface and color
-    for call in calls:
+    for call in fill_calls:
+        assert call.args[0] is surface
+        assert call.args[1] == expected_interior
+        assert len(call.args) == 3
+
+    for call in outline_calls:
         assert call.args[0] is surface
         assert call.args[1] == BLUE
+        assert call.args[3] == 1
 
-    # Verify points of the three triangles
-    t1_pts = calls[0].args[2]  # Top triangle
-    t2_pts = calls[1].args[2]  # Bottom-left triangle
-    t3_pts = calls[2].args[2]  # Bottom-right triangle
+    # Verify points of the three triangles match between fill and outline
+    t1_pts = fill_calls[0].args[2]  # Top triangle
+    t2_pts = fill_calls[1].args[2]  # Bottom-left triangle
+    t3_pts = fill_calls[2].args[2]  # Bottom-right triangle
+    assert [c.args[2] for c in outline_calls] == [t1_pts, t2_pts, t3_pts]
 
     # Top triangle apex should be centered and at cy - radius
     assert t1_pts[0] == (200, 200 - 50)
@@ -35,6 +43,25 @@ def test_draw_shape_strikecraft_wing_draws_all_three_triangles():
     assert t2_pts[1] == (200 - int(50 * 0.8), 200 + int(50 * 0.6))
     # Bottom-right triangle bottom corner
     assert t3_pts[2] == (200 + int(50 * 0.8), 200 + int(50 * 0.6))
+
+
+def test_draw_shape_renders_darker_interior_and_full_color_outline():
+    """Verify rendered unit shapes have darkened interior pixels and full-color outline pixels."""
+    color = (40, 180, 255)
+    interior = darken_color(color)
+    center = Position(100, 100)
+    radius = 40.0
+
+    for shape, interior_probe, outline_probe in (
+        ("square", (100, 100), (100 - 32, 100)),
+        ("triangle", (100, 100), (100, 100 - 40)),
+        ("strikecraft_wing", (100, 100 - 20), (100, 100 - 40)),
+        ("circle", (100, 100), (100 - 40, 100)),
+    ):
+        surface = pygame.Surface((200, 200), pygame.SRCALPHA)
+        draw_shape(surface, shape, color, center, radius)
+        assert surface.get_at(interior_probe)[:3] == interior
+        assert surface.get_at(outline_probe)[:3] == color
 
 
 def test_draw_shape_strikecraft_wing_raster_symmetry_and_pixels():
