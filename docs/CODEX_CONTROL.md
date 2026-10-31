@@ -83,6 +83,15 @@ Launch and error diagnostics go to UTF-8 stderr. Its exit statuses are:
 | `2` | CLI input, launch, handshake, timeout, or transport failure. |
 
 Use `--no-launch` when a missing listener should be reported instead of starting the GUI.
+Only connection refusal triggers automatic launch. A timeout does not establish
+that the game stopped. CLI transport errors distinguish `connection_refused`,
+`connect_timeout`, `send_timeout` and `read_timeout`, with payload-free
+`error.transport` phase, exception class, OS error number, elapsed time and timeout.
+`execution_uncertain` is true after sending begins. Follow `error.retry`: resend
+the exact original request with its original ID and token to obtain the cached
+result safely. Never create a new mutating request to recover a missing response.
+Launched games append UTF-8 startup/runtime stderr to `saves/control_stderr.log`;
+launch failures include its path as `error.diagnostic_log`.
 
 ## Common envelope
 

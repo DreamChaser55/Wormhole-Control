@@ -28,6 +28,34 @@ class ClientError(RuntimeError):
     pass
 
 
+class TransportError(ClientError):
+    """Payload-free transport diagnostics; sending may already have taken effect."""
+
+    def __init__(self, phase: str, cause: OSError, elapsed: float = 0.0, timeout: float | None = None):
+        self.phase = phase
+        self.cause = type(cause).__name__
+        self.errno = cause.errno
+        self.elapsed = round(elapsed, 3)
+        self.timeout = timeout
+        self.code = ('connection_refused' if phase == 'connect' and isinstance(cause, ConnectionRefusedError) else
+                     f'{phase}_timeout' if isinstance(cause, TimeoutError) else 'transport_error')
+        super().__init__(f'Control transport {phase} failed ({self.cause}).')
+
+
+def _transport_response(payload, error):
+    if not isinstance(error, TransportError):
+        error = TransportError('connect', error)
+    response = _client_error_response(payload, error.code, str(error))
+    response['error'].update(
+        transport={'phase': error.phase, 'cause': error.cause, 'errno': error.errno,
+                   'elapsed_seconds': error.elapsed, 'timeout_seconds': error.timeout},
+        execution_uncertain=error.phase in {'send', 'read'},
+        retry={'request_id': response['request_id'],
+               'hint': 'Retry the exact original JSON request, retaining its request_id and turn_token. '
+                       'Do not replace it with a new request ID.'})
+    return response
+
+
 def _configure_stdio() -> None:
     """Use UTF-8 even for redirected Windows streams and legacy locales."""
     for stream, errors in (
@@ -109,15 +137,22 @@ def _response_timeout(payload: dict[str, Any]) -> float:
 
 def _send(payload: dict[str, Any], port: int, *, connect_timeout: float = 1.0) -> dict[str, Any]:
     encoded = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8") + b"\n"
-    with socket.create_connection((DEFAULT_HOST, port), timeout=connect_timeout) as connection:
-        connection.settimeout(_response_timeout(payload))
-        connection.sendall(encoded)
-        stream = connection.makefile("rb")
-        raw = stream.readline(MAX_RESPONSE_BYTES + 1)
+    phase, timeout = 'connect', connect_timeout
+    started = time.monotonic()
+    try:
+        with socket.create_connection((DEFAULT_HOST, port), timeout=connect_timeout) as connection:
+            phase, timeout = 'send', _response_timeout(payload)
+            connection.settimeout(timeout)
+            connection.sendall(encoded)
+            phase = 'read'
+            with connection.makefile("rb") as stream:
+                raw = stream.readline(MAX_RESPONSE_BYTES + 1)
+    except OSError as exc:
+        raise TransportError(phase, exc, time.monotonic() - started, timeout) from exc
     if len(raw) > MAX_RESPONSE_BYTES:
         raise ClientError("Server response exceeds 32 MiB.")
     if not raw:
-        raise ClientError("Server closed the connection without a response.")
+        raise TransportError('read', ConnectionResetError(), time.monotonic() - started, timeout)
     try:
         response = json.loads(
             raw.decode("utf-8"), parse_constant=_reject_non_json_constant
@@ -137,25 +172,34 @@ def _send(payload: dict[str, Any], port: int, *, connect_timeout: float = 1.0) -
     return response
 
 
+def _game_stderr_path() -> Path:
+    return Path(__file__).resolve().parent / 'saves' / 'control_stderr.log'
+
+
 def _launch_game(port: int) -> subprocess.Popen:
     root = Path(__file__).resolve().parent
     environment = os.environ.copy()
     environment["WORMHOLE_CONTROL_PORT"] = str(port)
+    environment['PYTHONIOENCODING'] = 'utf-8'
     kwargs: dict[str, Any] = {
         "cwd": str(root),
         "env": environment,
         "stdin": subprocess.DEVNULL,
         "stdout": subprocess.DEVNULL,
-        "stderr": subprocess.DEVNULL,
     }
     if os.name == "nt":
         kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS
     else:
         kwargs["start_new_session"] = True
-    return subprocess.Popen(
-        [sys.executable, str(root / "game.py"), "--port", str(port)],
-        **kwargs,
-    )
+    log_path = _game_stderr_path()
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    # Popen gives the child its own handle; closing the parent's copy is safe.
+    with log_path.open('ab') as diagnostics:
+        kwargs['stderr'] = diagnostics
+        process = subprocess.Popen(
+            [sys.executable, str(root / "game.py"), "--port", str(port)], **kwargs)
+    print(f'Game startup/runtime stderr: {log_path}', file=sys.stderr)
+    return process
 
 
 def _wait_for_server(port: int, timeout: float, process: subprocess.Popen) -> None:
@@ -175,7 +219,7 @@ def _wait_for_server(port: int, timeout: float, process: subprocess.Popen) -> No
         try:
             _send(probe, port, connect_timeout=0.25)
             return
-        except (ConnectionRefusedError, TimeoutError, socket.timeout, OSError) as exc:
+        except (TransportError, OSError) as exc:
             last_error = exc
             time.sleep(0.1)
         except ClientError:
@@ -227,26 +271,34 @@ def main(argv: list[str] | None = None) -> int:
         print(str(exc), file=sys.stderr)
         return 2
 
+    launching = False
     try:
-        response = _send(payload, port)
-    except (ConnectionRefusedError, TimeoutError, socket.timeout):
-        if args.no_launch:
-            response = _client_error_response(payload, "connection_failed", "No Wormhole Control server is listening.")
-            _write_response(response)
-            print(response["error"]["message"], file=sys.stderr)
-            return 2
         try:
+            response = _send(payload, port)
+        except (TransportError, OSError) as exc:
+            failure = exc if isinstance(exc, TransportError) else TransportError('connect', exc)
+            # A timeout does not establish that the listener is absent, and a
+            # read timeout may follow a successfully committed mutation.
+            if args.no_launch or failure.code != 'connection_refused':
+                raise failure
+            launching = True
             print(f"Launching game.py with control port {port}...", file=sys.stderr)
             process = _launch_game(port)
             _wait_for_server(port, args.startup_timeout, process)
+            launching = False
             response = _send(payload, port)
-        except (ClientError, OSError, socket.timeout) as exc:
-            response = _client_error_response(payload, "launch_failed", str(exc))
-            _write_response(response)
-            print(str(exc), file=sys.stderr)
-            return 2
-    except (ClientError, OSError, socket.timeout) as exc:
-        response = _client_error_response(payload, "transport_error", str(exc))
+    except (TransportError, OSError) as exc:
+        response = _transport_response(payload, exc)
+        if launching:
+            response['error']['code'] = 'launch_failed'
+            response['error']['diagnostic_log'] = str(_game_stderr_path())
+        _write_response(response)
+        print(response['error']['message'] + ' ' + response['error']['retry']['hint'], file=sys.stderr)
+        return 2
+    except ClientError as exc:
+        response = _client_error_response(payload, "launch_failed" if launching else "transport_error", str(exc))
+        if launching:
+            response['error']['diagnostic_log'] = str(_game_stderr_path())
         _write_response(response)
         print(str(exc), file=sys.stderr)
         return 2

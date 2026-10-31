@@ -362,16 +362,16 @@ class ControlCliTests(unittest.TestCase):
     @patch("game_control._wait_for_server")
     @patch("game_control._launch_game")
     @patch("game_control._send")
-    def test_connection_timeout_also_launches_then_retries(self, send, launch, wait):
-        send.side_effect = [socket.timeout(), {"service": "wormhole-control", "ok": True}]
-        process = MagicMock()
-        launch.return_value = process
+    def test_connection_timeout_preserves_identity_without_launching(self, send, launch, wait):
+        send.side_effect = game_control.TransportError('connect', socket.timeout(), 1.01, 1.0)
         code, response, diagnostics = self._run(['{"action":"status"}'])
-        self.assertEqual(code, 0)
-        self.assertTrue(response["ok"])
-        launch.assert_called_once_with(47653)
-        wait.assert_called_once_with(47653, 15.0, process)
-        self.assertIn("Launching", diagnostics)
+        self.assertEqual(code, 2)
+        self.assertEqual(response['error']['code'], 'connect_timeout')
+        self.assertEqual(response['error']['retry']['request_id'], response['request_id'])
+        self.assertFalse(response['error']['execution_uncertain'])
+        self.assertNotIn('No Wormhole Control server', diagnostics)
+        launch.assert_not_called()
+        wait.assert_not_called()
 
     @patch("game_control._send")
     def test_protocol_rejection_exits_one(self, send):
@@ -439,6 +439,62 @@ def cli_stub_server():
         finally:
             server.shutdown()
             thread.join(timeout=5)
+
+
+@pytest.mark.parametrize('phase', ['connect', 'send', 'read'])
+@pytest.mark.parametrize('cause', [TimeoutError, ConnectionResetError, ConnectionRefusedError])
+def test_transport_errors_preserve_phase_and_exact_retry_request(phase, cause, monkeypatch, capsys):
+    connection = MagicMock()
+    connection.__enter__.return_value = connection
+    stream = connection.makefile.return_value.__enter__.return_value
+    create = MagicMock(return_value=connection)
+    if phase == 'connect':
+        create.side_effect = cause(10060, 'private exception detail')
+    elif phase == 'send':
+        connection.sendall.side_effect = cause(10060, 'private exception detail')
+    else:
+        stream.readline.side_effect = cause(10060, 'private exception detail')
+    monkeypatch.setattr(game_control.socket, 'create_connection', create)
+    launch = MagicMock()
+    monkeypatch.setattr(game_control, '_launch_game', launch)
+    request = {'action': 'end_turn', 'request_id': 'retry-identity', 'turn_token': 'private-token'}
+    assert game_control.main([json.dumps(request), '--no-launch']) == 2
+    output = capsys.readouterr()
+    response = json.loads(output.out)
+    error = response['error']
+    assert error['transport']['phase'] == phase and error['transport']['cause'] == cause.__name__
+    assert error['transport']['errno'] == 10060
+    assert error['execution_uncertain'] == (phase != 'connect')
+    assert error['retry']['request_id'] == 'retry-identity'
+    assert 'private-token' not in output.out + output.err
+    assert 'private exception detail' not in output.out + output.err
+    launch.assert_not_called()
+
+
+def test_launch_keeps_utf8_runtime_stderr_in_append_only_file(tmp_path, monkeypatch):
+    monkeypatch.setattr(game_control, '__file__', str(tmp_path / 'game_control.py'))
+    captured = []
+
+    def popen(*args, **kwargs):
+        assert kwargs['env']['PYTHONIOENCODING'] == 'utf-8'
+        kwargs['stderr'].write('startup failure Δ\n'.encode('utf-8'))
+        captured.append(kwargs['stderr'])
+        return MagicMock()
+
+    monkeypatch.setattr(game_control.subprocess, 'Popen', popen)
+    game_control._launch_game(47653)
+    game_control._launch_game(47653)
+    assert all(handle.closed for handle in captured)
+    assert (tmp_path / 'saves/control_stderr.log').read_text(encoding='utf-8') == 'startup failure Δ\n' * 2
+
+
+def test_repeated_local_connections_preserve_matching_responses(cli_stub_server):
+    port = cli_stub_server.server_address[1]
+    for index in range(150):
+        request = {'protocol_version': PROTOCOL_VERSION, 'action': 'status', 'request_id': f'stress-{index}'}
+        response = game_control._send(request, port)
+        assert response['ok'] and response['request_id'] == request['request_id']
+    assert len(cli_stub_server.requests) == 150
 
 
 def _run_redirected_cli(server, *arguments, stdin=b"", legacy_encoding="cp1252"):

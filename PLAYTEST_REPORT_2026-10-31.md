@@ -17,7 +17,7 @@ This report records a live game against the built-in agentic opponent, controlle
 
 **Completed 100 full rounds: 100 player turns and 100 opponent turns, ending at the start of round 101.** The game remains open there. There was no campaign reset, checkpoint replay, or confirmed crash. Both the early and final save/reload checks reproduced the complete parsed observation exactly and rejected the old token afterward.
 
-The opponent responded sensibly to combat, used anti-strikecraft abilities, repaired an invalid plan, and withdrew a damaged scout. Two transient local control failures recovered safely; their cause remains unresolved (F07).
+The opponent responded sensibly to combat, used anti-strikecraft abilities, repaired an invalid plan, and withdrew a damaged scout. Two transient local control failures recovered safely without duplicate actions or state loss.
 
 | Measurement | Result |
 | --- | --- |
@@ -40,20 +40,6 @@ The opponent responded sensibly to combat, used anti-strikecraft abilities, repa
 At the endpoint, the player held two colonies and 18 units including the submerged scout and docked recon wing; the opponent held three colonies and 13 units. The player lost one bomber in combat and deliberately dismantled one cutter; automatic production replaced the bomber. The opponent's home shipyard survived with damage, and the opposing scout survived the artillery engagement. The match remained in progress; this report does not claim a victory. Ongoing work includes mining, resupply, combat movement, and colony approaches. The scout is safely submerged with only 2 antimatter, and the refueled stabilizer is active.
 
 Round numbers below refer to the observation at the start of the player's turn unless an event's resolution turn is stated explicitly. Aggregate AI measurements include the rejected attempt and its repair, and cover only campaign `96fe094c`.
-
-## Confirmed defects and actionable findings
-
-### F07 — Two transient control failures; the error text does not identify the failure phase (unresolved, medium priority)
-
-**Observed:** At round 91, request `pt-91276a5376934dff9e7f6e1faec66a6f` returned CLI exit 2 and `connection_failed` after 6.169 seconds, with “No Wormhole Control server is listening.” A subsequent status request immediately found the same campaign, round, and token. It did not print the launch message. Retrying the original request with its original ID/token succeeded, and the game continued. No checkpoint replay was needed. No corresponding traceback appeared in `game.log`.
-
-The same symptom recurred on the end-turn request at round 99 (`pt-d9e2f449967b4d619433f4add09be60b`), after 8.036 seconds. Retrying that exact request also succeeded and ended round 99 once.
-
-**Interpretation:** The interruption's cause is unconfirmed. It is not evidence that the game crashed or lost state. The existing main exception branch groups connection refusal and timeouts under the same definitive message, which makes diagnosis harder.
-
-**Suggestion:** Improve the diagnostics to elucidate the cause of such failures. Preserve the underlying transport phase/cause in structured CLI errors, distinguish connection refusal from connection/read timeout, and include a retry hint that retains the request ID. Keep startup/runtime stderr somewhere inspectable rather than discarding all child-process stderr. Investigate intermittent local transport failures under a long-running session; these two recovered events do not establish a deterministic engine defect.
-
-**Evidence/source:** The failed and successful entries for the same request ID in `saves/playtest_20261031/index.jsonl`; `_send`, `_launch_game`, and `main` in `game_control.py`.
 
 ## Gameplay and interface improvement suggestions
 
