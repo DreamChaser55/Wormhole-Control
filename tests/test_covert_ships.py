@@ -1,4 +1,5 @@
 """Covert construction, enemy inspection and shared unit naming behavior."""
+from game_ai.observation import OBSERVATION_SCHEMA_VERSION
 import copy
 import json
 from concurrent.futures import Future
@@ -269,7 +270,7 @@ def test_socket_rename_uses_shared_gateway(covert_world):
     covert.owner.controller = PlayerController.CODEX
     service = ControlService(game, port=0)
     observed = service._dispatch_or_wait({'protocol_version': PROTOCOL_VERSION, 'action': 'observe'}, Future())
-    assert observed['data']['observation']['schema_version'] == 30
+    assert observed['data']['observation']['schema_version'] == OBSERVATION_SCHEMA_VERSION
     assert observed['data']['observation']['command_catalog']['version'] == 24
     result = service._dispatch_or_wait({'protocol_version': PROTOCOL_VERSION, 'action': 'command',
         'request_id': 'rename', 'turn_token': observed['data']['turn_token'],

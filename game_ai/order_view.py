@@ -16,6 +16,33 @@ def point(value):
     return list(value) if isinstance(value, (tuple, list)) and len(value) == 2 else None
 
 
+def construction_progress(unit, order, active):
+    """Summarize the active front chain, never a queued sibling's paid job."""
+    status = enum_name(order.status)
+    if status not in {'pending', 'in_progress'}:
+        return {'phase': status}
+    if not active:
+        return {'phase': 'queued'}
+    constructor = getattr(unit, 'constructor_component', None)
+    chain, node = [], order
+    while node is not None and len(chain) < 32:
+        chain.append(node)
+        node = node.sub_orders[0] if node.sub_orders else None
+    kind = enum_name(order.order_type)
+    prefix = 'construction' if kind == 'construct' else 'refit'
+    job_id = getattr(constructor, prefix + '_order_id', None)
+    job = next((node for node in chain if node.public_id == job_id), None)
+    phase = ('building' if kind == 'construct' else 'refitting') if job else (
+        'approaching' if any(enum_name(node.order_type) == 'move' for node in chain) else 'pending')
+    progress = {'phase': phase}
+    if job:
+        progress.update(turns_completed=getattr(constructor, prefix + '_progress', 0),
+                        turns_required=getattr(constructor, 'time_to_build' if kind == 'construct' else 'refit_time', 0))
+    if not constructor or constructor.is_destroyed or getattr(unit, 'is_disabled', False):
+        progress.update(phase='stalled', waiting_reason='capability_unavailable')
+    return progress
+
+
 def journey_progress(unit, order, known_targets, known_body_ids=None):
     """Describe the active planned leg using public intent and current equipment."""
     from types import SimpleNamespace
@@ -245,7 +272,7 @@ def order_layers(unit, relation, visible_ids, body_ids):
             from wormhole_stabilization import state_view
             progress = state_view(unit, order=order)
         if fuel_order and not hidden:
-            progress = {'phase': order.phase, 'waiting_reason': order.waiting_reason,
+            progress = {'phase': order.phase, 'waiting_reason': order.public_waiting_reason,
                         'return_reserve': order.return_reserve,
                         'active_destination_id': order.active_destination_unit_id}
         if kind in {'attack_run', 'emergency_recovery'}:
@@ -258,12 +285,8 @@ def order_layers(unit, relation, visible_ids, body_ids):
                 progress["start_position"] = point(getattr(order, "start_position", None))
                 progress["start_system_name"] = getattr(order, "start_system_name", None)
                 progress["start_hex_coord"] = point(getattr(order, "start_hex_coord", None))
-        elif kind in {"construct", "refit_unit"} and active:
-            constructor = getattr(unit, "constructor_component", None)
-            prefix = "construction" if kind == "construct" else "refit"
-            if constructor and getattr(constructor, prefix + "_order_id", None) == order.public_id:
-                progress = {"turns_completed": getattr(constructor, prefix + "_progress", 0),
-                            "turns_required": getattr(constructor, "time_to_build" if kind == "construct" else "refit_time", 0)}
+        elif kind in {"construct", "refit_unit"} and not hidden:
+            progress = construction_progress(unit, order, active)
         if kind in {"recruit_troops", "invade_planet", "bombard_planet"} and not hidden:
             progress = {"phase": "approach" if order.has_active_sub_orders() else "awaiting_owner_turn_resolution",
                         "last_action_round": unit.last_planetary_action_round}
@@ -276,6 +299,10 @@ def order_layers(unit, relation, visible_ids, body_ids):
             journey = journey_progress(unit, order, visible_ids, body_ids)
             if journey is not None:
                 progress['journey'] = journey
+                if kind in {'construct', 'refit_unit'} and journey.get('waiting_reason'):
+                    progress.update(phase='stalled', waiting_reason=journey['waiting_reason'])
+        if root and kind in {'construct', 'refit_unit'} and not hidden:
+            data['active_phase'] = progress['phase']
         data["progress"] = progress
         children = list(getattr(order, "sub_orders", []))
         shown = []

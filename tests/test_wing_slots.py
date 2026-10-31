@@ -1,4 +1,5 @@
 """Stable mixed-production slots across commands, lifecycle and persistence."""
+from game_ai.observation import OBSERVATION_SCHEMA_VERSION
 import asyncio
 from copy import deepcopy
 
@@ -270,7 +271,7 @@ def test_socket_and_strict_provider_share_per_slot_configuration():
     carrier.owner.controller = PlayerController.CODEX
     service = ControlService(game, port=0)
     observed = service._dispatch_or_wait(dict(protocol_version=4, action='observe'), Future())
-    assert observed['data']['observation']['schema_version'] == 30
+    assert observed['data']['observation']['schema_version'] == OBSERVATION_SCHEMA_VERSION
     reply = service._dispatch_or_wait(dict(protocol_version=4, action='command', request_id='slots',
         turn_token=observed['data']['turn_token'], commands=[
             dict(type='set_wing_production', unit_ids=[carrier.id], slot_index=0, template_name='FIGHTER_WING'),

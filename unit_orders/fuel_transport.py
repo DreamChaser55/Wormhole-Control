@@ -130,6 +130,12 @@ class ContinuousFuelDeliveryOrder(Order):
     def automatic(self):
         return self.parameters.get("target_unit_id") is None
 
+    @property
+    def public_waiting_reason(self):
+        if self.HARVESTING and self.waiting_reason == 'insufficient_load':
+            return 'building_delivery_reserve'
+        return self.waiting_reason
+
     def source(self, galaxy):
         lookup = (galaxy.get_celestial_body_by_id if self.HARVESTING
                   else galaxy.get_unit_by_id)
@@ -167,7 +173,7 @@ class ContinuousFuelDeliveryOrder(Order):
         source = self.source(galaxy)
         destination = galaxy.get_unit_by_id(self.parameters.get("target_unit_id"))
         active = galaxy.get_unit_by_id(self.active_destination_unit_id)
-        data.update(phase=self.phase, waiting_reason=self.waiting_reason,
+        data.update(phase=self.phase, waiting_reason=self.public_waiting_reason,
                     return_reserve=self.return_reserve,
                     destination_mode="automatic" if self.automatic else "manual",
                     source_id=self.parameters.get(self.SOURCE_FIELD),
@@ -349,7 +355,10 @@ class ContinuousFuelDeliveryOrder(Order):
                      not self.HARVESTING and source.antimatter_component.current_amount <= 0)
             destination = configured if not self.automatic else self._choose_destination(source, galaxy_ref)
             if destination is None:
-                self.waiting_reason = "no_destination"
+                from antimatter_logistics import automatic_recipient
+                future = automatic_recipient(self.unit, source, galaxy_ref, harvesting=self.HARVESTING,
+                                             available_fuel=tank.max_capacity)
+                self.waiting_reason = 'insufficient_load' if future is not None else 'no_destination'
                 return
             budget = self._budget(source, destination, galaxy_ref)
             if budget is None:

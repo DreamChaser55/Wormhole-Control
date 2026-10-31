@@ -1,4 +1,5 @@
 """Environmental effects at firing, damage, visibility and persistence boundaries."""
+from game_ai.observation import OBSERVATION_SCHEMA_VERSION
 from types import SimpleNamespace
 import json
 import pytest
@@ -177,4 +178,4 @@ def test_observations_add_effects_and_limit_enemy_details_to_combat_equipment():
     bodies = {b['id']: b for s in observation['systems'] for b in s.get('celestial_bodies', [])}
     assert bodies[ice.id]['environmental_effects']['cooldown_reduction'] == 1
     assert bodies[oxygen.id]['environmental_effects']['splash_damage_multiplier'] == 1.15
-    assert observation['schema_version'] == 30
+    assert observation['schema_version'] == OBSERVATION_SCHEMA_VERSION

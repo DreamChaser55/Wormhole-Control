@@ -1,4 +1,5 @@
 """Gameplay, persistence and public gateway acceptance for tactical abilities."""
+from game_ai.observation import OBSERVATION_SCHEMA_VERSION
 import asyncio
 from display_config import DisplayConfig
 import json
@@ -306,7 +307,7 @@ def test_gateway_duplicate_spending_is_atomic_and_catalog_has_all_six():
     assert not deployments(game.galaxy, caster.id, 'ghost_fleet')
     assert issue(game, caster, 'ghost_fleet', position=(200, 0)).accepted
     observation = build_observation(game, caster.owner)
-    assert observation['schema_version'] == 30
+    assert observation['schema_version'] == OBSERVATION_SCHEMA_VERSION
     assert set(SPECS) <= set(observation['ability_catalog'])
     assert observation['visible_deployables'][0]['persistent'] is True
 

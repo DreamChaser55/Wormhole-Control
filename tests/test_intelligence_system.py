@@ -21,6 +21,7 @@ Comprehensive test suite for Intelligence (Espionage), Counter-Intelligence, and
 9. Agent extraction back to parent intelligence vessel
 10. Save and load persistence of intelligence state and agents
 """
+from game_ai.observation import OBSERVATION_SCHEMA_VERSION
 from display_config import DisplayConfig
 
 import pytest
@@ -501,7 +502,7 @@ def test_save_and_load_intelligence_state(test_setup):
 
     from game_ai.observation import build_observation
     observation = build_observation(new_game, new_game.players[0])
-    assert observation["schema_version"] == 30
+    assert observation["schema_version"] == OBSERVATION_SCHEMA_VERSION
     assert observation["intelligence"]["owned_agents"] == [
         {
             "agent_id": loaded_agent.id,

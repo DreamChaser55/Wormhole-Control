@@ -325,6 +325,12 @@ All explicit root identities remain visible. Expanded suborders are limited to 3
 nodes per unit and depth 6, prioritizing the active chain; waypoint previews contain
 at most 16 entries, with omitted counts. Continuous orders identify blocked queue
 entries as guidance. Progress contains actual engine phase/counters, never invented ETAs.
+Construction/refit roots expose `active_phase` and `progress.phase` (`queued`,
+`approaching`, `building`/`refitting`, `stalled`, or a terminal status). Paid work's
+completed/required turns are summarized on the root even when an approach wrapper
+owns the active child. A harvester's `building_delivery_reserve` wait means a
+reachable recipient needs fuel but the current load cannot yet fund safe delivery;
+`no_destination` means none can be served even with a full load.
 
 Explicit work suspends stance attacks; explicit Move also suppresses stance combat.
 Changing stance preserves explicit work. Clearing explicit work resumes the selected

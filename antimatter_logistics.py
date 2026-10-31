@@ -356,7 +356,7 @@ def delivery_budget(unit, source, destination, galaxy, *, harvesting=False, from
     return buffered_fuel(outward.fuel) + reserve
 
 
-def automatic_recipient(unit, source, galaxy, *, harvesting=False, excluded=()):
+def automatic_recipient(unit, source, galaxy, *, harvesting=False, excluded=(), available_fuel=None):
     """Nearest affordable owned recipient, with deterministic proximity ordering."""
     from geometry import hex_distance
     from pathfinding import find_intersystem_path
@@ -383,6 +383,7 @@ def automatic_recipient(unit, source, galaxy, *, harvesting=False, excluded=()):
                   < candidate.antimatter_component.max_capacity]
     for candidate in sorted(candidates, key=proximity):
         budget = delivery_budget(unit, source, candidate, galaxy, harvesting=harvesting)
-        if budget is not None and unit.antimatter_component.current_amount > budget:
+        fuel = unit.antimatter_component.current_amount if available_fuel is None else available_fuel
+        if budget is not None and fuel > budget:
             return candidate
     return None

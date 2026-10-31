@@ -1,4 +1,5 @@
 """Offline regressions for the shared Luna/Codex intelligence interface."""
+from game_ai.observation import OBSERVATION_SCHEMA_VERSION
 
 from types import SimpleNamespace
 from constants import CI_SWEEP_ANTIMATTER_COST, CI_SWEEP_CREDIT_COST, PlanetType
@@ -81,7 +82,7 @@ def test_observation_discloses_only_authorized_agent_state():
     spy.infiltrating_agents.extend([hidden, discovered])
 
     observation = build_observation(game, player)
-    assert observation["schema_version"] == 30
+    assert observation["schema_version"] == OBSERVATION_SCHEMA_VERSION
     assert observation["command_catalog"]["version"] == 24
     assert observation["intelligence"]["owned_agents"] == [
         {
@@ -296,7 +297,7 @@ def test_luna_coordinator_and_codex_control_use_identical_gateway_effects():
         observed = service._dispatch("observe", "observe-intelligence", {})
         assert observed["ok"]
         observation = observed["data"]["observation"]
-        assert observation["schema_version"] == 30
+        assert observation["schema_version"] == OBSERVATION_SCHEMA_VERSION
         assert observation["command_catalog"]["version"] == 24
         assert observation["intelligence"]["owned_agents"][0]["agent_id"] == codex_agent.id
 

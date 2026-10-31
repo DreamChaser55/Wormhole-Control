@@ -49,12 +49,6 @@ The initial plan used about 51,000 input tokens despite a two-system map and fou
 
 Offer a compact observation/planning representation, deduplicate static catalogs, and omit target lists for categorically unavailable capabilities. Maintain schema discovery and fog-of-war guarantees. Consider an optional inexpensive “continue existing commitments” path during genuinely quiet turns, while retaining full planning for meaningful state changes. Zero-command plans alone do not prove that no reasoning was needed, especially during combat. Final telemetry measurements appear above; no monetary cost estimate is inferred.
 
-### S03 — Show active construction progress at the top level of approach-wrapped orders
-
-Constructor 27's refinery construction retained an outer construction order with an empty `progress` object while the inner active construction node held the actual completed/required turns. The full tree contains the information, so this is not lost state. A consistent root `active_phase` and construction progress summary would reduce recursive parsing and make idle, approaching, building, and stalled states easier to distinguish.
-
-Similarly, Harvester 29 reported `phase: harvesting` together with `waiting_reason: no_destination` while successfully accumulating fuel at the pulsar (49.33 at round 86, 71.87 at round 87). Recipients needed fuel, but the current load was insufficient for a viable delivery. Distinguishing “building delivery reserve” from “no eligible recipient” would make this healthy state easier to recognize. Falling fuel during the preceding approach was explained by movement plus pulsar drain; it was not a harvesting failure.
-
 ### S04 — Generate close-spaced sparse maps more reliably
 
 An initial valid two-system configuration with seed `20261031`, minimum spacing 50 and maximum spacing 100 failed after 100 placement attempts, placing only one system. The failure was safe and left the main menu intact. Default spacing succeeded. Consider sampling within valid annuli of existing systems rather than repeatedly sampling the full galaxy, or report the feasible region/placement constraints more explicitly. This is a generation robustness suggestion, not evidence of state corruption.
