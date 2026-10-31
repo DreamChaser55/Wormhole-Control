@@ -260,7 +260,9 @@ def order_layers(unit, relation, visible_ids, body_ids):
                 public["omitted_waypoints"] = max(0, len(route) - 16)
             if fuel_order:
                 public.update(source_id=params.get(source_field), target_id=params.get('target_unit_id'),
-                              destination_mode='automatic' if order.automatic else 'manual')
+                              destination_mode='automatic' if order.automatic else 'manual',
+                              recipient_priority=order.recipient_priority,
+                              minimum_load_fraction=order.minimum_load_fraction)
             data["parameters"] = public
         progress = {}
         if kind == 'return_for_service':

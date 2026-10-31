@@ -371,7 +371,7 @@ def test_command_discovery_exposes_sources_and_allows_no_demand(harvesting):
     assert options[command['type']]['automatic_when_target_null']
     assert options[command['type']]['automatic_recipient_scope'] == 'owned_galaxy_wide'
     assert observation['schema_version'] == OBSERVATION_SCHEMA_VERSION
-    assert observation['command_catalog']['version'] == 24
+    assert observation['command_catalog']['version'] == 25
 
 
 @pytest.mark.parametrize('invalid_last', [False, True])

@@ -21,6 +21,8 @@ class Command:
     type: str
     slot_index: int | None = field(default=None, kw_only=True)
     enabled: bool | None = field(default=None, kw_only=True)
+    recipient_priority: str | None = field(default=None, kw_only=True)
+    minimum_load_fraction: float | None = field(default=None, kw_only=True)
     unit_ids: tuple[int, ...] = ()
     target_id: int | None = None
     source_id: int | None = None
@@ -64,6 +66,8 @@ class Command:
             "unit_ids": list(self.unit_ids),
             "target_id": self.target_id,
             "source_id": self.source_id,
+            "recipient_priority": self.recipient_priority,
+            "minimum_load_fraction": self.minimum_load_fraction,
             "system_name": self.system_name,
             "hex_coord": list(self.hex_coord) if self.hex_coord is not None else None,
             "position": list(self.position) if self.position is not None else None,

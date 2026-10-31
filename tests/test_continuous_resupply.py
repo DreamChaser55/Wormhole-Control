@@ -98,7 +98,8 @@ def test_source_id_zero_and_human_event_use_gateway():
     OrderSystem(game, bus)
     bus.publish(ContinuousResupplyEvent([actor], source, False, target))
     order = actor.commander_component.current_order
-    assert order.parameters == {'source_body_id': 0, 'target_unit_id': target.id}
+    assert order.parameters == {'source_body_id': 0, 'target_unit_id': target.id,
+                                'recipient_priority': 'nearest', 'minimum_load_fraction': 1.0}
     assert order.status == OrderStatus.IN_PROGRESS
 
 

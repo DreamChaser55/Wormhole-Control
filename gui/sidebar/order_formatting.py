@@ -216,6 +216,9 @@ def format_order_state_data(state_data: dict, galaxy: typing.Any = None) -> list
         lines = [f"<font color='{TRANSFER_ANTIMATTER_COLOR}'><b>{label}:</b></font>",
                  f"  {source} → {target}", f"  Phase: {phase}",
                  f"  Return reserve: {state_data.get('return_reserve', 0):.1f} AM"]
+        lines.append(f"  Depart at {state_data.get('minimum_load_fraction', 1) * 100:g}% tank")
+        if automatic:
+            lines.append('  Priority: ' + escape(state_data.get('recipient_priority', 'nearest').replace('_', ' ')))
         if state_data.get('waiting_reason'):
             lines.append('  Waiting: ' + escape(state_data['waiting_reason'].replace('_', ' ')))
         return lines

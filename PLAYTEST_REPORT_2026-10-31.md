@@ -2,7 +2,7 @@
 
 ## Scope and environment
 
-This report records a live game against the built-in agentic opponent, controlled through `python game_control.py`. The requested `README.md`, `docs/REFERENCE.md`, `docs/DEVELOPMENT.md`, and `docs/AGENTIC_AI.md` were read before play, together with the game-control skill and control-interface documentation. Findings distinguish observed defects, opponent decisions, and design suggestions. No game source or production configuration was changed.
+This report records a live game against the built-in agentic opponent, controlled through `python game_control.py`. The requested `README.md`, `docs/REFERENCE.md`, `docs/DEVELOPMENT.md`, and `docs/AGENTIC_AI.md` were read before play, together with the game-control skill and control-interface documentation. Findings distinguish observed defects, opponent decisions, and design suggestions. The original playtest changed no game source or production configuration; subsequent fixes are recorded in repository history.
 
 - Repository revision: `b4ff43da3fe18e91caf2c7add1fbeb46ae584ea6`.
 - Windows, Python 3.14.3; visible local game process.
@@ -41,13 +41,11 @@ At the endpoint, the player held two colonies and 18 units including the submerg
 
 Round numbers below refer to the observation at the start of the player's turn unless an event's resolution turn is stated explicitly. Aggregate AI measurements include the rejected attempt and its repair, and cover only campaign `96fe094c`.
 
-## Gameplay and interface improvement suggestions
+## Resolution status
 
-### S06 — Offer fuel-service priorities and an optional partial-load departure threshold
+No open findings remain. The remaining defects and improvement suggestions have been implemented, validated with offline regressions, and removed from this report. The original playtest measurements and coverage below remain historical evidence; the two recovered transport interruptions were not reproduced.
 
-At round 89 the automatic harvester selected Refinery 45 (164.25/200 antimatter), while Tender 44 had only 21.83/150 and was consuming 5 per turn to hold the wormhole stable. This matches the nearest-affordable-recipient policy in `antimatter_logistics.py:359`; it is not a violation of that policy. `unit_orders/fuel_transport.py` also waits for a full harvester tank before departing. Together, distance priority and full-load batching can delay urgent service.
-
-Consider optional recipient priorities or an urgency score based on time until a unit stops working, plus a configurable minimum delivery load. Preserve the existing return-fuel reserve checks. The current manual-target and manual-transfer options are useful, but require intervention to protect continuous services.
+Fix validation: 5,045 tests passed, eight skipped, and ten subtests passed. Repository lint, import boundaries, Linux/Windows type checks, and generated-reference checks passed. The updated fuel-route dialog was rendered and visually inspected. No live provider calls were needed for these checks.
 
 ## Validation and coverage
 
@@ -86,10 +84,8 @@ The following were exercised through the running game's control interface, with 
 
 ## Evidence and limitations
 
-The ignored local directory `saves/playtest_20261031/` contains the request/response pairs, `index.jsonl`, per-round observations, per-round opponent memory copies, protocol check results, encoding probes, and recorder scripts. `metrics.json` contains the final aggregates; `final_reload_check.json` records the final equality/token check. Checkpoint saves are named `saves/playtest_20261031_roundNNN.json`; the final save is `saves/playtest_20261031_final_round101.json`. Telemetry is in `saves/ai_telemetry.jsonl`; filter by campaign `96fe094c` because the file also contains older runs. `game.log` is likewise cumulative. The Markdown report is the only intended tracked deliverable; ignored evidence is retained locally and will not accompany a commit unless explicitly included.
+The ignored local directory `saves/playtest_20261031/` contains the request/response pairs, `index.jsonl`, per-round observations, per-round opponent memory copies, protocol check results, encoding probes, and recorder scripts. `metrics.json` contains the final aggregates; `final_reload_check.json` records the final equality/token check. Checkpoint saves are named `saves/playtest_20261031_roundNNN.json`; the final save is `saves/playtest_20261031_final_round101.json`. Telemetry is in `saves/ai_telemetry.jsonl`; filter by campaign `96fe094c` because the file also contains older runs. `game.log` is likewise cumulative. The original playtest committed only this Markdown report; ignored evidence remains local and is excluded from the fix commits.
 
 This is one seeded campaign and a set of targeted interface probes, not exhaustive feature coverage. No deliberate provider outage, credential failure, transport break, or partial-commit fault was injected. Semantic repair and two naturally occurring transport interruptions were observed; manual AI retry/skip, exhausted repair budgets, and partial-commit recovery were not exercised. The two negative transport results are retained in the index; reusing the request IDs overwrote their per-request response files with successful retry responses.
 
-Other untested areas include Titan powers and capacity, most specialized abilities, diplomacy/messages, trade, espionage, minefields, boarding/capture, planetary bombardment/invasion, general hangars for non-wing craft, refitting, multiplayer/human handoff, and most GUI workflows. Recruitment was tested, but no invasion completed. Repair covered hull damage, not destroyed subsystems. Wing replacement and recall were tested, but endurance exhaustion and damaged-wing replenishment were not. Only crystal mining/refining was exercised directly. Suggestions above do not claim that every suspected edge case is a reproduced bug.
-
-Preserve the successful atomic-preflight, token, fog-of-war, and save-restoration behavior while addressing the remaining findings.
+Other untested areas include Titan powers and capacity, most specialized abilities, diplomacy/messages, trade, espionage, minefields, boarding/capture, planetary bombardment/invasion, general hangars for non-wing craft, refitting, multiplayer/human handoff, and most GUI workflows. Recruitment was tested, but no invasion completed. Repair covered hull damage, not destroyed subsystems. Wing replacement and recall were tested, but endurance exhaustion and damaged-wing replenishment were not. Only crystal mining/refining was exercised directly. The listed coverage does not establish that every suspected edge case is a reproduced bug.

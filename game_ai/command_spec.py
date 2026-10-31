@@ -6,7 +6,7 @@ from copy import deepcopy
 import math
 from construction_customization import TURRET_TYPES, DEFENSE_TYPES, validate_override_values
 
-CONTRACT_VERSION = 24
+CONTRACT_VERSION = 25
 MAX_COMMANDS = 40
 MAX_UNITS = 12
 MAX_WAYPOINTS = 16
@@ -66,8 +66,8 @@ COMMAND_SPECS = {
     "deploy_all_wings": _spec("Deploy all ready docked wings. Observe which wings launched before commanding them in a separate batch; blocked wings remain docked. Servicing wings cannot relaunch until next owner turn.", capability=("strikecraft_bay_component",)),
     "transfer_antimatter": _spec("Transfer antimatter to a friendly unit.", ("target_id",), capability=("antimatter_component",)),
     "take_antimatter": _spec("Approach a friendly source and take antimatter without changing its orders.", ("target_id",), capability=("antimatter_component",)),
-    "continuous_antimatter_transport": _spec("Load at source_id (unit). Deliver to target_id (owned/allied unit), or omit/null target_id to automatically supply nearest reachable owned units galaxy-wide, visiting multiple recipients per load with return fuel reserved. No demand waits; manual destination loss fails.", ("source_id", "target_id"), ("source_id",), capability=("antimatter_component", "engines_component"), single_unit=True),
-    "continuous_resupply": _spec("Harvest at source_id (star or hydrogen nebula). Deliver to target_id (owned/allied unit), or omit/null target_id to automatically supply nearest reachable owned units galaxy-wide. Retains 60 AM; no demand waits; manual destination loss fails.", ("source_id", "target_id"), ("source_id",), capability=("harvester_component", "antimatter_component")),
+    "continuous_antimatter_transport": _spec("Load at source_id (unit). Deliver to target_id (owned/allied unit), or omit/null target_id to automatically supply owned units galaxy-wide. recipient_priority: nearest (default) or service_urgency (least remaining active-service fuel first). minimum_load_fraction: departure tank fraction in (0,1], default 1. Return fuel remains reserved; no demand waits; manual destination loss fails.", ("source_id", "target_id", "recipient_priority", "minimum_load_fraction"), ("source_id",), capability=("antimatter_component", "engines_component"), single_unit=True),
+    "continuous_resupply": _spec("Harvest at source_id (star or hydrogen nebula). Deliver to target_id (owned/allied unit), or omit/null target_id to automatically supply owned units galaxy-wide. recipient_priority: nearest (default) or service_urgency (least remaining active-service fuel first). minimum_load_fraction: departure tank fraction in (0,1], default 1. Retains 60 AM; no demand waits; manual destination loss fails.", ("source_id", "target_id", "recipient_priority", "minimum_load_fraction"), ("source_id",), capability=("harvester_component", "antimatter_component")),
     "lay_minefield": _spec("Lay anti_ship (default) or anti_strikecraft mines.", ("minefield_type",), ()),
     "trade": _spec("Trade with a friendly active habitat.", ("target_id",), capability=("trade_component",)),
     "continuous_trade": _spec("Repeat trade routes indefinitely.", capability=("trade_component",)),
@@ -115,6 +115,8 @@ COMMAND_PROPERTIES = {
     "target_component": NULLABLE_STRING, "message": NULLABLE_STRING, "order_id": NULLABLE_STRING,
     "agent_id": {"type": ["integer", "null"]},
     "source_id": {"type": ["integer", "null"]},
+    "recipient_priority": {"type": ["string", "null"], "enum": [None, 'nearest', 'service_urgency']},
+    "minimum_load_fraction": {"type": ["number", "null"], "exclusiveMinimum": 0, "maximum": 1},
     "sabotage_type": {"type": ["string", "null"], "enum": [None, "engines", "weapons", "defenses", "hyperdrive", "sensors", "antimatter", "economy", "growth"]},
     "waypoints": {"anyOf": [{"type": "array", "items": WAYPOINT_SCHEMA, "minItems": 1, "maxItems": MAX_WAYPOINTS}, {"type": "null"}]},
 }
@@ -160,6 +162,9 @@ def validate_command(raw):
             require(type(value) is int and value >= 0, f"{field} must be a nonnegative integer.")
         elif field == "amount":
             require(type(value) in (int, float) and _finite(value) and value > 0, "amount must be finite and positive.")
+        elif field == 'minimum_load_fraction':
+            require(type(value) in (int, float) and _finite(value) and 0 < value <= 1,
+                    'minimum_load_fraction must be finite and in (0,1].')
         elif field in ("hex_coord", "position"):
             _validate_pair(value, field, require)
         elif field == "waypoints":
@@ -179,6 +184,7 @@ def validate_command(raw):
         except ValueError as exc:
             raise ContractError(str(exc)) from exc
     require(raw.get("stance") is None or raw["stance"] in STANCE_VALUES, "Unknown stance.")
+    require(raw.get('recipient_priority') in (None, 'nearest', 'service_urgency'), 'Unknown recipient_priority.')
     try:
         validate_override_values(raw.get("turret_type_override"), raw.get("defense_type_override"))
     except ValueError as exc:

@@ -240,7 +240,7 @@ For unattended deliveries, harvesters and transports both offer **Automatic** an
 
 - Select harvesters, right-click a star or hydrogen nebula, and open **Resupply
   (continuously)...**. The clicked body is the fixed harvest source; destination
-  defaults to Automatic. Harvesters fill their tanks at the source and retain
+  defaults to Automatic. By default, harvesters fill their tanks at the source and retain
   **60 AM** when donating. When a manual depot fills, they return to harvest and
   wait at their source until that depot needs fuel again.
 - Select one mobile transporter and open **Continuous Antimatter Transport...**
@@ -259,6 +259,18 @@ is retained until it fills or becomes unavailable/unreachable, then another is
 selected. Routes can serve several recipients per load, returning to their source
 when no productive delivery remains and retrying each owner turn. Automatic routes
 can be started even when nobody currently needs fuel.
+
+**Priority: Fuel service urgency** optionally serves active equipment/support with
+the fewest remaining owner turns of fuel first, including maintaining or fuel-starved
+wormhole stabilizers. Distance and unit ID break ties. Idle depots follow active
+services. A newly more urgent service can interrupt an automatic delivery; all
+recipients must still pass reachability and return-reserve checks. **Nearest** is
+the default. Manual destinations stay pinned regardless of priority.
+
+**Depart at** selects 25%, 50%, 75% or 100% tank in the route dialog. The control
+interface accepts any fraction above zero through one as `minimum_load_fraction`.
+100% is the default; lower thresholds allow earlier partial deliveries only when
+the load also covers the full travel/return reserve and positive delivery cargo.
 
 **Manual** pins one owned or allied recipient by unit ID and follows its current
 position. Destroyed, hostile, docked, submerged, or storage-inoperable destinations

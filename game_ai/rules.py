@@ -671,6 +671,11 @@ def command_guidance(
     if offline(unit):
         legal &= {'rename_unit', 'cancel_orders', 'clear_explicit_orders', 'cancel_order'}
         conditional = []
+    for kind in ('continuous_resupply', 'continuous_antimatter_transport'):
+        if kind in options:
+            options[kind].update(recipient_priorities=['nearest', 'service_urgency'],
+                                 default_recipient_priority='nearest',
+                                 minimum_load_fraction={'exclusive_minimum': 0, 'maximum': 1, 'default': 1})
     return sorted(legal), options, conditional
 
 

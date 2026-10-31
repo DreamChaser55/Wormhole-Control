@@ -271,7 +271,7 @@ def test_socket_rename_uses_shared_gateway(covert_world):
     service = ControlService(game, port=0)
     observed = service._dispatch_or_wait({'protocol_version': PROTOCOL_VERSION, 'action': 'observe'}, Future())
     assert observed['data']['observation']['schema_version'] == OBSERVATION_SCHEMA_VERSION
-    assert observed['data']['observation']['command_catalog']['version'] == 24
+    assert observed['data']['observation']['command_catalog']['version'] == 25
     result = service._dispatch_or_wait({'protocol_version': PROTOCOL_VERSION, 'action': 'command',
         'request_id': 'rename', 'turn_token': observed['data']['turn_token'],
         'commands': [{'type': 'rename_unit', 'unit_ids': [covert.id], 'new_name': 'Resolute'}]}, Future())

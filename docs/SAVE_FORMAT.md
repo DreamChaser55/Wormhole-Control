@@ -328,6 +328,10 @@ replays the pulse or its 20 AM charge.
 `CONTINUOUS_ANTIMATTER_TRANSPORT` stores `source_unit_id` and nullable
 `target_unit_id`; `CONTINUOUS_RESUPPLY` stores typed `source_body_id` and nullable
 `target_unit_id`. Null targets mean Automatic; non-null targets mean Manual.
+Both orders also store validated `recipient_priority` (`nearest` or
+`service_urgency`) and `minimum_load_fraction` (finite and in `(0, 1]`) parameters.
+Omitted settings use nearest and a full tank. Invalid settings reject loading
+transactionally; loading neither chooses a recipient nor changes a delivery phase.
 Both require runtime `active_destination_unit_id` (nullable and separate from the
 configured target), phase, bounded waiting reason, return reserve, and an active
 approach subtree. Source phases are `loading` for transport and `harvesting` for

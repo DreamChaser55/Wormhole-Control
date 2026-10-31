@@ -193,6 +193,10 @@ to 25%. Read colony defenses and command_options for current previews, costs and
 Use transfer_antimatter to donate and take_antimatter to approach a friendly source and load fuel.
 continuous_resupply uses source_id for a star or hydrogen nebula; continuous_antimatter_transport uses source_id for a loading unit.
 Both use optional target_id for a fixed owned/allied recipient. Null target_id automatically supplies nearest reachable owned units galaxy-wide, visiting several per load.
+For critical fuel-consuming services, recipient_priority=service_urgency serves the fewest
+remaining owner turns of active equipment/support fuel first and may preempt less urgent deliveries.
+minimum_load_fraction in (0,1] permits earlier departure at that tank fraction (default 1/full).
+Use partial loads when timely service is valuable; travel and return reserves still apply.
 Sources remain fixed. Automatic routes return to their source and wait without demand; a lost manual destination fails. Full manual destinations wait.
 Harvesters retain 60 AM; transports reserve buffered return fuel. Both block queued work.
 The ability_catalog describes targeting and costs. Multiply Antimatter doubles seeded friendly tanks within 500, including self, after a 20 AM cost. Caster and recipients have 30-round cooldowns. Empty tanks gain nothing. Future pickups and queued pulses cannot finance immediate casts.

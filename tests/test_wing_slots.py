@@ -284,7 +284,7 @@ def test_socket_and_strict_provider_share_per_slot_configuration():
 
     async def fake_response(**kwargs):
         schema = kwargs['text']['format']
-        assert schema['strict'] and schema['name'] == 'wormhole_control_turn_v15'
+        assert schema['strict'] and schema['name'] == 'wormhole_control_turn_v16'
         assert 'slot_index' in schema['schema']['properties']['commands']['items']['required']
         from game_ai.adapters.openai_responses import PROMPT_CACHE_KEY
         assert kwargs['prompt_cache_key'] == PROMPT_CACHE_KEY

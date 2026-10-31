@@ -1565,7 +1565,9 @@ class CommandGateway:
                 target_unit = self._visible_unit(player, command.target_id)
                 self._require_friendly(player, target_unit)
             return (lambda unit: ContinuousAntimatterTransportOrder(unit,
-                {'source_unit_id': source.id, 'target_unit_id': command.target_id}), 'Transport antimatter')
+                {'source_unit_id': source.id, 'target_unit_id': command.target_id,
+                 'recipient_priority': command.recipient_priority or 'nearest',
+                 'minimum_load_fraction': 1.0 if command.minimum_load_fraction is None else command.minimum_load_fraction}), 'Transport antimatter')
         if command.type == "continuous_resupply":
             target_body = self._body(command.source_id)
             if not is_antimatter_source(target_body):
@@ -1575,7 +1577,9 @@ class CommandGateway:
             return (
                 lambda unit: ContinuousResupplyOrder(
                     unit,
-                    {"source_body_id": target_body.id, "target_unit_id": command.target_id},
+                    {"source_body_id": target_body.id, "target_unit_id": command.target_id,
+                     'recipient_priority': command.recipient_priority or 'nearest',
+                     'minimum_load_fraction': 1.0 if command.minimum_load_fraction is None else command.minimum_load_fraction},
                 ),
                 f"Resupply from {target_body.name}",
             )

@@ -21,6 +21,31 @@ from geometry import (
     segment_intersects_circle,
 )
 
+RECIPIENT_PRIORITIES = ('nearest', 'service_urgency')
+
+
+def validate_delivery_preferences(priority, minimum_load_fraction):
+    if priority not in RECIPIENT_PRIORITIES:
+        raise ValueError('recipient_priority must be nearest or service_urgency.')
+    try:
+        finite = math.isfinite(minimum_load_fraction)
+    except (TypeError, OverflowError):
+        finite = False
+    if (type(minimum_load_fraction) not in (int, float) or not finite
+            or not 0 < minimum_load_fraction <= 1):
+        raise ValueError('minimum_load_fraction must be finite, greater than zero and at most one.')
+
+
+def service_fuel_horizon(unit):
+    """Owner turns until active equipment/support stops; idle depots rank later."""
+    if unit.is_disabled:
+        return float('inf')
+    upkeep = equipment_upkeep(unit)
+    from wormhole_stabilization import state_view, equipment_ready, STABILIZER_UPKEEP
+    if equipment_ready(unit) and state_view(unit)['phase'] in {'maintaining', 'waiting_for_antimatter'}:
+        upkeep += STABILIZER_UPKEEP
+    return unit.antimatter_component.current_amount / upkeep if upkeep > 0 else float('inf')
+
 
 def storage_ready(unit):
     storage = getattr(unit, "antimatter_component", None)
@@ -356,8 +381,8 @@ def delivery_budget(unit, source, destination, galaxy, *, harvesting=False, from
     return buffered_fuel(outward.fuel) + reserve
 
 
-def automatic_recipient(unit, source, galaxy, *, harvesting=False, excluded=(), available_fuel=None):
-    """Nearest affordable owned recipient, with deterministic proximity ordering."""
+def automatic_recipient(unit, source, galaxy, *, harvesting=False, excluded=(), available_fuel=None, priority='nearest'):
+    """Affordable owned recipients, optionally ranked by remaining service fuel."""
     from geometry import hex_distance
     from pathfinding import find_intersystem_path
 
@@ -372,7 +397,8 @@ def automatic_recipient(unit, source, galaxy, *, harvesting=False, excluded=(), 
             value = (float('inf') if not path else
                      (len(path) - 1) * 1_000_000.0
                      + hex_distance(unit.in_hex, candidate.in_hex) * 10000.0)
-        return value, candidate.id
+        horizon = service_fuel_horizon(candidate) if priority == 'service_urgency' else 0
+        return horizon, value, candidate.id
 
     candidates = [candidate for system in galaxy.systems.values()
                   for sector in system.hexes.values() for candidate in sector.units

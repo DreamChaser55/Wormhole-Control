@@ -116,6 +116,10 @@ class ContinuousFuelDeliveryOrder(Order):
 
     def __init__(self, unit, parameters=None, parent_order=None):
         super().__init__(unit, self.TYPE, parameters, parent_order)
+        self.parameters.setdefault('recipient_priority', 'nearest')
+        self.parameters.setdefault('minimum_load_fraction', 1.0)
+        from antimatter_logistics import validate_delivery_preferences
+        validate_delivery_preferences(self.recipient_priority, self.minimum_load_fraction)
         self.phase = self.loading_phase
         self.waiting_reason = None
         from constants import ANTIMATTER_HARVESTER_RETURN_THRESHOLD
@@ -129,6 +133,14 @@ class ContinuousFuelDeliveryOrder(Order):
     @property
     def automatic(self):
         return self.parameters.get("target_unit_id") is None
+
+    @property
+    def recipient_priority(self):
+        return self.parameters['recipient_priority']
+
+    @property
+    def minimum_load_fraction(self):
+        return self.parameters['minimum_load_fraction']
 
     @property
     def public_waiting_reason(self):
@@ -174,6 +186,7 @@ class ContinuousFuelDeliveryOrder(Order):
         destination = galaxy.get_unit_by_id(self.parameters.get("target_unit_id"))
         active = galaxy.get_unit_by_id(self.active_destination_unit_id)
         data.update(phase=self.phase, waiting_reason=self.public_waiting_reason,
+                    recipient_priority=self.recipient_priority, minimum_load_fraction=self.minimum_load_fraction,
                     return_reserve=self.return_reserve,
                     destination_mode="automatic" if self.automatic else "manual",
                     source_id=self.parameters.get(self.SOURCE_FIELD),
@@ -309,7 +322,7 @@ class ContinuousFuelDeliveryOrder(Order):
     def _choose_destination(self, source, galaxy, *, excluded=()):
         from antimatter_logistics import automatic_recipient
         destination = automatic_recipient(self.unit, source, galaxy,
-                                          harvesting=self.HARVESTING, excluded=excluded)
+                                          harvesting=self.HARVESTING, excluded=excluded, priority=self.recipient_priority)
         self.active_destination_unit_id = destination.id if destination else None
         return destination
 
@@ -330,6 +343,15 @@ class ContinuousFuelDeliveryOrder(Order):
                          and destination.antimatter_component.current_amount
                          < destination.antimatter_component.max_capacity)
                 budget = self._budget(source, destination, galaxy_ref) if valid else None
+                if valid and self.recipient_priority == 'service_urgency':
+                    from antimatter_logistics import automatic_recipient, service_fuel_horizon
+                    urgent = automatic_recipient(self.unit, source, galaxy_ref, harvesting=self.HARVESTING,
+                                                 priority=self.recipient_priority)
+                    if urgent is not None and service_fuel_horizon(urgent) < service_fuel_horizon(destination):
+                        self._clear_destination()
+                        destination = urgent
+                        self.active_destination_unit_id = urgent.id
+                        budget = self._budget(source, destination, galaxy_ref)
                 if budget is None or tank.current_amount <= budget:
                     self._clear_destination()
                     destination = self._choose_destination(source, galaxy_ref)
@@ -351,13 +373,13 @@ class ContinuousFuelDeliveryOrder(Order):
                 return
             if not self.HARVESTING:
                 exchange(source, self.unit)
-            ready = (tank.current_amount >= tank.max_capacity or
+            ready = (tank.current_amount >= tank.max_capacity * self.minimum_load_fraction or
                      not self.HARVESTING and source.antimatter_component.current_amount <= 0)
             destination = configured if not self.automatic else self._choose_destination(source, galaxy_ref)
             if destination is None:
                 from antimatter_logistics import automatic_recipient
                 future = automatic_recipient(self.unit, source, galaxy_ref, harvesting=self.HARVESTING,
-                                             available_fuel=tank.max_capacity)
+                                             available_fuel=tank.max_capacity, priority=self.recipient_priority)
                 self.waiting_reason = 'insufficient_load' if future is not None else 'no_destination'
                 return
             budget = self._budget(source, destination, galaxy_ref)

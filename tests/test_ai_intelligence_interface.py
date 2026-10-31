@@ -49,7 +49,7 @@ def issue(game, player, *commands):
 
 
 def test_contract_v3_intelligence_shapes():
-    assert CONTRACT_VERSION == 24
+    assert CONTRACT_VERSION == 25
     sabotage = Command.from_dict(
         {
             "type": "sabotage",
@@ -83,7 +83,7 @@ def test_observation_discloses_only_authorized_agent_state():
 
     observation = build_observation(game, player)
     assert observation["schema_version"] == OBSERVATION_SCHEMA_VERSION
-    assert observation["command_catalog"]["version"] == 24
+    assert observation["command_catalog"]["version"] == CONTRACT_VERSION
     assert observation["intelligence"]["owned_agents"] == [
         {
             "agent_id": own_agent.id,
@@ -298,7 +298,7 @@ def test_luna_coordinator_and_codex_control_use_identical_gateway_effects():
         assert observed["ok"]
         observation = observed["data"]["observation"]
         assert observation["schema_version"] == OBSERVATION_SCHEMA_VERSION
-        assert observation["command_catalog"]["version"] == 24
+        assert observation["command_catalog"]["version"] == CONTRACT_VERSION
         assert observation["intelligence"]["owned_agents"][0]["agent_id"] == codex_agent.id
 
         commanded = service._dispatch(

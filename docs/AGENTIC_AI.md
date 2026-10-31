@@ -317,10 +317,10 @@ conditional estimate capped at 10,000 owner turns. Estimated remaining antimatte
 the next movement step's cost and a specific fuel/storage wait explain stalled
 travel. The human sidebar and briefing show the same authorized journey summary,
 separately from the frozen historical event report. Local `wormhole_approach`
-means moving toward an entry before system
-transit; `egress` requires a known field escape before a sector jump. Destination
-approach, arrival, recharge and fuel waits remain separate phases. Estimates cover remaining
-travel; action time and subsequent queued missions add time. Hidden target references and
+means moving toward an entry before system transit; `egress` requires a known field
+escape before a sector jump. Destination approach, arrival, recharge and fuel waits
+remain separate phases. Estimates cover remaining travel; action time and
+subsequent queued missions add time. Hidden target references and
 private agent approach geometry suppress this view. Estimates use current equipment
 and known terrain, assume sufficient fuel and unchanged conditions, and never advance
 orders, record discoveries or draw randomness. Slow advancing work should be preserved.
@@ -795,6 +795,13 @@ and `queue`. For `continuous_resupply`, the source is a star or hydrogen nebula;
 for `continuous_antimatter_transport`, it is a loading unit and exactly one actor
 is allowed. A unit `target_id` selects a fixed owned/allied recipient. Null or
 omitted `target_id` selects Automatic delivery to eligible owned recipients.
+Both commands accept optional `recipient_priority` (`nearest`, the default, or
+`service_urgency`) and `minimum_load_fraction` (finite, greater than zero, at most
+one; default one). The latter sets departure tank level without relaxing reserve
+checks. Urgency ranks currently active fuel-consuming services by remaining fuel
+turns, with distance and ID breaking ties, and may preempt a less urgent automatic
+delivery. Manual destinations remain fixed. Options advertise values/defaults;
+owned/allied order parameters and the human sidebar expose the selected settings.
 See [antimatter logistics](REFERENCE.md#antimatter-logistics) for recipient selection,
 waiting/failure conditions and reserves. Source and route checks follow the
 [shared order contract](#shared-order-contract).

@@ -137,6 +137,8 @@ class AntimatterTransportWindow:
         self.units = list(harvesters) if self.harvesting else [unit]
         self.harvest_source = source if self.harvesting else None
         self.automatic = self.harvesting
+        self.recipient_priority = 'nearest'
+        self.minimum_load_fraction = 1.0
         self.game = gui.game_instance
         screen = gui.manager.get_root_container().get_rect()
         self.scale = scale = display_config_for(gui).text_scale
@@ -173,8 +175,9 @@ class AntimatterTransportWindow:
         section_height = 4 * row + 3 * gap
         swap_y = section_height + gap
         destination_y = row + gap if self.harvesting else swap_y + row + gap
+        preferences_y = destination_y + section_height + gap
         self.body.set_scrollable_area_dimensions(
-            (field_width, destination_y + section_height + gap))
+            (field_width, preferences_y + 2 * (row + gap)))
         self.body_width = self.body.get_container().get_size()[0]
         self._refresh_candidates()
         self.source = None
@@ -185,6 +188,14 @@ class AntimatterTransportWindow:
             self.source = _EndpointPicker(self, "Source", 0, _EndpointState(
                 unit_id=source.id, system=source.in_system, hex_coord=tuple(source.in_hex)))
         self.destination = _EndpointPicker(self, "Destination", destination_y, _EndpointState())
+        self.priority = UIDropDownMenu(
+            ['Priority: Nearest', 'Priority: Fuel service urgency'], 'Priority: Nearest',
+            pygame.Rect(0, preferences_y, self.body_width, row), gui.manager, container=self.body,
+            expansion_height_limit=round(120 * scale))
+        self.departure = UIDropDownMenu(
+            [f'Depart at: {value}% tank' for value in (100, 75, 50, 25)], 'Depart at: 100% tank',
+            pygame.Rect(0, preferences_y + row + gap, self.body_width, row), gui.manager, container=self.body,
+            expansion_height_limit=round(160 * scale))
         self.swap = UIButton(
             pygame.Rect(0, swap_y, self.body_width, row), "Swap source and destination",
             gui.manager, container=self.body,
@@ -215,6 +226,7 @@ class AntimatterTransportWindow:
         scope = 'Automatic: owned units galaxy-wide' if self.automatic else 'Manual: one owned/allied depot'
         reserve = 'Retain 60 AM' if self.harvesting else 'Return fuel reserved'
         self.explanation.set_text(f'{scope} • {reserve}')
+        self.priority.enable() if self.automatic else self.priority.disable()
         source = (self.source.state if self.source else _EndpointState(
             unit_id=self.harvest_source.id,
             unavailable=not harvest_source_ready(self.harvest_source, self.game.galaxy)))
@@ -250,6 +262,11 @@ class AntimatterTransportWindow:
             self.automatic = event.text == 'Destination: Automatic'
             self.destination.refresh()
             self._update_actions()
+        elif event.type == pygame_gui.UI_DROP_DOWN_MENU_CHANGED and event.ui_element == self.priority:
+            self.recipient_priority = 'service_urgency' if event.text == 'Priority: Fuel service urgency' else 'nearest'
+        elif event.type == pygame_gui.UI_DROP_DOWN_MENU_CHANGED and event.ui_element == self.departure:
+            self.minimum_load_fraction = {'Depart at: 100% tank': 1, 'Depart at: 75% tank': .75,
+                                          'Depart at: 50% tank': .5, 'Depart at: 25% tank': .25}[event.text]
         elif any(picker.process_event(event) for picker in self._pickers()):
             self._update_actions()
         elif event.type == pygame_gui.UI_BUTTON_PRESSED:
@@ -280,6 +297,10 @@ class AntimatterTransportWindow:
                     "target_id": None if self.automatic else self.destination.state.unit_id,
                     "queue": event.ui_element == self.queue,
                 }
+                if self.recipient_priority != 'nearest':
+                    command['recipient_priority'] = self.recipient_priority
+                if self.minimum_load_fraction != 1:
+                    command['minimum_load_fraction'] = self.minimum_load_fraction
                 if issue(self.game, command):
                     self.close()
         return True
