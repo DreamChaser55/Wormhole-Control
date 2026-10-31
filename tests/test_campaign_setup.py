@@ -143,6 +143,7 @@ def test_setup_rejects_shortfall_missing_system_and_no_homeworld_space(monkeypat
 def test_generation_shortfall_is_an_error(monkeypatch):
     from galaxy import Galaxy
     monkeypatch.setattr(random, 'randint', lambda a, b: a)
+    monkeypatch.setattr(Galaxy, '_sample_system_position', lambda self: next(iter(self.systems.values())).position)
     with pytest.raises(ValueError, match='Could place only 1 of 2'):
         Galaxy(num_systems=2)
 

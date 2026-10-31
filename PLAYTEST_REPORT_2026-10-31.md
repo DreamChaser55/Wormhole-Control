@@ -49,10 +49,6 @@ The initial plan used about 51,000 input tokens despite a two-system map and fou
 
 Offer a compact observation/planning representation, deduplicate static catalogs, and omit target lists for categorically unavailable capabilities. Maintain schema discovery and fog-of-war guarantees. Consider an optional inexpensive “continue existing commitments” path during genuinely quiet turns, while retaining full planning for meaningful state changes. Zero-command plans alone do not prove that no reasoning was needed, especially during combat. Final telemetry measurements appear above; no monetary cost estimate is inferred.
 
-### S04 — Generate close-spaced sparse maps more reliably
-
-An initial valid two-system configuration with seed `20261031`, minimum spacing 50 and maximum spacing 100 failed after 100 placement attempts, placing only one system. The failure was safe and left the main menu intact. Default spacing succeeded. Consider sampling within valid annuli of existing systems rather than repeatedly sampling the full galaxy, or report the feasible region/placement constraints more explicitly. This is a generation robustness suggestion, not evidence of state corruption.
-
 ### S06 — Offer fuel-service priorities and an optional partial-load departure threshold
 
 At round 89 the automatic harvester selected Refinery 45 (164.25/200 antimatter), while Tender 44 had only 21.83/150 and was consuming 5 per turn to hold the wormhole stable. This matches the nearest-affordable-recipient policy in `antimatter_logistics.py:359`; it is not a violation of that policy. `unit_orders/fuel_transport.py` also waits for a full harvester tank before departing. Together, distance priority and full-load batching can delay urgent service.

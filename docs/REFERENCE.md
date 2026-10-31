@@ -1309,6 +1309,12 @@ body fills the moon's generation slot.
 
 ### System generation
 
+Galaxy placement samples positions in the configured distance band around existing
+systems, then checks minimum separation from every system and map boundaries.
+This supports small spacing ranges without relying on whole-map random hits.
+Generation remains seeded and bounded; impossible/crowded settings report the
+spacing and map bounds and leave the current campaign intact.
+
 A system of hex radius `R` generates between `R - floor(0.3R)` and
 `R + floor(0.3R)` planets, inclusive. Gas giants count as planets; moons do not.
 Radius 3 has exactly 3 planets, radius 5 has 4–6, radius 8 has 6–10, and radius 12

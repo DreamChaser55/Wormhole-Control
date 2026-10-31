@@ -22,6 +22,36 @@ def empty_system(radius=3, name='Generation test'):
     return system
 
 
+@pytest.mark.parametrize('count', [2, 12, 30])
+def test_sparse_close_spacing_samples_remain_connected_bounded_and_repeatable(count):
+    from game_settings import GameSettings
+    settings = GameSettings(num_systems=count, min_system_distance=50, max_system_distance=100,
+                            system_radius_min=3, system_radius_max=3, wormhole_density=0, preview_only=True)
+    for seed in [20261031, *range(10)]:
+        random.seed(seed)
+        galaxy = Galaxy(num_systems=count, settings=settings)
+        systems = list(galaxy.systems.values())
+        for index, system in enumerate(systems):
+            assert galaxy.generation_x_min <= system.position.x <= galaxy.generation_x_max
+            assert galaxy.generation_y_min <= system.position.y <= galaxy.generation_y_max
+            if index:
+                nearest = min(math.hypot(system.position.x - other.position.x, system.position.y - other.position.y)
+                              for other in systems[:index])
+                assert 50 <= nearest <= 100
+            for other in systems[:index]:
+                assert math.hypot(system.position.x - other.position.x, system.position.y - other.position.y) >= 50
+        visited, pending = set(), [systems[0].name]
+        while pending:
+            name = pending.pop()
+            if name not in visited:
+                visited.add(name)
+                pending.extend(galaxy.system_graph[name])
+        assert len(visited) == count
+        random.seed(seed)
+        repeated = Galaxy(num_systems=count, settings=settings)
+        assert [(s.name, s.position) for s in repeated.systems.values()] == [(s.name, s.position) for s in systems]
+
+
 @pytest.fixture
 def controlled_system(monkeypatch):
     """Exercise secondary placement with explicitly placed planets and body draws."""

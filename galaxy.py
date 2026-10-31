@@ -9,7 +9,7 @@ import random
 from dataclasses import dataclass, field
 from constants import LOGICAL_GALAXY_SIZE, SECTOR_CIRCLE_RADIUS_LOGICAL, StarType, PlanetType, NebulaType, StormType, SQRT3, MAX_MINEFIELDS_PER_HEX, FieldDensity
 from domain.coordinates import HexCoord
-from geometry import distance_sq, Vector, Position, Circle, hex_distance
+from geometry import Vector, Position, Circle, hex_distance
 from domain.units import Unit
 from domain.celestials import Star, Planet, Wormhole, Moon, ColonizableAsteroid, MetalAsteroid, CelestialBody, Nebula, Storm, Comet, DebrisField, AsteroidField, IceField
 from constants import HullSize
@@ -515,6 +515,24 @@ class Galaxy:
         return False
 
     # --- Incremental Galaxy Generation Method  ---
+    def _sample_system_position(self):
+        """Sample the feasible annulus of an existing system, within map bounds."""
+        anchor = random.choice(list(self.systems.values())).position
+        farthest = math.hypot(max(anchor.x - self.generation_x_min, self.generation_x_max - anchor.x),
+                              max(anchor.y - self.generation_y_min, self.generation_y_max - anchor.y))
+        outer = min(self._max_system_distance, farthest)
+        if self._min_system_distance > outer:
+            return None
+        # Scale before squaring so finite but very large setup distances cannot
+        # overflow. Uniform area sampling avoids bias toward the inner boundary.
+        radius = outer * math.sqrt(random.uniform((self._min_system_distance / outer) ** 2, 1.0))
+        angle = random.uniform(0, 2 * math.pi)
+        position = Vector(anchor.x + radius * math.cos(angle), anchor.y + radius * math.sin(angle))
+        if (self.generation_x_min <= position.x <= self.generation_x_max and
+                self.generation_y_min <= position.y <= self.generation_y_max):
+            return position
+        return None
+
     def generate_galaxy(self, num_systems: int):
         """Generates systems and wormholes incrementally."""
         if num_systems <= 0:
@@ -557,28 +575,26 @@ class Galaxy:
 
             while not found_position and attempts < max_placement_attempts:
                 attempts += 1
-                # Generate random coordinates within the defined generation area
-                x = random.randint(self.generation_x_min, self.generation_x_max)
-                y = random.randint(self.generation_y_min, self.generation_y_max)
+                position = self._sample_system_position()
+                if position is None:
+                    continue
+                x, y = position.x, position.y
 
                 # Determine closest existing systems
                 distances = [] # get squared distances
                 for existing_name, existing_sys in self.systems.items():
-                    d_sq = distance_sq(Vector(x, y), existing_sys.position)
-                    distances.append((d_sq, existing_name))
+                    separation = math.hypot(x - existing_sys.position.x, y - existing_sys.position.y)
+                    distances.append((separation, existing_name))
 
                 if not distances: # Should only happen for the very first system, handled above
                     break
 
                 distances.sort()
-                nearest_dist_sq, nearest_sys_name = distances[0]
+                nearest_distance, nearest_sys_name = distances[0]
                 second_nearest_sys_name = distances[1][1] if len(distances) > 1 else None
 
                 # Check distance constraints
-                min_dist_sq = self._min_system_distance ** 2
-                max_dist_sq = self._max_system_distance ** 2
-
-                if min_dist_sq <= nearest_dist_sq <= max_dist_sq:
+                if self._min_system_distance <= nearest_distance <= self._max_system_distance:
                     # Coords' distance constraints OK - Spawn system
                     radius = random.randint(self._radius_min, self._radius_max)
                     new_system_position = Vector(x,y)
@@ -609,7 +625,10 @@ class Galaxy:
                 # else: Coords NOT OK - Loop continues to try new random coords
 
             if not found_position:
-                raise ValueError(f"Could place only {len(self.systems)} of {num_systems} systems after {max_placement_attempts} attempts. Regenerate the map or relax its distance constraints.")
+                raise ValueError(f"Could place only {len(self.systems)} of {num_systems} systems after {max_placement_attempts} attempts. "
+                                 f"Nearest-system spacing must be {self._min_system_distance:g}–{self._max_system_distance:g} "
+                                 f"inside x={self.generation_x_min}–{self.generation_x_max}, y={self.generation_y_min}–{self.generation_y_max}. "
+                                 "Regenerate the map or relax its distance constraints.")
 
         logger.debug("Finished galaxy generation.")
         logger.debug(f"Generated {len(self.systems)} systems.")
