@@ -93,14 +93,6 @@ Both turns completed within the configured repair budget. Correct target-eligibi
 
 **Suggested improvement:** Add these cases to live-model evaluations. Keep eligible target classes prominent when choosing combat targets, and make safe exploration destinations easy to derive. Public system anchors are at star centers; a safe navigation point or explicit warning would help prevent treating a physical anchor as a legal Move endpoint. The round-73 evidence does not establish that a star anchor caused that particular rejection.
 
-### P3 — A nearby opening colony mission occupies most of the first 50 rounds
-
-**Observed:** The opening Colonizer loaded 17 population and was sent to the adjacent Moon 34 in Sirius. At round 2 its journey estimate was **47 remaining owner turns**; at round 13 it still showed **36**, while advancing normally. It established the colony at resolution **45**. Starting the first Scout required 12 construction turns; its Procyon scouting mission then advertised **46** owner turns and actually completed at resolution **49**. The separate ETA issue below explains part of the forecast gap; the observed opening is still slow.
-
-**Classification:** Pacing/balance observation, not a failed-order bug. The documentation explicitly describes comparable colony travel estimates, and the observation correctly explains egress and conditional travel costs.
-
-**Suggested improvement:** Consider a quicker first expansion option or a selectable faster-paced opening. Keep the existing journey guidance, and explain this expected timescale prominently in onboarding so players do not mistake normal progress for a stalled order.
-
 ### P3 — A final jump's travel estimate includes unnecessary recharge
 
 **Observed:** At round 49, Scout 48 had one remaining route leg, a ready drive, zero current recharge, and a final same-system jump from Procyon `(2, -3)` to `(-3, 0)`, arrival `(0, -3500)`. Its observation estimated **4 remaining owner turns**. The next observation showed the destination reached and the Move recorded completed at resolution turn **49**: only one End Turn was needed. No destination, equipment or intervening order changed.
@@ -108,12 +100,6 @@ Both turns completed within the configured repair budget. Correct target-eligibi
 **Source support:** `game_ai/order_view.py:115` uses `estimate_approach().turns` for the public journey estimate. In `antimatter_logistics.py`, every jump adds `drive.RECHARGE_DURATION + 1`, including the terminal jump. This charges the estimate for recovery after travel has already finished. A separately issued one-jump probe at round 54 advertised the same four-turn estimate and completed at resolution turn **54**, reproducing the discrepancy independently.
 
 **Suggested improvement:** Separate arrival time from readiness for a subsequent jump. Charge recharge only when another route leg actually needs a ready drive, accounting for any recharge concurrent with sublight travel. Keep conservative fuel-service reserves distinct from the user-facing remaining travel estimate. Add a behavioral check comparing a ready terminal jump's preview with its actual completion, including a route with further jumps as a separate case.
-
-### P3 — Quiet AI turns still have substantial planning overhead
-
-**Observed checkpoint:** The first 25 AI turns required **1,317,959 input tokens**, including **774,024 cached input tokens**. **20 of those 25 turns issued no commands**. Median request latency was **7.297 seconds**; the initial turn took **39.329 seconds**. The initial planning input alone used **48,091 input tokens**. The observation compaction and cache savings are real, but preserving ongoing work still involves a full request every round.
-
-**Suggested improvement:** Consider an optional, bounded continuation policy for quiet turns with no idle actors or material event. Break continuation on new contacts, failed/completed work, fuel problems, relevant messages or new strategic choices. Measure active-combat and quiet turns separately. Do not treat a no-command turn as a planning failure: preserving useful work was often the correct action here. Final aggregate measurements appear in the completed-session results.
 
 ### P3 — An unchanged fuel wait repeats a significant briefing warning
 
@@ -199,5 +185,3 @@ After investigating commit `9f89f68`, `tests/test_colony_planning.py` also passe
 This is one seeded live-model match, not a reproducibility guarantee for identical future model decisions. Engine arithmetic, the final-jump estimate discrepancy and command validation have direct evidence; the explanation of the false model lesson remains a well-supported inference.
 
 No final AI failure or partial commit occurred, so successful manual retry/skip recovery was covered by the existing offline checks rather than a live forced failure. Normal construction pacing and starting resources kept Titans outside this run. Allied-team sharing, espionage, trade, boarding, mine deployment, bombardment, completed invasion, positive gas-giant entry/exit, victory conditions and long-term save/cache eviction were not exhaustively exercised. Gas-giant entry remained fuel-blocked by design. Receipts for ongoing missions establish issuance, not eventual completion.
-
-The offline checks supplement the live session and are not counted as gameplay turns. The GUI remained visible; inspection used the JSON interface and permitted runtime artifacts. Manual mouse/keyboard UI behavior, visual layout and rendered performance were not audited.
