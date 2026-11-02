@@ -54,7 +54,6 @@ No remaining confirmed issues.
 
 ## Further improvement suggestions
 
-- Improve wrong-mode ability errors. Calling `use_ability` for the equipped, ready `hazard_shielding` toggle returned “Ability hazard_shielding is unavailable on unit 69.” The correct `toggle_ability` command succeeded. Naming that command in the error would help semantic repair distinguish an equipped toggle from absent equipment.
 - Make verbose runtime logging opt-in or rotate it. By the end, `game.log` and `control_stderr.log` had each grown to about **24.3 MB**. The detailed movement traces were useful for diagnosis, but two continuously appended verbose files are costly over repeated sessions. Retain bounded, useful diagnostics at the normal logging level.
 
 ## Validation and coverage

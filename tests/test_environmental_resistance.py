@@ -39,6 +39,33 @@ def issue(game, *commands):
     return CommandGateway(game).apply_batch(game.players[0], CommandBatch(commands))
 
 
+@pytest.mark.parametrize('kind', list(SPECS))
+def test_wrong_cast_mode_names_toggle_command_without_mutation(kind):
+    game = campaign()
+    unit = equipped(game)
+    assert issue(game, Command('move', (unit.id,), system_name='Sol', hex_coord=(0, 0), position=(1000, 0))).accepted
+    root = unit.commander_component.current_order
+    fuel = unit.antimatter_component.current_amount
+    result = issue(game, Command('use_ability', (unit.id,), ability=kind))
+    assert not result.accepted and result.applied_count == 0
+    assert 'use toggle_ability' in result.errors[0].message and 'queue=false' in result.errors[0].message
+    assert unit.commander_component.current_order is root
+    assert unit.antimatter_component.current_amount == fuel and not active_kinds(unit)
+    assert issue(game, toggle(unit, kind)).accepted
+    assert unit.commander_component.current_order is root
+    assert active_kinds(unit) == {kind}
+
+
+def test_wrong_toggle_mode_names_cast_only_when_ability_is_equipped():
+    game = campaign()
+    unit = equipped(game)
+    unit.add_component(AbilityComponent(unit, [AbilityType.ADAPTIVE_FORCEFIELD]))
+    result = issue(game, toggle(unit, 'adaptive_forcefield'))
+    assert not result.accepted and 'use use_ability' in result.errors[0].message
+    result = issue(game, Command('use_ability', (unit.id,), ability='hazard_shielding'))
+    assert not result.accepted and 'use toggle_ability' not in result.errors[0].message
+
+
 def source(game, kind):
     if kind in ('black_hole', 'pulsar'):
         body = Star('Sol', StarType[kind.upper()])

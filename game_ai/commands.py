@@ -1107,6 +1107,11 @@ class CommandGateway:
         if command.type == 'toggle_ability':
             from environmental_resistance import active_kinds, availability, set_enabled
             unit = units[0]
+            instance = next((inst for kind, inst in unit.ability_component.abilities.items()
+                             if kind.value == command.ability), None) if unit.ability_component else None
+            if instance is not None and instance.definition.activation_mode != 'toggle':
+                raise _Rejected('capability_unavailable',
+                    f'Ability {command.ability} uses cast mode; use use_ability with its advertised targeting fields.')
             states = projection._resistance_states.setdefault(unit.id, active_kinds(unit))
             enabled = command.ability not in states
             error = availability(unit, command.ability, enabled, states=states, fuel=projection.fuel_amount(unit))
@@ -2250,6 +2255,9 @@ class CommandGateway:
             if (unit.id, command.ability) in projection._tactical_used or pending_duplicate:
                 raise _Rejected('capability_unavailable', 'Ability already used or reserved.')
             instance = unit.ability_component.abilities.get(ability_type)
+            if instance is not None and instance.definition.activation_mode == 'toggle':
+                raise _Rejected('capability_unavailable',
+                    f'Ability {command.ability} uses toggle mode; use toggle_ability with queue=false and no target.')
             if instance and unit.antimatter_component and projection.tactical_budget(unit) < instance.definition.antimatter_cost:
                 raise _Rejected('insufficient_resources', 'Ability fuel is already spent or reserved.')
             blocker = unit.ability_component.availability(ability_type, resources=False)

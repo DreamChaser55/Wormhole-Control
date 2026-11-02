@@ -758,7 +758,10 @@ with any published result so regressions can be reproduced.
 `toggle_ability` is an immediate, single-owned-unit command with `ability` and
 `queue=false`; target fields are unused. It accepts `hazard_shielding`,
 `radiation_hardening` and `antimatter_containment` when equipped. These use
-`activation_mode: toggle` and cannot be cast with `use_ability`. Orders and stance
+`activation_mode: toggle` and cannot be cast with `use_ability`.
+Wrong-mode errors for equipped abilities name `toggle_ability` or `use_ability`
+as appropriate; absent equipment retains its ordinary unavailable error.
+Orders and stance
 are preserved. Shared read-only validation supplies human UI, command guidance
 and preflight, which projects repeated toggles and current AM in batch order.
 Enabling checks combined upkeep but reserves and deducts no fuel. Applying the
