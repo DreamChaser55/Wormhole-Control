@@ -2,6 +2,9 @@
 from contextlib import ExitStack
 from copy import copy
 import logging
+from logging.handlers import RotatingFileHandler
+import os
+from pathlib import Path
 import re
 
 
@@ -28,6 +31,20 @@ _SENSITIVE_HTTP_METADATA = re.compile(
 
 # Keep ownership independent of root attachment: callers may detach our handlers.
 _application_handlers: list[logging.Handler] = []
+LOG_MAX_BYTES = 5 * 1024 * 1024
+LOG_BACKUP_COUNT = 3
+
+
+def rotate_startup_log(path):
+    """Rotate raw child stderr between processes, before a new writer opens it."""
+    path = Path(path)
+    if not path.exists() or path.stat().st_size < LOG_MAX_BYTES:
+        return
+    for index in range(LOG_BACKUP_COUNT, 0, -1):
+        source = path if index == 1 else Path(f'{path}.{index - 1}')
+        destination = Path(f'{path}.{index}')
+        if source.exists():
+            source.replace(destination)
 
 
 def format_unit_for_log(unit: object) -> str:
@@ -87,14 +104,17 @@ def setup_logging(log_to_file: bool = False):
     their callers; the borrowed stderr stream is never closed.
 
     Install filtered stderr output and, when log_to_file is True, append to
-    game.log in the working directory after closing the previous destinations.
+    rotating game.log in the working directory after closing previous destinations.
+    INFO is normal; WORMHOLE_DEBUG_LOG=true opts into DEBUG traces. The active
+    file rotates at 5 MiB with three retained backups.
     False leaves the file untouched apart from flushing an old owned handler.
     Cleanup errors propagate after all owned handlers have been processed. A
     file-opening error propagates with the new stderr handler still usable and
     owned. Returns None; importing this module does not configure logging.
     """
     root_logger = logging.getLogger()
-    root_logger.setLevel(logging.DEBUG)
+    level = logging.DEBUG if os.environ.get('WORMHOLE_DEBUG_LOG', '').lower() in {'1', 'true', 'yes'} else logging.INFO
+    root_logger.setLevel(level)
 
     # These clients include complete request bodies in DEBUG records. The game
     # records its own bounded AI telemetry, so library logs must never contain
@@ -115,13 +135,16 @@ def setup_logging(log_to_file: bool = False):
     fmt = '%(asctime)s [%(levelname)s] %(name)s: %(message)s'
 
     stream_handler = logging.StreamHandler()
+    stream_handler.setLevel(level)
     stream_handler.addFilter(ThirdPartyPayloadFilter())
     stream_handler.setFormatter(GameLogFormatter(fmt))
     _application_handlers.append(stream_handler)
     root_logger.addHandler(stream_handler)
 
     if log_to_file:
-        file_handler = logging.FileHandler("game.log", mode='a', encoding='utf-8')
+        file_handler = RotatingFileHandler("game.log", mode='a', encoding='utf-8',
+                                          maxBytes=LOG_MAX_BYTES, backupCount=LOG_BACKUP_COUNT)
+        file_handler.setLevel(level)
         file_handler.addFilter(ThirdPartyPayloadFilter())
         file_handler.setFormatter(GameLogFormatter(fmt))
         _application_handlers.append(file_handler)

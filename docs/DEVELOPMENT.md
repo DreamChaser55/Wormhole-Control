@@ -299,8 +299,10 @@ For mixed object kinds, apply it only to units. Design names, other object names
 and quoted communications/developer feedback retain their existing formatting.
 Both file and console handlers receive the same formatted message.
 
-`setup_logging(log_to_file=True)` appends UTF-8 records to `game.log`, preserving
-earlier sessions and avoiding truncation beneath another writer. Its handlers
+`setup_logging(log_to_file=True)` appends UTF-8 records to `game.log`, rotating
+at 5 MiB with three backups. Normal logging is INFO; set `WORMHOLE_DEBUG_LOG=true`
+before launch to opt into detailed movement/order traces. Both handlers enforce
+the selected level even if a child logger enables DEBUG. Its handlers
 suppress verbose HTTP client records (including `httpcore2`) and redact
 records containing sensitive HTTP header metadata regardless of logger name or
 severity, including formatted exception details.
@@ -308,6 +310,10 @@ Application startup acquires `application_instance`'s per-user OS lease before c
 logs or opening a window; `ControlService.start` also acquires it. Leases are
 reference-counted within one process, released on shutdown/bind failure, and
 released by the OS after a crash. Tests may inject a private `instance_path`.
+The control launcher checks the same lease before rotating accumulated raw stderr
+at 5 MiB, retaining three backups. That file rotates between launches; raw stderr
+from one running process can exceed the threshold until the next launch. Ordinary
+movement traces are absent unless debug logging is explicitly enabled.
 See [process behavior](CODEX_CONTROL.md#transport-and-process-behavior).
 
 ## Test conventions

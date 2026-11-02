@@ -21,6 +21,7 @@ def isolated_logging(tmp_path, monkeypatch):
     levels = {logger: logger.level for logger in loggers}
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(game_logging, "_application_handlers", [])
+    monkeypatch.setenv('WORMHOLE_DEBUG_LOG', 'true')
     for handler in original_handlers:
         root.removeHandler(handler)
     try:
@@ -73,16 +74,49 @@ def test_repeated_setup_closes_owned_handlers_without_duplicate_output(
                 assert contents.count(f"application-record-{index - 1}") == 1
 
 
+def test_verbose_traces_require_opt_in_even_for_debug_child_loggers(monkeypatch, capsys, tmp_path):
+    monkeypatch.delenv('WORMHOLE_DEBUG_LOG', raising=False)
+    logger = logging.getLogger('wormhole_logging_test')
+    logger.setLevel(logging.DEBUG)
+    game_logging.setup_logging(log_to_file=True)
+    logger.debug('verbose movement trace')
+    logger.info('useful normal diagnostic')
+    for output in (capsys.readouterr().err, (tmp_path / 'game.log').read_text()):
+        assert 'verbose movement trace' not in output
+        assert 'useful normal diagnostic' in output
+    monkeypatch.setenv('WORMHOLE_DEBUG_LOG', 'true')
+    game_logging.setup_logging(log_to_file=True)
+    logger.debug('opted in trace')
+    assert 'opted in trace' in capsys.readouterr().err
+    assert 'opted in trace' in (tmp_path / 'game.log').read_text()
+
+
+def test_runtime_logs_rotate_and_keep_redaction_in_every_backup(monkeypatch, tmp_path):
+    monkeypatch.delenv('WORMHOLE_DEBUG_LOG', raising=False)
+    monkeypatch.setattr(game_logging, 'LOG_MAX_BYTES', 512)
+    monkeypatch.setattr(game_logging, 'LOG_BACKUP_COUNT', 2)
+    game_logging.setup_logging(log_to_file=True)
+    logger = logging.getLogger('wormhole_logging_test')
+    for index in range(40):
+        logger.warning('ordinary diagnostic %s %s', index, 'x' * 40)
+        logger.warning('Authorization: private header value')
+    paths = sorted(tmp_path.glob('game.log*'))
+    assert len(paths) == 3
+    assert all(path.stat().st_size <= 512 for path in paths)
+    assert 'ordinary diagnostic 39' in ''.join(path.read_text() for path in paths)
+    assert all('private header value' not in path.read_text() for path in paths)
+
+
 def test_replacement_closes_old_file_before_opening_new_one(monkeypatch):
     game_logging.setup_logging(log_to_file=True)
     old_stream = logging.getLogger().handlers[-1].stream
-    file_handler_class = logging.FileHandler
+    file_handler_class = game_logging.RotatingFileHandler
 
     def open_after_close(*args, **kwargs):
         assert old_stream.closed
         return file_handler_class(*args, **kwargs)
 
-    monkeypatch.setattr(logging, "FileHandler", open_after_close)
+    monkeypatch.setattr(game_logging, "RotatingFileHandler", open_after_close)
     game_logging.setup_logging(log_to_file=True)
 
 

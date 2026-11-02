@@ -199,6 +199,13 @@ def _launch_game(port: int) -> subprocess.Popen:
         kwargs["start_new_session"] = True
     log_path = _game_stderr_path()
     log_path.parent.mkdir(parents=True, exist_ok=True)
+    from game_logging import rotate_startup_log
+    from application_instance import acquire_instance, AlreadyRunningError
+    try:
+        with acquire_instance():
+            rotate_startup_log(log_path)
+    except AlreadyRunningError as exc:
+        raise ClientError(str(exc)) from exc
     # Popen gives the child its own handle; closing the parent's copy is safe.
     with log_path.open('ab') as diagnostics:
         kwargs['stderr'] = diagnostics

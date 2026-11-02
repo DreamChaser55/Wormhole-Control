@@ -1666,7 +1666,12 @@ for fields, types, derived values and the Python API.
 ### Logs and recovery
 
 Each run writes `game.log` in the root folder. Check it for storage and runtime
-failures. Generated unit mentions in file and console logs include the unit's
+failures.
+Normal logging omits detailed movement/order traces. To enable those for diagnosis,
+set `WORMHOLE_DEBUG_LOG=true` before launching. `game.log` rotates at 5 MiB with
+three backups. The control launcher's raw stderr rotates between launches; see
+[control diagnostics](CODEX_CONTROL.md#transport-and-process-behavior).
+Generated unit mentions in file and console logs include the unit's
 current name and ID, for example `Scout (id:42)`, so identically named ships can
 be distinguished. Design names and quoted communications retain their original text.
 AI telemetry and developer-feedback files are documented under

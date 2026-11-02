@@ -48,13 +48,9 @@ The final save preserves an ongoing battle and future missions; this was a bound
 - `game.log` and `saves/control_stderr.log`: execution and startup diagnostics. These are runtime files, not committed report attachments.
 - `saves/playtest_20261031_round002.json`: baseline save used for an actual save → main menu → load round trip.
 
-## Confirmed issues and observations
+## Resolution status
 
-No remaining confirmed issues.
-
-## Further improvement suggestions
-
-- Make verbose runtime logging opt-in or rotate it. By the end, `game.log` and `control_stderr.log` had each grown to about **24.3 MB**. The detailed movement traces were useful for diagnosis, but two continuously appended verbose files are costly over repeated sessions. Retain bounded, useful diagnostics at the normal logging level.
+All five confirmed findings and seven improvement suggestions have been addressed. No outstanding report items remain. Fixes are committed on `codex/playtest-20261031-fixes`.
 
 ## Validation and coverage
 

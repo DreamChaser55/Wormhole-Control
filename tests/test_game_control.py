@@ -528,6 +528,26 @@ def test_launch_keeps_utf8_runtime_stderr_in_append_only_file(tmp_path, monkeypa
     assert (tmp_path / 'saves/control_stderr.log').read_text(encoding='utf-8') == 'startup failure Δ\n' * 2
 
 
+def test_launch_rotates_accumulated_stderr_before_opening_new_writer(tmp_path, monkeypatch):
+    import game_logging
+    monkeypatch.setattr(game_control, '__file__', str(tmp_path / 'game_control.py'))
+    monkeypatch.setattr(game_logging, 'LOG_MAX_BYTES', 64)
+    monkeypatch.setattr(game_logging, 'LOG_BACKUP_COUNT', 2)
+    path = tmp_path / 'saves/control_stderr.log'
+    path.parent.mkdir()
+    path.write_text('x' * 64)
+    path.with_name('control_stderr.log.1').write_text('older diagnostic')
+    path.with_name('control_stderr.log.2').write_text('oldest diagnostic')
+    def popen(*args, **kwargs):
+        kwargs['stderr'].write(b'new diagnostic\n')
+        return MagicMock()
+    monkeypatch.setattr(game_control.subprocess, 'Popen', popen)
+    game_control._launch_game(47653)
+    assert path.read_text() == 'new diagnostic\n'
+    assert path.with_name('control_stderr.log.1').read_text() == 'x' * 64
+    assert path.with_name('control_stderr.log.2').read_text() == 'older diagnostic'
+
+
 def test_repeated_local_connections_preserve_matching_responses(cli_stub_server):
     port = cli_stub_server.server_address[1]
     for index in range(150):
