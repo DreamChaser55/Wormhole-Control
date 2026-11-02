@@ -119,7 +119,11 @@ state.
 
 Commander stores its stance in `configuration` and explicit `current_order` and
 `orders_queue` in `runtime`. Public order UUIDs, descendants, charges/refunds, and
-bounded outcome history remain persistent. Loading preserves the current/queued
+bounded outcome history remain persistent.
+Completed colonist-load events can include numeric `loading_outcome` facts
+(`requested_amount`, `loaded_amount`, `retained_population`). These are execution
+snapshots, with no source references or subsequent live population updates.
+Loading preserves the current/queued
 split, including an empty current slot. Active orders rebind their actuators
 without executing startup again. Transient stance engagement trees and their
 actuators are reacquired through normal play.

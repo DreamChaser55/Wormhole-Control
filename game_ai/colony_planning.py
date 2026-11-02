@@ -12,8 +12,12 @@ def colonist_load_advice(body, maximum_amount):
     residual = population - maximum
     recovery = (0 if maximum == 0 else None if residual <= 0 or growth <= 0 else
                 math.ceil((math.log(population) - math.log(residual)) / math.log1p(growth)))
-    return {'recommended_amount': max(0, math.floor(min(maximum_amount, population - retained))),
+    return {'current_population': population,
+            'recommended_amount': max(0, math.floor(min(maximum_amount, population - retained))),
             'recommended_retained_population': round(retained, 4),
             'growth_rate_per_round': growth,
-            'population_after_maximum_load': round(residual, 4),
-            'recovery_rounds_after_maximum_load': recovery}
+            'hypothetical_next_maximum_load': {
+                'hypothetical_load_amount': maximum,
+                'population_after_load': round(residual, 4),
+                'recovery_rounds_to_current_population': recovery,
+            }}

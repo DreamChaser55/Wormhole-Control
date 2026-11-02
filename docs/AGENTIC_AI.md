@@ -221,8 +221,14 @@ sections replace their previous contents. Planning instructions require objectiv
 and commitments to match accepted orders, compare mission value with remaining
 travel before replacement, and consult terminal history before repeating failures.
 Zero-command plans are valid when useful work should continue.
-Colonist-loading options add advisory retained population, recommended load, growth
-and recovery rounds after the maximum integer load. Planning favors a meaningful
+Colonist-loading options separate `current_population` from advisory retained
+population, recommended load, growth and `hypothetical_next_maximum_load`. That
+scenario names its hypothetical load amount, resulting population and recovery
+rounds; it describes a possible next action, never the previous load's outcome.
+Completed loading history supplies numeric `loading_outcome` facts: requested and
+loaded amounts plus actual retained population at execution, without target references.
+Later growth may increase current population. Factual memory must use those execution
+facts and observations, correcting conflicting claims. Planning favors a meaningful
 seed on new colonies and retaining half a mature donor, comparing lost growth/income
 with expedition value. Evacuation and deliberate rapid expansion remain legal
 exceptions. Historical colonies omit these forecasts until contact returns; this
@@ -403,6 +409,8 @@ nonexistent subsystem guesses return the same error. Public order serializers ne
 raw parameters, persistence or sidebar state. Hidden target references and their derived
 movement geometry are redacted recursively; player-issued fixed coordinates remain intent.
 Outcome history contains no target references, names, coordinates or raw exceptions.
+Completed colonist loads additionally retain only numeric requested/loaded amounts
+and retained population as historical execution facts, never live source lookups.
 
 ## Commit guarantees and lifecycle feedback
 
@@ -689,6 +697,11 @@ same loop. Use one outer `asyncio.run()` for that complete evaluation lifecycle.
 `colony_opening_case` reproduces the zero-cargo opening decision, and
 `compare_reasoning_efforts` runs the same fixed cases at Low, Medium, and High
 without changing production settings.
+`colony_load_forecast_case` contrasts a completed 25-colonist load, actual current
+population 25.25 and a hypothetical next-load residue of 0.25. Its score checks
+memory content as well as commands; omitted factual memory or a false residue
+claim fails. It accepts fake or explicitly opted-in live providers. Offline fixture
+checks do not establish live-model reliability.
 For an end-to-end semantic comparison, `colony_opening_gateway_case` builds a
 fresh executable game fixture for each run and `compare_gateway_reasoning_efforts`
 reports real gateway acceptance, attempts, repairs used, aggregate latency, and

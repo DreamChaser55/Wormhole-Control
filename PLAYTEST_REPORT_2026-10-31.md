@@ -50,26 +50,6 @@ The final save preserves an ongoing battle and future missions; this was a bound
 
 ## Confirmed issues and observations
 
-### P2 — AI stores a false lesson about a successful colony load
-
-**Observed:** By turn 5, the opponent's durable memory contained:
-
-> `[load_colonists/source-population] Prefer load_colonists.targets[].population_advice.recommended_amount; loading the maximum from Planet 2 left only 0.25 population and a long recovery.`
-
-The execution log instead records **25 colonists loaded** from Planet 2. The round-2 save records **25.25 population remaining** on that Ice world. The AI followed the half-population advice; it did not nearly empty the source. Its memory also tells future planning to let that source recover before further recruitment.
-
-**Impact:** A false, durable account of an earlier action can distort later expansion choices even when the engine and command advice behaved correctly. The sidecar is a faithful export of AI memory, not authoritative evidence that the lesson's claim happened.
-
-**Connection to commit `9f89f68` (investigated following the user's pointer):** That commit added `population_advice` and the hypothetical `population_after_maximum_load` / `recovery_rounds_after_maximum_load` fields. The initial round-2 save contains the accepted turn-1 memory, which correctly commits to loading **25** and contains **no lessons**. With the actual next-turn population **25.25**, growth **0.01**, capacity **60**, and cargo space **75**, the new helper returns:
-
-```json
-{"recommended_amount":12,"recommended_retained_population":12.625,"population_after_maximum_load":0.25,"recovery_rounds_after_maximum_load":464}
-```
-
-Thus the false memory's **0.25** exactly matches a forecast about a *possible next maximum load*, rather than the population after the load that actually executed. This is strong evidence of forecast/outcome confusion; the model's internal reasoning is not available, so the causal interpretation remains an inference. Searches found no runtime S07 text or hardcoded false lesson. Commit `9f89f68` does not directly seed AI memory. Its advisory calculation is mathematically correct for that hypothetical action.
-
-**Suggested improvement:** Clearly group the forecast under a hypothetical next-load scenario, alongside explicit `current_population` and `hypothetical_load_amount`, rather than leaving the residual easy to mistake for current state. State explicitly in the prompt that the forecast is not a report of the previous load. Derive factual loading outcomes from structured execution feedback and include requested/loaded amount plus actual retained population. Add a live-model evaluation fixture contrasting actual **25.25** with hypothetical **0.25**; the existing arithmetic/privacy tests do not measure this semantic error. Preserve advisory semantics and historical-intel privacy; this finding does not justify making larger loads illegal.
-
 ### P3 — Two live AI mistakes needed semantic repair
 
 | Round | Initial rejected plan | Automatic correction |

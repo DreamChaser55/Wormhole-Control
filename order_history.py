@@ -1,5 +1,6 @@
 """Bounded, save-authoritative explicit-order outcomes (no live target lookups)."""
 import json
+import math
 
 MAX_EVENTS = 128
 MAX_CHARACTERS = 32_000
@@ -16,6 +17,17 @@ def public_reason(reason, fallback="execution_failed"):
     return reason if isinstance(reason, str) and reason in PUBLIC_REASONS else fallback
 
 
+def loading_outcome_view(value):
+    """Only numeric facts from a completed, authorized load cross this boundary."""
+    keys = ('requested_amount', 'loaded_amount', 'retained_population')
+    if not isinstance(value, dict) or not all(
+        type(value.get(key)) in (int, float) and math.isfinite(value[key]) and value[key] >= 0
+        for key in keys
+    ):
+        return None
+    return {key: value[key] for key in keys}
+
+
 
 def bounded_history(events):
     allowed = {"event_id", "turn", "player_id", "unit_id", "order_id", "type", "outcome", "reason"}
@@ -29,6 +41,10 @@ def bounded_history(events):
                 item[key] = value[:200]
         if "reason" in item:
             item["reason"] = public_reason(item["reason"])
+        if item.get('type') == 'load_colonists' and item.get('outcome') == 'completed':
+            facts = loading_outcome_view(event.get('loading_outcome'))
+            if facts is not None:
+                item['loading_outcome'] = facts
         cleaned.append(item)
     cleaned = sorted(cleaned, key=lambda e: e["event_id"])[-MAX_EVENTS:]
     while cleaned and len(json.dumps(cleaned, ensure_ascii=False)) > MAX_CHARACTERS:
@@ -53,6 +69,10 @@ def record_outcome(order, outcome=None, reason=None):
              "player_id": owner.id, "unit_id": order.unit.id, "order_id": order.public_id,
              "type": order.order_type.name.lower(), "outcome": outcome,
              "reason": public_reason(reason or getattr(order, "failure_reason", None) or outcome)}
+    if event['type'] == 'load_colonists' and outcome == 'completed':
+        facts = loading_outcome_view(getattr(order, 'loading_outcome', None))
+        if facts is not None:
+            event['loading_outcome'] = facts
     owner.order_history = bounded_history([*getattr(owner, "order_history", []), event])
     from turn_briefing import order_outcome
     order_outcome(order, outcome, event["reason"])

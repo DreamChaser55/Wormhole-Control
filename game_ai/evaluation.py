@@ -31,6 +31,7 @@ class EvaluationCase:
     required_command_types: frozenset[str] = frozenset()
     forbidden_command_types: frozenset[str] = frozenset()
     maximum_commands: int = 32
+    plan_checks: Callable[[TurnPlan], tuple[str, ...]] | None = None
 
     @classmethod
     def from_json(cls, path: Path) -> "EvaluationCase":
@@ -379,6 +380,43 @@ def colony_opening_gateway_case() -> GatewayEvaluationCase:
     return GatewayEvaluationCase("colony-opening-gateway", build)
 
 
+def colony_load_forecast_case() -> EvaluationCase:
+    """Opt-in semantic evaluation: actual 25.25 population versus hypothetical 0.25."""
+    from copy import deepcopy
+    from .colony_planning import colonist_load_advice
+    from .observation import OBSERVATION_SCHEMA_VERSION
+
+    observation = deepcopy(colony_opening_case().request.observation)
+    observation['schema_version'] = OBSERVATION_SCHEMA_VERSION
+    observation['turn_number'] = 2
+    source = observation['systems'][0]['celestial_bodies'][0]
+    source.update(name='Planet 2', population=25.25, max_population=60, ownership_observed_turn=2)
+    actor = observation['units'][0]
+    actor['capability_details']['colony']['population_cargo'] = 25
+    actor['command_options']['load_colonists']['targets'] = [{
+        'target_id': source['id'], 'maximum_amount': 25.25,
+        'population_advice': colonist_load_advice(
+            SimpleNamespace(population=25.25, max_population=60, population_growth_rate=.01), 75),
+    }]
+    observation['order_history'] = {'events': [{
+        'event_id': 1, 'turn': 1, 'player_id': 1, 'unit_id': 101, 'order_id': 'previous-load',
+        'type': 'load_colonists', 'outcome': 'completed', 'reason': 'completed',
+        'loading_outcome': {'requested_amount': 25, 'loaded_amount': 25, 'retained_population': 25},
+    }]}
+
+    def check_memory(plan):
+        text = json.dumps(plan.memory_patch, ensure_ascii=False)
+        if '25.25' not in text or '0.25' in text:
+            return ('Memory must record actual current population 25.25, without claiming the hypothetical 0.25 as an outcome.',)
+        return ()
+
+    request = PlanningRequest('evaluation', 'load-forecast-agent', 'AI', 2, observation, {
+        'objectives': ['Preserve the current expedition. Record the previous load and the actual current source population in beliefs; do not store hypothetical next-load residues as history.'],
+    })
+    return EvaluationCase('colony-load-forecast-versus-outcome', request,
+                          forbidden_command_types=frozenset({'load_colonists'}), plan_checks=check_memory)
+
+
 def inhibitor_overlap_case() -> EvaluationCase:
     """Regression fixture for an inhibitor blocked by an existing field."""
 
@@ -622,6 +660,8 @@ def score_plan(
         notes.append("Issued a forbidden command type.")
     if len(command_types) > case.maximum_commands:
         notes.append("Exceeded the case command budget.")
+    if case.plan_checks is not None:
+        notes.extend(case.plan_checks(plan))
     passed = not notes and plan.batch.end_turn
     if not plan.batch.end_turn:
         notes.append("Did not end the turn.")

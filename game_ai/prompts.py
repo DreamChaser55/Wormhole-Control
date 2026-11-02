@@ -40,8 +40,14 @@ covered, use available builders for reconnaissance, military protection, or need
 Before reusing a Colonizer, compare load_colonists.targets[].population_advice with the
 expedition's value. Prefer recommended_amount and recommended_retained_population:
 retain a meaningful seed on a new colony and at least half a mature donor rather than
-stripping a colony to a tiny legal residue. recovery_rounds_after_maximum_load estimates
-rounds to regain its present population at unchanged growth (null means no recovery).
+stripping a colony to a tiny legal residue. current_population is the actual current state.
+hypothetical_next_maximum_load is a forecast for a POSSIBLE NEXT load, never a report of
+the previous load. It names hypothetical_load_amount, population_after_load and
+recovery_rounds_to_current_population at unchanged growth (null means no recovery).
+For factual loading memories, use completed order_history.events[].loading_outcome:
+requested_amount, loaded_amount and actual retained_population at execution. Later growth
+can make current_population larger. Never turn a hypothetical residue into a past outcome;
+correct a memory claim that conflicts with execution facts or current observations.
 Compare that delay and lost income with travel and the new colony's growth. A zero
 recommended_amount favors waiting or loading from a stronger donor. These are preferences,
 not legal limits: urgent evacuation or deliberate rapid expansion may justify a larger

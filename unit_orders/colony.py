@@ -179,9 +179,20 @@ class LoadColonistsOrder(ColonyContactOrder):
         from planetary_intel import current_ownership
         if not current_ownership(galaxy_ref, self.unit.owner, target):
             return
+        cargo_before = self.unit.colony_component.population_cargo
         success = self.unit.colony_component.load_population(target, amount)
 
         if success:
+            # Carry execution facts to the explicit root before terminal recording.
+            # No target reference is retained in the owner's outcome history.
+            root = self
+            while root.parent_order is not None:
+                root = root.parent_order
+            root.loading_outcome = {
+                'requested_amount': amount,
+                'loaded_amount': self.unit.colony_component.population_cargo - cargo_before,
+                'retained_population': target.population,
+            }
             self.status = OrderStatus.COMPLETED
         else:
             self.fail("execution_failed")
