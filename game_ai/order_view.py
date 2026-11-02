@@ -274,7 +274,8 @@ def order_layers(unit, relation, visible_ids, body_ids):
             from wormhole_stabilization import state_view
             progress = state_view(unit, order=order)
         if fuel_order and not hidden:
-            progress = {'phase': order.phase, 'waiting_reason': order.public_waiting_reason,
+            progress = {'phase': order.public_phase, 'waiting_reason': order.public_waiting_reason,
+                        'return_reason': order.public_return_reason,
                         'return_reserve': order.return_reserve,
                         'active_destination_id': order.active_destination_unit_id}
         if kind in {'attack_run', 'emergency_recovery'}:

@@ -301,6 +301,8 @@ never finance an estimate. Invalid manual routes or insufficient tank capacity f
 temporary shortages wait. The sidebar shows source, destination mode, configured or
 active recipient, phase, waiting reason, and reserve. Harvesters retain their fixed
 60 AM reserve; they do not use the transporter's calculated return reserve.
+Source-bound travel appears as **Returning to source**, with its return reason
+separate from a wait. Loading/harvesting and any remaining wait appear after arrival.
 
 | Logistics design | Hull | AM capacity | Hull used | Credits | Build turns |
 |---|---|---:|---:|---:|---:|

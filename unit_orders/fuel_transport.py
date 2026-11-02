@@ -144,9 +144,19 @@ class ContinuousFuelDeliveryOrder(Order):
 
     @property
     def public_waiting_reason(self):
+        if self.public_phase == 'returning_to_source':
+            return None
         if self.HARVESTING and self.waiting_reason == 'insufficient_load':
             return 'building_delivery_reserve'
         return self.waiting_reason
+
+    @property
+    def public_phase(self):
+        return 'returning_to_source' if self.phase == self.loading_phase and self.sub_orders else self.phase
+
+    @property
+    def public_return_reason(self):
+        return self.waiting_reason if self.public_phase == 'returning_to_source' else None
 
     def source(self, galaxy):
         lookup = (galaxy.get_celestial_body_by_id if self.HARVESTING
@@ -185,7 +195,8 @@ class ContinuousFuelDeliveryOrder(Order):
         source = self.source(galaxy)
         destination = galaxy.get_unit_by_id(self.parameters.get("target_unit_id"))
         active = galaxy.get_unit_by_id(self.active_destination_unit_id)
-        data.update(phase=self.phase, waiting_reason=self.public_waiting_reason,
+        data.update(phase=self.public_phase, waiting_reason=self.public_waiting_reason,
+                    return_reason=self.public_return_reason,
                     recipient_priority=self.recipient_priority, minimum_load_fraction=self.minimum_load_fraction,
                     return_reserve=self.return_reserve,
                     destination_mode="automatic" if self.automatic else "manual",

@@ -852,6 +852,12 @@ configured target, including across saves. All source, manual target, active
 recipient and child approach geometry use recursive disclosure rules. A null
 automatic recipient is valid state and does not trigger redaction.
 
+Source-bound fuel travel exposes `phase: returning_to_source` with no current
+`waiting_reason`; `return_reason` separately explains why delivery ended. After
+arrival, loading/harvesting resumes and a continuing lack of demand becomes a
+waiting reason. The sidebar uses the same distinction. These views derive from
+the saved phase/reason and child approach without advancing logistics.
+
 Multiplication observations include radius, projected recipient gains, net AM,
 caster cooldown and friendly units' shared recipient recovery. Enemy observations
 do not expose these deadlines. Their component-independent lifetime is described

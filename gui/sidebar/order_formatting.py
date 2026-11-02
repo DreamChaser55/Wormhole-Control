@@ -211,7 +211,7 @@ def format_order_state_data(state_data: dict, galaxy: typing.Any = None) -> list
         active = state_data.get('active_destination_name')
         if automatic and active:
             target += ' — ' + escape(str(active))
-        phase = escape(str(state_data.get('phase', 'loading')).title())
+        phase = escape(str(state_data.get('phase', 'loading')).replace('_', ' ').title())
         label = 'Continuous Resupply' if order_type == 'CONTINUOUS_RESUPPLY' else 'Continuous Antimatter Transport'
         lines = [f"<font color='{TRANSFER_ANTIMATTER_COLOR}'><b>{label}:</b></font>",
                  f"  {source} → {target}", f"  Phase: {phase}",
@@ -221,6 +221,8 @@ def format_order_state_data(state_data: dict, galaxy: typing.Any = None) -> list
             lines.append('  Priority: ' + escape(state_data.get('recipient_priority', 'nearest').replace('_', ' ')))
         if state_data.get('waiting_reason'):
             lines.append('  Waiting: ' + escape(state_data['waiting_reason'].replace('_', ' ')))
+        if state_data.get('return_reason'):
+            lines.append('  Returning because: ' + escape(state_data['return_reason'].replace('_', ' ')))
         return lines
 
     elif order_type == "CONSTRUCT":
