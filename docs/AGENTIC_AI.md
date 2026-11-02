@@ -740,7 +740,7 @@ each actor's own eligible `target_ids` and turret `eligible_target_classes`.
 
 Run `python scripts/benchmark_mission_pacing.py` for reproducible Normal-opening
 travel estimates (five fixed seeds, two radius-3 systems). The nearby colony
-sample spans 40–49 owner turns, with median 47 across 12 routes. These estimates
+sample spans 37–46 owner turns, with median 44 across 14 routes. These estimates
 exclude loading/action/queued time and assume enough fuel and unchanged terrain;
 the empty starting Colonizer remains near its population source. The script also
 compares the former and current Constructor/Harvester positions: across 20 samples,
@@ -761,8 +761,7 @@ with any published result so regressions can be reproduced.
 `activation_mode: toggle` and cannot be cast with `use_ability`.
 Wrong-mode errors for equipped abilities name `toggle_ability` or `use_ability`
 as appropriate; absent equipment retains its ordinary unavailable error.
-Orders and stance
-are preserved. Shared read-only validation supplies human UI, command guidance
+Orders and stance are preserved. Shared read-only validation supplies human UI, command guidance
 and preflight, which projects repeated toggles and current AM in batch order.
 Enabling checks combined upkeep but reserves and deducts no fuel. Applying the
 prepared state follows the [shared execution checks](#shared-order-contract).

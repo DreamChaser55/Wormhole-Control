@@ -127,8 +127,8 @@ Briefing state includes bounded private `fuel_waits` by owned unit ID, retaining
 the last movement fuel/storage problem across windows and loading. Only a changed
 problem or recovery records another event; observations do not advance this state.
 Loading preserves the current/queued split, including an empty current slot.
-Active orders rebind their actuators
-without executing startup again. Transient stance engagement trees and their
+Active orders rebind their actuators without executing startup again.
+Transient stance engagement trees and their
 actuators are reacquired through normal play.
 
 After all equipment is restored, an unarmed unit's saved stance is normalized to

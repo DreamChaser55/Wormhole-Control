@@ -58,6 +58,7 @@ pytestdebug.log
 
 # Runtime logs
 *.log
+*.log.[0-9]*
 
 # Sphinx documentation
 doc/_build/

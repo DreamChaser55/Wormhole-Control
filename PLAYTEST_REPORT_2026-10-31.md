@@ -52,6 +52,15 @@ The final save preserves an ongoing battle and future missions; this was a bound
 
 All five confirmed findings and seven improvement suggestions have been addressed. No outstanding report items remain. Fixes are committed on `codex/playtest-20261031-fixes`.
 
+Fix verification on **2 November 2026**, Windows / Python 3.14.3: the full offline
+suite passed **5,071 tests and 14 subtests**, with 8 platform skips and two existing
+Unit Editor label-size warnings (267.30 seconds). The run used `--capture=sys`
+and workspace-local temporary storage to avoid this host's Windows handle and
+temporary-directory restrictions. Lint, extended boundary lint, import boundaries,
+Linux/Windows type checks, generated-reference consistency and local documentation
+links passed. No new live-provider calls were made; semantic evaluation fixtures
+are available for opt-in live measurement. Current saves use format **4.22**.
+
 ## Validation and coverage
 
 | Area | Result |
