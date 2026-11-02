@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 from pathlib import Path
 import socket
@@ -22,6 +23,7 @@ from game_control_protocol import (
 )
 
 MAX_RESPONSE_BYTES = 32 * 1024 * 1024
+DEFAULT_CONNECT_TIMEOUT = 3.0
 
 
 class ClientError(RuntimeError):
@@ -95,6 +97,10 @@ def _parser() -> argparse.ArgumentParser:
         help=f"localhost control port (default: {DEFAULT_PORT})",
     )
     parser.add_argument("--startup-timeout", type=float, default=15.0)
+    parser.add_argument(
+        "--connect-timeout", type=float, default=DEFAULT_CONNECT_TIMEOUT,
+        help="connection probe timeout in seconds (default: 3; allows delayed Windows refusal)",
+    )
     parser.add_argument("--no-launch", action="store_true", help="fail instead of launching game.py")
     return parser
 
@@ -135,7 +141,7 @@ def _response_timeout(payload: dict[str, Any]) -> float:
     return 30.0
 
 
-def _send(payload: dict[str, Any], port: int, *, connect_timeout: float = 1.0) -> dict[str, Any]:
+def _send(payload: dict[str, Any], port: int, *, connect_timeout: float = DEFAULT_CONNECT_TIMEOUT) -> dict[str, Any]:
     encoded = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8") + b"\n"
     phase, timeout = 'connect', connect_timeout
     started = time.monotonic()
@@ -248,6 +254,8 @@ def main(argv: list[str] | None = None) -> int:
     payload: dict[str, Any] | None = None
     try:
         args = _parser().parse_args(argv)
+        if not math.isfinite(args.connect_timeout) or args.connect_timeout <= 0:
+            raise ClientError("Connection timeout must be a finite positive number of seconds.")
     except ClientError as exc:
         response = _client_error_response(None, "invalid_cli_arguments", str(exc))
         _write_response(response)
@@ -274,7 +282,7 @@ def main(argv: list[str] | None = None) -> int:
     launching = False
     try:
         try:
-            response = _send(payload, port)
+            response = _send(payload, port, connect_timeout=args.connect_timeout)
         except (TransportError, OSError) as exc:
             failure = exc if isinstance(exc, TransportError) else TransportError('connect', exc)
             # A timeout does not establish that the listener is absent, and a
@@ -286,7 +294,7 @@ def main(argv: list[str] | None = None) -> int:
             process = _launch_game(port)
             _wait_for_server(port, args.startup_timeout, process)
             launching = False
-            response = _send(payload, port)
+            response = _send(payload, port, connect_timeout=args.connect_timeout)
     except (TransportError, OSError) as exc:
         response = _transport_response(payload, exc)
         if launching:

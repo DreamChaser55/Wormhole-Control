@@ -373,6 +373,46 @@ class ControlCliTests(unittest.TestCase):
         launch.assert_not_called()
         wait.assert_not_called()
 
+    @patch("game_control._wait_for_server")
+    @patch("game_control._launch_game")
+    @patch("game_control.socket.create_connection")
+    def test_delayed_windows_refusal_reaches_auto_launch(self, connect, launch, wait):
+        connection = MagicMock()
+        connection.__enter__.return_value = connection
+
+        def connect_or_refuse(address, timeout):
+            if connect.call_count == 1:
+                if timeout < 2.017:
+                    raise TimeoutError()
+                raise ConnectionRefusedError(10061, "refused")
+            return connection
+
+        def respond(_limit):
+            request = json.loads(connection.sendall.call_args.args[0])
+            return json.dumps({**request, "service": "wormhole-control", "ok": True}).encode()
+
+        connect.side_effect = connect_or_refuse
+        connection.makefile.return_value.__enter__.return_value.readline.side_effect = respond
+        code, response, _ = self._run(['{"action":"status"}'])
+        self.assertEqual(code, 0)
+        self.assertTrue(response["ok"])
+        launch.assert_called_once_with(47653)
+        wait.assert_called_once()
+
+    @patch("game_control._send")
+    def test_connection_timeout_is_configurable_and_validated_before_connecting(self, send):
+        send.return_value = {"ok": True}
+        code, _, _ = self._run(['{"action":"status"}', '--connect-timeout', '4.5'])
+        self.assertEqual(code, 0)
+        self.assertEqual(send.call_args.kwargs['connect_timeout'], 4.5)
+        send.reset_mock()
+        for value in ('0', '-1', 'nan', 'inf'):
+            with self.subTest(value=value):
+                code, response, _ = self._run(['{"action":"status"}', '--connect-timeout', value])
+                self.assertEqual(code, 2)
+                self.assertEqual(response['error']['code'], 'invalid_cli_arguments')
+        send.assert_not_called()
+
     @patch("game_control._send")
     def test_protocol_rejection_exits_one(self, send):
         send.return_value = {"service": "wormhole-control", "ok": False}

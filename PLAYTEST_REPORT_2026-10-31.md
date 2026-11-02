@@ -4,7 +4,7 @@
 
 Completed **106 full rounds against the live built-in AI**: 106 Codex turns and 106 AI turns, or 212 individual player-turn resolutions. The visible game was controlled exclusively through `python game_control.py` and is left on the Codex turn at round **107**. The extra rounds reached the original bomber's 80-turn servicing threshold and completed a controlled environmental comparison.
 
-The main findings are a Windows cold-start failure, a durable false AI lesson apparently caused by confusing a population forecast with an outcome, and inflated travel-time estimates. The command gateway remained stable through the run. Two AI mistakes were rejected and repaired automatically.
+The session found startup, AI planning, travel and operational-guidance issues. Addressed items are removed from the findings and suggestions below as fixes land. The command gateway remained stable through the run. Two AI mistakes were rejected and repaired automatically.
 
 - Revision: `499d6b87dab3104712049b07939805c155790701`.
 - Platform: Windows; Python 3.14.3.
@@ -49,18 +49,6 @@ The final save preserves an ongoing battle and future missions; this was a bound
 - `saves/playtest_20261031_round002.json`: baseline save used for an actual save → main menu → load round trip.
 
 ## Confirmed issues and observations
-
-### P2 — Windows cold start can fail before auto-launch
-
-**Observed:** The documented initial status command returned `connect_timeout` instead of launching the game. The same result occurred with permission to access the host's localhost interface. A separate four-second socket probe against the absent listener returned `ConnectionRefusedError`, Windows errno `10061`, after **2.017 seconds**.
-
-**Cause supported by source inspection:** `game_control._send()` uses a one-second connection timeout. `main()` launches only on `connection_refused`, correctly avoiding automatic launches after ambiguous timeouts. On this host, the timeout expires before Windows reports refusal, making the normal cold-start path unreachable.
-
-**Reproduction:** With no listener on `127.0.0.1:47653`, run the README/control-guide status invocation. Compare the one-second CLI result with a socket connection allowed more than two seconds to report refusal.
-
-**Workaround used:** A disposable wrapper called the same `game_control.main()` with a minimum three-second initial connection probe. The normal launcher then started the visible GUI and returned a valid main-menu status. No product file was changed.
-
-**Suggested improvement:** Make the initial connection probe configurable and choose a Windows-compatible default; preserve the distinction between refusal and uncertain transport outcomes. Add a delayed-refusal regression test and troubleshooting guidance. Restricted-environment localhost failures encountered separately are environment limitations, not additional game bugs.
 
 ### P2 — AI stores a false lesson about a successful colony load
 

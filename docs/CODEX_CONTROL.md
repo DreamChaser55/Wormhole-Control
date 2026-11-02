@@ -83,6 +83,10 @@ Launch and error diagnostics go to UTF-8 stderr. Its exit statuses are:
 | `2` | CLI input, launch, handshake, timeout, or transport failure. |
 
 Use `--no-launch` when a missing listener should be reported instead of starting the GUI.
+The connection probe allows **3 seconds**, including Windows hosts that take about
+two seconds to report a missing listener. Override it with `--connect-timeout 5`
+(a finite positive number of seconds). If cold start reports `connect_timeout`,
+try a longer probe; `--startup-timeout` instead controls waiting after launch.
 Only connection refusal triggers automatic launch. A timeout does not establish
 that the game stopped. CLI transport errors distinguish `connection_refused`,
 `connect_timeout`, `send_timeout` and `read_timeout`, with payload-free
