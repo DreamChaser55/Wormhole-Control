@@ -339,6 +339,14 @@ orders, record discoveries or draw randomness. Slow advancing work should be pre
 Tankless strikecraft wings report zero sublight propulsion cost and no storage
 blocker, matching actual flight. Other equipment consumption still applies.
 
+Target-based utility command options include advisory `approach_quotes`, keyed by
+target ID for up to 16 disclosed targets, with `omitted_approach_quotes` for the rest.
+Each quote gives estimated owner turns and AM, current fuel and fuel shortfall.
+Quotes use current position/equipment and known terrain, assume adequate fuel,
+and exclude action time and earlier queued work. They neither reserve fuel nor
+replace orders or prohibit low-fuel missions. Read them before replacing useful
+work, and arrange resupply or deliberately accept a later wait.
+
 Preflight uses shared legality queries against live state plus preceding projected
 effects. Commit callbacks and executing orders recheck applicable live conditions,
 including capability, targets, resources and location. Acceptance means issuable

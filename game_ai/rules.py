@@ -676,7 +676,40 @@ def command_guidance(
             options[kind].update(recipient_priorities=['nearest', 'service_urgency'],
                                  default_recipient_priority='nearest',
                                  minimum_load_fraction={'exclusive_minimum': 0, 'maximum': 1, 'default': 1})
+    _add_approach_quotes(unit, game, options, [*known_bodies, *exact_bodies, *visible_units])
     return sorted(legal), options, conditional
+
+
+def _add_approach_quotes(unit, game, options, disclosed_targets):
+    """Advisory current-origin travel; option IDs authorize every target lookup."""
+    from antimatter_logistics import estimate_approach
+    from unit_targeting import UTILITY_BODY_COMMANDS, UTILITY_UNIT_COMMANDS, utility_approach_range
+    targets = {target.id: target for target in disclosed_targets}
+    tank = getattr(unit, 'antimatter_component', None)
+    available = tank.current_amount if tank and not tank.is_destroyed else 0.0
+    for kind in sorted(UTILITY_BODY_COMMANDS | UTILITY_UNIT_COMMANDS):
+        option = options.get(kind)
+        if option is None:
+            continue
+        ids = option.get('target_ids', [entry['target_id'] for entry in option.get('targets', [])])
+        quotes = {}
+        for target_id in ids[:16]:
+            target = targets.get(target_id)
+            if target is None:
+                continue
+            estimate = estimate_approach(unit, game.galaxy, target,
+                approach_range=utility_approach_range(unit, target, kind), known_only=True)
+            if estimate is not None:
+                quotes[str(target_id)] = {
+                    'estimated_owner_turns': min(10000, estimate.turns),
+                    'estimated_antimatter': round(estimate.fuel, 2),
+                    'current_antimatter': available,
+                    'antimatter_shortfall': round(max(0.0, estimate.fuel - available), 2),
+                    'estimate_conditional': True,
+                }
+        option['approach_quotes'] = quotes
+        option['omitted_approach_quotes'] = max(0, len(ids) - 16)
+        option['approach_quote_note'] = 'Travel from current position with current equipment and known terrain, assuming enough fuel. Excludes action time and queued work; low fuel remains legal.'
 
 
 def ability_states(unit: Any) -> list[dict[str, Any]]:

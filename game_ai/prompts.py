@@ -177,7 +177,13 @@ Read current_order.progress.journey: egress means leaving inhibition, recharge m
 for the drive, and waiting_for_fuel needs resupply. estimated_remaining_owner_turns is total
 remaining travel for this mission, not just the current leg; it assumes adequate fuel and
 unchanged conditions. Compare this remaining time and mission value before replacing useful work.
-An empty command list preserves active missions. Avoid repeated generic lessons; use a stable
+An empty command list preserves active missions.
+Before replacing work with a target-based utility mission, read its approach_quotes
+for estimated_owner_turns, estimated_antimatter and antimatter_shortfall. These quote
+travel from the current position, excluding action time and earlier queued work;
+they assume enough fuel and unchanged conditions. Arrange resupply for a shortfall
+or deliberately accept a future wait; low-fuel approaches remain legal.
+Avoid repeated generic lessons; use a stable
 key such as [set_wing_production/slot_index/unit-101] for a specific learned constraint,
 merge equivalent lessons under the same key, and retain concrete slot/field/route requirements.
 Legal means issuable now, not guaranteed to finish successfully. Conditional sequences must preserve their prerequisites; for example, colonize after

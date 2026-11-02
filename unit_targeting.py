@@ -18,12 +18,8 @@ def intelligence_distance(first, second):
     return max(0.0, distance(first.position, second.position) - radii)
 
 
-def utility_approach_blocker(unit, target, galaxy, command_type):
-    """Use the job's action range when checking a disclosed utility destination.
-
-    Check hardware/topology/known terrain, never fuel or undisclosed inhibitors.
-    Temporary recharge and fuel shortages can wait during execution.
-    """
+def utility_approach_range(unit, target, command_type):
+    """Shared operational reach for legality and advisory travel quotes."""
     from constants import DEFAULT_STANDOFF_DISTANCE, TRADE_ARRIVAL_RANGE, ANTIMATTER_TRANSFER_RANGE
     if command_type in {"mine", "continuous_mine"}:
         reach = getattr(getattr(unit, "mining_component", None), "mining_range", 0.0)
@@ -48,7 +44,12 @@ def utility_approach_blocker(unit, target, galaxy, command_type):
         reach = getattr(target, "collision_radius", getattr(target, "radius", 0.0)) + DEFAULT_STANDOFF_DISTANCE
     else:
         reach = DEFAULT_STANDOFF_DISTANCE
-    return approach_blocker(unit, target, galaxy, reach)
+    return reach
+
+
+def utility_approach_blocker(unit, target, galaxy, command_type):
+    """Check hardware/topology/known terrain, never fuel or hidden inhibitors."""
+    return approach_blocker(unit, target, galaxy, utility_approach_range(unit, target, command_type))
 
 
 def operational_engines(unit):
