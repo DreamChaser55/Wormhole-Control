@@ -527,6 +527,59 @@ def playtest_gateway_cases() -> tuple[GatewayEvaluationCase, ...]:
     )
 
 
+def october_playtest_gateway_cases() -> tuple[GatewayEvaluationCase, ...]:
+    """Live-provider-ready fixtures for turret eligibility and obstructed movement."""
+    def build(combat):
+        from constants import StarType
+        from domain.celestials import Star
+        from domain.players import Player
+        from galaxy import Galaxy, StarSystem
+        from unit_components.constructor import instantiate_unit_from_template
+        from .observation import build_observation
+
+        galaxy = Galaxy(num_systems=0)
+        system = StarSystem('Sol', Position(0, 0), radius=3)
+        for body in list(system.celestial_bodies_by_id.values()):
+            system.remove_celestial_body(body)
+        system.in_galaxy = galaxy
+        galaxy.systems['Sol'] = system
+        player = Player('AI', (0, 200, 0), team_id=1)
+        enemy = Player('Rival', (200, 0, 0), team_id=2)
+        game = SimpleNamespace(galaxy=galaxy, players=[player, enemy], turn_number=69,
+                               gui=None, sidebar_needs_update=False, visibility_dirty=False)
+        galaxy.game = game
+        def make(template, owner, uid, position):
+            actor = instantiate_unit_from_template(template, owner, 'Sol', (0, 0), Position(*position), galaxy, game)
+            actor.id = uid
+            return actor
+        actor = make('PATROL_ESCORT' if combat else 'SCOUT', player, 101, (2000, 0))
+        if combat:
+            make('BOMBER_WING', enemy, 201, (2100, 0))
+            make('PATROL_ESCORT', enemy, 202, (2200, 0))
+            objective = 'Engage a valid enemy with escort 101, checking its target eligibility.'
+        else:
+            star = Star('Sol', StarType.G_TYPE)
+            star.id = 301
+            system.add_celestial_body(star)
+            objective = 'Explore the central sector with scout 101, selecting a legal endpoint outside the solid navigation anchor.'
+        observation = build_observation(game, player)
+        request = PlanningRequest('october-playtest', 'target-eligibility' if combat else 'obstructed-move',
+                                  player.name, game.turn_number, observation, {'objectives': [objective]})
+        gateway = CommandGateway(game)
+        def validate(plan):
+            # Exercise complete-batch rejection without issuing a replacement on failure.
+            before = (actor.name, actor.position, actor.commander_component.current_order)
+            verdict = gateway.apply_batch(player, plan.batch)
+            if not verdict.accepted:
+                assert before == (actor.name, actor.position, actor.commander_component.current_order)
+            return verdict
+        return request, validate
+    return (
+        GatewayEvaluationCase('october-ineligible-wing-attack', lambda: build(True)),
+        GatewayEvaluationCase('october-obstructed-move', lambda: build(False)),
+    )
+
+
 def order_control_cases() -> tuple[EvaluationCase, ...]:
     """Deterministic contract fixtures for preserving work, stance and patrol choices."""
     from copy import deepcopy

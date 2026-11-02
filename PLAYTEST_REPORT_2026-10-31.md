@@ -50,17 +50,6 @@ The final save preserves an ongoing battle and future missions; this was a bound
 
 ## Confirmed issues and observations
 
-### P3 — Two live AI mistakes needed semantic repair
-
-| Round | Initial rejected plan | Automatic correction |
-| --- | --- | --- |
-| 69 | Patrol Escort 56 tried to attack strikecraft Wing 54 with an ineligible standard turret: `capability_unavailable`, “No eligible weapons for this target.” The entire two-command batch applied zero operations. | Removed that attack and applied the other valid attack by unit 64; accepted on attempt 1. |
-| 73 | Scout 49 selected an obstructed destination: `invalid_destination`, “Destination is inside an obstacle or its clearance band.” Zero operations applied. | Submitted a valid Move on attempt 1. The rejected coordinates are not present in the intentionally bounded telemetry, so this report does not identify which obstacle was selected. |
-
-Both turns completed within the configured repair budget. Correct target-eligibility and movement lessons appeared in durable memory. This validates the recovery mechanism while identifying two live-model reliability cases (2 of 106 turns).
-
-**Suggested improvement:** Add these cases to live-model evaluations. Keep eligible target classes prominent when choosing combat targets, and make safe exploration destinations easy to derive. Public system anchors are at star centers; a safe navigation point or explicit warning would help prevent treating a physical anchor as a legal Move endpoint. The round-73 evidence does not establish that a star anchor caused that particular rejection.
-
 ### P3 — A final jump's travel estimate includes unnecessary recharge
 
 **Observed:** At round 49, Scout 48 had one remaining route leg, a ready drive, zero current recharge, and a final same-system jump from Procyon `(2, -3)` to `(-3, 0)`, arrival `(0, -3500)`. Its observation estimated **4 remaining owner turns**. The next observation showed the destination reached and the Move recorded completed at resolution turn **49**: only one End Turn was needed. No destination, equipment or intervening order changed.

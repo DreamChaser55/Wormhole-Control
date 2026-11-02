@@ -30,7 +30,7 @@ from component_visibility import public_components
 from order_history import history_view
 from turn_briefing import summary_view
 
-OBSERVATION_SCHEMA_VERSION = 35
+OBSERVATION_SCHEMA_VERSION = 36
 COMMAND_HELP = {name: spec.description for name, spec in COMMAND_SPECS.items()}
 
 
@@ -667,6 +667,9 @@ def _navigation_anchor(system: Any, bodies: list[Any]) -> dict[str, Any]:
             "body_id": int(anchor.id),
             "hex_coord": list(anchor.in_hex),
             "position": _position(anchor.position),
+            "position_is_move_endpoint": False,
+            "collision_radius": float(anchor.collision_radius),
+            "move_endpoint_warning": "Star center is inside a solid body. Choose a point outside its collision radius plus 50 units and any hull-excluding terrain.",
         }
     hexes = sorted(getattr(system, "hexes", {}))
     return {

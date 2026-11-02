@@ -67,8 +67,11 @@ Observations give full body detail in systems containing friendly
 units, adjacent systems, and systems with visible enemy activity. Remote systems
 retain exact stars, friendly colonies, currently sensed worlds and previously
 observed worlds; other objects are summarized without ownership-dependent counts.
-The model can move toward a system navigation anchor to receive exact target IDs
-on a later turn. Inhibitor blocker values are intentionally bounded and expose
+System navigation anchors are physical references, usually at a solid star center.
+They mark `position_is_move_endpoint: false`, disclose the star's collision radius,
+and warn planners to choose a point outside its clearance band and excluded terrain.
+An approaching scout receives exact target IDs on a later turn.
+Inhibitor blocker values are intentionally bounded and expose
 no identity or geometry for the conflicting inhibition zone.
 
 Colonizable bodies expose `ownership_status` (`current`, `last_known`, `unknown`)
@@ -712,6 +715,11 @@ missing-slot-index and out-of-range ability cases from the September playtest.
 The ability case retains an ongoing wing attack through repair. Deterministic
 providers exercise observed mistakes in CI; these checks do not measure live
 model reliability or API cost.
+`october_playtest_gateway_cases` adds the ineligible standard-turret wing attack
+and an obstructed Move, with real gateway rejection and repair. The obstacle
+fixture uses a star center as a reproducible obstruction; the original playtest
+did not identify which obstacle caused its Move rejection. Target selection uses
+each actor's own eligible `target_ids` and turret `eligible_target_classes`.
 
 Run `python scripts/benchmark_mission_pacing.py` for reproducible Normal-opening
 travel estimates (five fixed seeds, two radius-3 systems). The nearby colony

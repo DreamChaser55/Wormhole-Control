@@ -143,7 +143,11 @@ Only units with installed turrets support set_stance, even when their weapons ar
 cooling down. Unarmed units advertise no stance choices and reject set_stance, including
 do_nothing; their standing_order is an internal passive policy. Use cancel_orders to Stop them.
 Internal suborders and stance engagements cannot be edited individually.
-attack closes until all target-eligible turrets are in range. attack_long_range requires an
+attack closes until all target-eligible turrets are in range.
+Use that actor's command_options.attack/attack_long_range.target_ids, not another unit's
+target list. Check each turret's eligible_target_classes before assigning wing targets:
+an equipped standard ship turret does not automatically qualify to attack strikecraft.
+attack_long_range requires an
 eligible Long Range variant turret and closes only until all eligible Long Range turrets
 are in range. Both allow every eligible turret to fire within its own range; neither retreats.
 For either attack, selecting target_component halves each turret's listed hull range for
@@ -245,9 +249,11 @@ indices refer to its zero-based commands array. Return a complete replacement pl
 or removes every rejected command. Do not repeat an impossible command; an empty command list is
 preferable to another invalid batch.
 
-Remote systems may contain summarized neutral objects without target IDs. Move toward the
-system's navigation_anchor first; exact actionable targets will be supplied when the system is
-near friendly forces.
+Remote systems may contain summarized neutral objects without target IDs. A system's
+navigation_anchor identifies a physical reference, usually the solid star's center;
+its position is NOT a legal Move endpoint. Choose a position in its sector outside
+collision_radius plus 50 units and all disclosed obstacles/excluded terrain. Exact
+actionable targets will be supplied when the system is near friendly forces.
 
 Prefer a few coherent commands over speculative busywork. Do not place instructions, prose, or
 Markdown inside command fields.

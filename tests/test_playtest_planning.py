@@ -19,6 +19,39 @@ def plan(*commands, patch=None):
     return TurnPlan((), CommandBatch(tuple(commands), True), patch or EMPTY_PATCH)
 
 
+@pytest.mark.parametrize('combat', [True, False])
+def test_october_target_and_obstacle_errors_repair_from_public_guidance(combat):
+    from game_ai.evaluation import october_playtest_gateway_cases
+    case = october_playtest_gateway_cases()[0 if combat else 1]
+    request, validate = case.build()
+    actor = next(u for u in request.observation['units'] if u['id'] == 101)
+    if combat:
+        assert 201 not in actor['command_options']['attack']['target_ids']
+        assert 202 in actor['command_options']['attack']['target_ids']
+        invalid = Command('attack', (101,), target_id=201)
+        repaired = Command('attack', (101,), target_id=202)
+        error = 'capability_unavailable'
+    else:
+        anchor = request.observation['systems'][0]['navigation_anchor']
+        assert anchor['position_is_move_endpoint'] is False
+        assert anchor['collision_radius'] > 0
+        invalid = Command('move', (101,), system_name='Sol', hex_coord=(0, 0), position=tuple(anchor['position']))
+        repaired = Command('move', (101,), system_name='Sol', hex_coord=(0, 0), position=(2500, 0))
+        error = 'invalid_destination'
+    rejected = validate(plan(Command('rename_unit', (101,), new_name='Must not apply'), invalid))
+    assert not rejected.accepted and rejected.applied_count == 0
+    assert rejected.errors[0].code == error
+    provider = FakePlanningProvider([plan(invalid), plan(repaired)])
+    async def run():
+        try:
+            return await compare_gateway_reasoning_efforts(provider, [case], efforts=('medium',))
+        finally:
+            await provider.aclose()
+    score = asyncio.run(run())['medium'].scores[0]
+    assert score.accepted and score.attempts == 2 and score.retries_used == 1
+    assert provider.requests[1].repair_context.errors[0].code == error
+
+
 class ObservedMistakeProvider(FakePlanningProvider):
     """Replay the actual mistake categories, then use the repair's current options."""
     async def plan_turn(self, request, config):
