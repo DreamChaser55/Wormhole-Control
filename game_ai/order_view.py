@@ -112,7 +112,7 @@ def journey_progress(unit, order, known_targets, known_body_ids=None):
         target = SimpleNamespace(position=final, in_system=root_params['destination_system_name'],
                                  in_hex=root_params['destination_hex_coord'])
         estimate = estimate_approach(unit, galaxy, target, approach_range=5.0, known_only=True)
-    turns = min(10000, estimate.turns + max(0, recharge)) if estimate else None
+    turns = min(10000, estimate.turns) if estimate else None
     from custom_unit_templates import (get_sublight_antimatter_cost_per_turn,
                                       get_hyperdrive_hex_jump_cost, get_hyperdrive_system_jump_cost)
     from environmental_effects import sublight_speed, modifiers_for_unit

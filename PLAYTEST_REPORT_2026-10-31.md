@@ -50,14 +50,6 @@ The final save preserves an ongoing battle and future missions; this was a bound
 
 ## Confirmed issues and observations
 
-### P3 — A final jump's travel estimate includes unnecessary recharge
-
-**Observed:** At round 49, Scout 48 had one remaining route leg, a ready drive, zero current recharge, and a final same-system jump from Procyon `(2, -3)` to `(-3, 0)`, arrival `(0, -3500)`. Its observation estimated **4 remaining owner turns**. The next observation showed the destination reached and the Move recorded completed at resolution turn **49**: only one End Turn was needed. No destination, equipment or intervening order changed.
-
-**Source support:** `game_ai/order_view.py:115` uses `estimate_approach().turns` for the public journey estimate. In `antimatter_logistics.py`, every jump adds `drive.RECHARGE_DURATION + 1`, including the terminal jump. This charges the estimate for recovery after travel has already finished. A separately issued one-jump probe at round 54 advertised the same four-turn estimate and completed at resolution turn **54**, reproducing the discrepancy independently.
-
-**Suggested improvement:** Separate arrival time from readiness for a subsequent jump. Charge recharge only when another route leg actually needs a ready drive, accounting for any recharge concurrent with sublight travel. Keep conservative fuel-service reserves distinct from the user-facing remaining travel estimate. Add a behavioral check comparing a ready terminal jump's preview with its actual completion, including a route with further jumps as a separate case.
-
 ### P3 — An unchanged fuel wait repeats a significant briefing warning
 
 **Observed:** Scout 48 exhausted its 22 AM on the deliberately under-fuelled gas-giant approach. It correctly stopped moving and retained its order with `waiting_reason: insufficient_antimatter`. Resolutions **79–106** generated **28 successive** `Movement blocked: insufficient antimatter` briefing events, with new event IDs, despite unchanged fuel and position.

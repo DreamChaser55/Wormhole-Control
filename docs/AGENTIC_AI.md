@@ -328,7 +328,10 @@ travel. The human sidebar and briefing show the same authorized journey summary,
 separately from the frozen historical event report. Local `wormhole_approach`
 means moving toward an entry before system transit; `egress` requires a known field
 escape before a sector jump. Destination approach, arrival, recharge and fuel waits
-remain separate phases. Estimates cover remaining travel; action time and
+remain separate phases. Arrival estimates charge recharge only before a needed
+jump, overlapping it with sublight travel; terminal recharge is excluded.
+Fuel-service reserves separately include upkeep until drive readiness and their
+normal safety buffer. Estimates cover remaining travel; action time and
 subsequent queued missions add time. Hidden target references and
 private agent approach geometry suppress this view. Estimates use current equipment
 and known terrain, assume sufficient fuel and unchanged conditions, and never advance

@@ -131,6 +131,8 @@ class JourneyEstimate:
     system: str
     hex_coord: tuple
     position: Position
+    recharge_owner_turns: int = 0
+    readiness_fuel: float = 0.0
 
 
 def estimate_approach(unit, galaxy, target, origin=None, *, approach_range=ANTIMATTER_TRANSFER_RANGE, known_only=False):
@@ -156,6 +158,7 @@ def estimate_approach(unit, galaxy, target, origin=None, *, approach_range=ANTIM
     fuel, turns = 0.0, 0
     upkeep = equipment_upkeep(unit)
     engine, drive = unit.engines_component, unit.hyperdrive_component
+    recharge = max(0, getattr(drive, 'recharge_time_remaining', 0)) if origin is None else 0
     speed = engine.effective_speed if engine and engine.is_operational else 0.0
     jump_range = (
         int(drive.jump_range * unit.xp_multiplier(XP_JUMP_RANGE_BONUS))
@@ -174,7 +177,7 @@ def estimate_approach(unit, galaxy, target, origin=None, *, approach_range=ANTIM
         return known_inhibition_zones(sector(), unit.owner, snapshot) if known_only else sector().get_all_inhibition_zones()
 
     def sublight(destination):
-        nonlocal point, fuel, turns
+        nonlocal point, fuel, turns, recharge
         if distance(point, destination) < 0.01:
             return
         if speed <= 0:
@@ -206,7 +209,21 @@ def estimate_approach(unit, galaxy, target, origin=None, *, approach_range=ANTIM
                 (0.0 if fuel_free_sublight(unit) else get_sublight_antimatter_cost_per_turn(unit.hull_size, speed)) + upkeep
             )
             turns += duration
+            recharge = max(0, recharge - duration)
             point = end
+
+    def jump(cost):
+        nonlocal fuel, turns, recharge
+        # Recharge blocks only the next jump and runs concurrently with sublight.
+        # The jump's owner-turn update already ticks its new recharge once.
+        duration = recharge + 1
+        fuel += cost + duration * upkeep
+        turns += duration
+        recharge = max(0, drive.RECHARGE_DURATION - 1)
+
+    def result():
+        return JourneyEstimate(fuel, turns, system, coord, point, recharge,
+                               fuel + recharge * upkeep)
 
     def escape():
         for zone in zones():
@@ -230,9 +247,7 @@ def estimate_approach(unit, galaxy, target, origin=None, *, approach_range=ANTIM
                 for zone in zones():
                     if is_point_in_circle(landing, zone):
                         landing = get_closest_point_on_circle_edge(landing, zone)
-                duration = max(1, drive.RECHARGE_DURATION + 1)
-                fuel += get_hyperdrive_hex_jump_cost(unit.hull_size) + duration * upkeep
-                turns += duration
+                jump(get_hyperdrive_hex_jump_cost(unit.hull_size))
                 point = landing
         sublight(destination)
 
@@ -242,7 +257,7 @@ def estimate_approach(unit, galaxy, target, origin=None, *, approach_range=ANTIM
             and coord == target.in_hex
             and distance(point, target.position) <= approach_range
         ):
-            return JourneyEstimate(0.0, 0, system, coord, point)
+            return result()
         if system != target.in_system:
             if jump_range <= 0 or drive.drive_type != HyperdriveType.ADVANCED:
                 return None
@@ -264,11 +279,7 @@ def estimate_approach(unit, galaxy, target, origin=None, *, approach_range=ANTIM
                     return None
                 local(wormhole.in_hex, wormhole.position)
                 exit_wormhole = galaxy.wormholes[wormhole.exit_wormhole_id]
-                duration = max(1, drive.RECHARGE_DURATION + 1)
-                fuel += (
-                    get_hyperdrive_system_jump_cost(unit.hull_size) + duration * upkeep
-                )
-                turns += duration
+                jump(get_hyperdrive_system_jump_cost(unit.hull_size))
                 system, coord, point = (
                     next_system,
                     exit_wormhole.in_hex,
@@ -279,7 +290,7 @@ def estimate_approach(unit, galaxy, target, origin=None, *, approach_range=ANTIM
             point, target.position, approach_range - 5
         )
         local(target.in_hex, endpoint)
-        return JourneyEstimate(fuel, turns, system, coord, point)
+        return result()
     except (NoSafePathError, KeyError, ValueError, ZeroDivisionError):
         return None
 
@@ -298,7 +309,7 @@ def route_budget(unit, source, destination, galaxy):
     )
     if returning is None:
         return None
-    return buffered_fuel(outward.fuel) + buffered_fuel(returning.fuel)
+    return buffered_fuel(outward.readiness_fuel) + buffered_fuel(returning.readiness_fuel)
 
 
 def harvest_source_ready(source, galaxy):
@@ -377,8 +388,8 @@ def delivery_budget(unit, source, destination, galaxy, *, harvesting=False, from
     if returning is None:
         return None
     reserve = (ANTIMATTER_HARVESTER_RETURN_THRESHOLD if harvesting
-               else buffered_fuel(returning.fuel) + equipment_upkeep(unit))
-    return buffered_fuel(outward.fuel) + reserve
+               else buffered_fuel(returning.readiness_fuel) + equipment_upkeep(unit))
+    return buffered_fuel(outward.readiness_fuel) + reserve
 
 
 def automatic_recipient(unit, source, galaxy, *, harvesting=False, excluded=(), available_fuel=None, priority='nearest'):

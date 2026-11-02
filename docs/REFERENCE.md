@@ -141,6 +141,8 @@ inhibition field, drive recharge, approach, or waiting for antimatter. Remaining
 travel estimates use current equipment and known terrain, assuming enough fuel
 and unchanged conditions. Loading, mission actions and later queued orders add
 time. Preserve advancing work unless a replacement is worth the lost progress.
+Arrival estimates exclude recharge after the final jump and overlap recharge
+with sublight travel; fuel-service reserves retain their separate safety margin.
 
 A scrollable briefing opens at the start of each human turn according to
 **Settings → Turn summary mode**, available from the main and in-game menus:
