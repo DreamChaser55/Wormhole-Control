@@ -47,7 +47,7 @@ def test_station_raster_dimensions_match_ship(hull, zoom):
 
 @pytest.mark.parametrize('hull', HULLS)
 @pytest.mark.parametrize('selected', [False, True])
-@pytest.mark.parametrize('zoom', [0.2, 1.0, 4.0])
+@pytest.mark.parametrize('zoom', [0.2, 0.3, 1.0, 4.0])
 def test_station_annotations_and_brackets_follow_rendered_square(pygame_context, hull, selected, zoom):
     owner = Player('Blue', BLUE)
     station = Unit(owner, Position(0, 0), (0, 0), 'Sol', 'Station', hull, None)
@@ -78,14 +78,23 @@ def test_station_annotations_and_brackets_follow_rendered_square(pygame_context,
         assert bar.left == square.left
         assert bar.width == square.width
         assert bar.top == square.bottom + 10
-    dots = circles.call_args_list
-    assert len(dots) == HULL_DOT_COUNTS[hull]
+    dot_radius = int(ICON_DOT_RADIUS * zoom)
+    dots = [call for call in circles.call_args_list
+            if len(call.args) == 5 and call.args[4] == 1]
+    assert len(dots) == (HULL_DOT_COUNTS[hull] if dot_radius > 0 else 0)
     for call in dots:
-        assert call.args[2][1] == square.bottom + int(ICON_DOT_RADIUS * zoom) + 2
+        assert call.args[1] == BLUE
+        assert call.args[2][1] == square.bottom + dot_radius + 2
+        assert call.args[3] == dot_radius
+        dot_x, dot_y = map(int, call.args[2])
+        expected_interior = darken_color(BLUE) if dot_radius > 1 else BLUE
+        assert screen.get_at((dot_x, dot_y))[:3] == expected_interior
+        assert screen.get_at((dot_x - dot_radius, dot_y))[:3] == BLUE
     name, badge = screen.text_bounds
     assert badge.bottom == square.top - 4
     assert name.top >= square.bottom + 4
-    assert name.top >= max(call.args[2][1] + call.args[3] for call in dots) + 4
+    if dots:
+        assert name.top >= max(call.args[2][1] + call.args[3] for call in dots) + 4
     if selected:
         assert name.top >= max(pygame.Rect(call.args[2]).bottom for call in health_bars) + 4
     with patch('rendering.sector_renderer.sector_overlay_renderer.draw_selection_brackets') as brackets:

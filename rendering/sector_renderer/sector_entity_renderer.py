@@ -23,6 +23,7 @@ from constants import (
 from domain.units import Unit
 from domain.minefields import Minefield
 from domain.construction_job import ConstructionJob
+from geometry import Position
 from unit_components.enums import MinefieldType
 
 
@@ -181,9 +182,10 @@ class SectorEntityRenderer:
                 base_width = base_p_right_x - base_p_left_x
                 start_x = base_p_left_x + (base_width - (dot_count - 1) * icon_dot_spacing_px) / 2
 
-            for dot_i in range(dot_count):
-                dot_x = start_x + dot_i * icon_dot_spacing_px
-                pygame.draw.circle(self.screen, obj_color, (dot_x, dot_base_y), icon_dot_radius_px)
+            if icon_dot_radius_px > 0:
+                for dot_i in range(dot_count):
+                    dot_x = start_x + dot_i * icon_dot_spacing_px
+                    draw_shape(self.screen, 'circle', obj_color, Position(dot_x, dot_base_y), icon_dot_radius_px)
 
         # Draw Unit Name
         bottom_y = icon_bottom
