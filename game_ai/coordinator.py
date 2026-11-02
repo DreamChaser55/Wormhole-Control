@@ -370,16 +370,8 @@ class AgentTurnCoordinator:
             "prompt_metrics": result.prompt_metrics,
             "status": status,
             "commands": len(result.plan.batch.commands),
-            "command_summaries": [
-                {
-                    "index": index,
-                    "type": command.type,
-                    "unit_ids": list(command.unit_ids),
-                    "target_id": command.target_id,
-                    "queue": command.queue,
-                }
-                for index, command in enumerate(result.plan.batch.commands)
-            ],
+            "command_summaries": [_command_summary(command, index)
+                                  for index, command in enumerate(result.plan.batch.commands)],
             "applied_operations": command_result.applied_count,
             "failure_stage": command_result.failure_stage,
             "operation_outcomes": {state: sum(op["status"] == state for op in command_result.operation_results)
@@ -544,3 +536,28 @@ class AgentTurnCoordinator:
 def _bounded_text(value: Any, limit: int = 500) -> str:
     text = str(value)
     return text if len(text) <= limit else text[: limit - 1] + "…"
+
+
+def _command_summary(command, index):
+    """Allowlist action metadata; never serialize arbitrary command/model text."""
+    import math
+    from unit_templates import UNIT_TEMPLATES
+    from unit_components.enums import AbilityType
+    from construction_customization import TURRET_TYPES, DEFENSE_TYPES
+    summary = {'index': index, 'type': command.type, 'unit_ids': list(command.unit_ids),
+               'target_id': command.target_id, 'queue': command.queue}
+    if command.type in {'construct', 'set_wing_production'}:
+        summary['template_name'] = command.template_name if command.template_name in UNIT_TEMPLATES else None
+        for key, choices in (('turret_type_override', TURRET_TYPES), ('defense_type_override', DEFENSE_TYPES)):
+            value = getattr(command, key)
+            if value in choices:
+                summary[key] = value
+    if command.type == 'set_wing_production':
+        summary['slot_index'] = command.slot_index if type(command.slot_index) is int else None
+    if command.type in {'use_ability', 'toggle_ability', 'cancel_ability'}:
+        summary['ability'] = command.ability if command.ability in {kind.value for kind in AbilityType} else None
+    if command.type in {'load_colonists', 'recruit_troops', 'invade_planet'}:
+        amount = command.amount
+        if type(amount) in (int, float) and -1e100 <= amount <= 1e100 and math.isfinite(amount):
+            summary['requested_amount'] = amount
+    return summary

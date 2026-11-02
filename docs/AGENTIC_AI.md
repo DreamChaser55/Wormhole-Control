@@ -680,6 +680,9 @@ hidden target and defers cancellation/history to the first gameplay validation.
 - Every attempt appends bounded telemetry to ignored
   `saves/ai_telemetry.jsonl`, including attempt index, model, reasoning, token
   use, latency, command summaries, errors, and whether another retry followed.
+  Command summaries allowlist construction/wing template and overrides, wing slot,
+  ability, and requested colonist/troop amount where applicable. They exclude
+  messages, renamed unit text, prompts, memory and raw model output.
 - Developer feedback transmissions (`message_developer`) are appended as
   human-readable Markdown entries to ignored `saves/ai_feedback.md` and logged to
   `game.log`.

@@ -458,6 +458,44 @@ class TestCoordinator(unittest.TestCase):
         finally:
             coordinator.shutdown()
 
+    def test_telemetry_keeps_action_metadata_without_private_free_text(self):
+        player = SimpleNamespace(agent_id='agent')
+        game = SimpleNamespace(campaign_id='campaign', current_player=player, turn_number=4)
+        commands = (
+            Command('construct', (1,), template_name='SCOUT'),
+            Command('set_wing_production', (2,), slot_index=1, template_name='BOMBER_WING'),
+            Command('toggle_ability', (3,), ability='hazard_shielding'),
+            Command('load_colonists', (4,), target_id=5, amount=25),
+            Command('send_message', (), target_id=6, message='private transmission'),
+            Command('rename_unit', (4,), new_name='private name'),
+        )
+        result = PlanningResult(plan=TurnPlan(('private plan',), CommandBatch(commands),
+                                            {'beliefs': ['private memory']}),
+                                provider='fake', model='fake', reasoning_effort='medium')
+        coordinator = AgentTurnCoordinator(game, provider=FakePlanningProvider([]))
+        try:
+            with patch.object(coordinator, '_append_telemetry') as append:
+                coordinator._record_telemetry(result, CommandResult(True), status='accepted')
+                record = append.call_args.args[0]
+            summaries = record['command_summaries']
+            self.assertEqual(summaries[0]['template_name'], 'SCOUT')
+            self.assertEqual((summaries[1]['slot_index'], summaries[1]['template_name']), (1, 'BOMBER_WING'))
+            self.assertEqual(summaries[2]['ability'], 'hazard_shielding')
+            self.assertEqual(summaries[3]['requested_amount'], 25)
+            self.assertNotIn('private', json.dumps(record))
+            self.assertNotIn('message', summaries[4])
+            self.assertNotIn('new_name', summaries[5])
+            from game_ai.coordinator import _command_summary
+            for command in (
+                Command('construct', (1,), template_name='private invalid template'),
+                Command('use_ability', (1,), ability='private invalid ability'),
+                Command('set_wing_production', (1,), slot_index='private invalid slot'),
+                Command('load_colonists', (1,), amount='private invalid amount'),
+            ):
+                self.assertNotIn('private', json.dumps(_command_summary(command, 0)))
+        finally:
+            coordinator.shutdown()
+
     def test_telemetry_records_every_rejected_and_accepted_attempt(self):
         import save_manager
 
