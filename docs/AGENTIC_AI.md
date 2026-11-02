@@ -535,7 +535,10 @@ the [generated version table](DEVELOPMENT.md#current-formats-and-protocols).
 For [gas-giant queue blocking](REFERENCE.md#gas-giant-atmospheric-hiding), inspect
 `blocked_by_order_id` and use `cancel_order`, `clear_explicit_orders`, or a
 replacement Leave to unblock departure. Preflight projects entry/departure
-requirements; acceptance does not guarantee safe exit placement.
+requirements and rejects ordinary work projected before Leave with `invalid_state`,
+before applying any operation. Automated sequences use Enter → queued Leave → queued
+Move. Human controls or restored engine queues can contain blocking outside work;
+acceptance of Leave does not guarantee safe exit placement.
 
 Use the canonical [damage](REFERENCE.md#weapons-and-damage),
 [minefield](REFERENCE.md#minefields) and [spawn-profile](REFERENCE.md#spawn-profiles)

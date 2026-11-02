@@ -160,8 +160,9 @@ Commands are applied in array order. For orders, queue=false replaces explicit w
 appends a separate root. Immediate commands require queue=false and never replace work.
 Continuous orders block later queue entries until cancelled; this is guidance, not an error.
 Gas-giant orders preserve strict FIFO: Enter, queued Leave, queued Move can resume;
-Enter, queued Move, queued Leave pauses behind Move while hidden. Use queue edits or
-a replacement Leave to unblock it. Leave can fail with path_unavailable when no safe
+the gateway rejects Enter, queued Move, queued Leave atomically with invalid_state.
+Human controls or loaded queues can contain outside work blocking Leave; use queue edits
+or a replacement Leave to unblock it. Leave can fail with path_unavailable when no safe
 exit exists, retaining the hidden ship and remaining queue. Mines check final positions
 after movement on the ship owner's turn, including stationary ships.
 Patrol accepts 1-16 complete waypoints, returns to its captured start, and repeats. queue=true

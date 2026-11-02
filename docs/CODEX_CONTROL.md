@@ -320,6 +320,21 @@ codes rather than file contents or raw exceptions.
 {"action":"load_game","request_id":"load-001","save_name":"playtest.json"}
 ```
 
+## Gas-giant queues
+
+Built-in AI and socket commands share projected atmospheric-state validation.
+Use Enter, queued Leave, then queued Move; all three may be submitted together:
+
+```json
+{"action":"command","request_id":"gas-route-001","turn_token":"opaque-value","commands":[{"type":"enter_gas_giant","unit_ids":[12],"target_id":200},{"type":"leave_gas_giant","unit_ids":[12],"queue":true},{"type":"move","unit_ids":[12],"system_name":"Sol","hex_coord":[1,0],"position":[4000,0],"queue":true}]}
+```
+
+Replace example IDs and locations with disclosed, eligible targets. Enter → Move →
+Leave rejects the complete batch with `invalid_state`, applying zero operations.
+Human controls and loaded engine queues can contain outside work blocking Leave;
+inspect the queue and cancel that work or replace it with Leave. Safe exit placement
+is checked at execution and can still fail with `path_unavailable`.
+
 ## Idempotent retries
 
 The server caches the last 256 responses to mutating actions (`new_game`, `command`,

@@ -1497,10 +1497,17 @@ from outside. Opposing hidden ships cannot detect or attack each other. Upkeep
 and existing ability timers continue.
 
 Entry and departure preserve stance and queued work. Hidden ships pause outside
-orders and execute only a Leave at the front of the queue:
+orders and execute only a Leave at the front of the queue.
 
-- **Enter → Leave → Move:** Movement resumes after departure.
-- **Enter → Move → Leave:** Move blocks departure; cancel or replace the blocking work.
+**Built-in AI and Codex/socket commands:** Use **Enter → queued Leave → queued Move**.
+The shared gateway projects atmospheric state and rejects **Enter → Move → Leave**
+atomically with `invalid_state`; none of that batch is applied. See the
+[automated sequence](CODEX_CONTROL.md#gas-giant-queues).
+
+**Human controls and restored engine queues:** Outside work queued with Shift while
+an entry is still approaching can remain behind Enter. Once submerged, placing Leave
+behind that work cannot unblock it. Cancel the blocking work or issue a replacement
+Leave. Direct engine queues and saves can likewise contain this paused FIFO state.
 
 Queue editing remains available while hidden, and saving preserves the pause.
 Departure finds a position 50 units beyond the planet surface, clear of obstacles,

@@ -54,7 +54,6 @@ No remaining confirmed issues.
 
 ## Further improvement suggestions
 
-- Clarify gas-giant queue documentation by interface. The general reference describes Enter → Move → Leave as a blocking queue, whereas the socket gateway rejected that projected sequence atomically with `invalid_state`. That protective validation is useful; identify which interfaces can create the documented blocked state and show a valid automated sequence.
 - Distinguish returning to a fuel source from waiting there. At rounds 84–90, Harvester 43 reported `phase: harvesting` and `waiting_reason: no_destination` while its source-return journey was actively advancing (15, 14, 13, 12, 10, then 8 estimated turns). `fuel_transport._return_to_source()` retains the reason for returning until arrival. A return phase or separate return reason would avoid presenting this productive movement as a current wait. This was not a stuck logistics order.
 - Add explicit phase/refinery guidance to Continuous Mine. At round 64 it showed full raw-metal cargo but an empty root `progress` object; its later child journey explained the delivery. The richer Continuous Resupply phase model is useful precedent.
 - Improve wrong-mode ability errors. Calling `use_ability` for the equipped, ready `hazard_shielding` toggle returned “Ability hazard_shielding is unavailable on unit 69.” The correct `toggle_ability` command succeeded. Naming that command in the error would help semantic repair distinguish an equipped toggle from absent equipment.
