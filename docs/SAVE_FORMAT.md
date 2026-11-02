@@ -123,6 +123,9 @@ bounded outcome history remain persistent.
 Completed colonist-load events can include numeric `loading_outcome` facts
 (`requested_amount`, `loaded_amount`, `retained_population`). These are execution
 snapshots, with no source references or subsequent live population updates.
+Briefing state includes bounded private `fuel_waits` by owned unit ID, retaining
+the last movement fuel/storage problem across windows and loading. Only a changed
+problem or recovery records another event; observations do not advance this state.
 Loading preserves the current/queued split, including an empty current slot.
 Active orders rebind their actuators
 without executing startup again. Transient stance engagement trees and their

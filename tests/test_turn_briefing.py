@@ -29,6 +29,46 @@ def setup(count=2):
     return game
 
 
+def test_unchanged_fuel_wait_is_quiet_across_turns_and_save_load_then_reports_recovery():
+    from game_ai.order_view import public_journey_progress
+    from unit_components.antimatter import AntimatterStorage
+    from unit_components.movement import Engines
+    game = setup()
+    unit = ship(game)
+    unit.add_component(Engines(unit, speed=100))
+    unit.add_component(AntimatterStorage(unit, max_capacity=500))
+    unit.antimatter_component.current_amount = 0
+    initialize_campaign(game)
+    assert CommandGateway(game).apply_batch(unit.owner, CommandBatch((
+        Command('move', (unit.id,), system_name='Sol', hex_coord=(0, 0), position=(2000, 0)),
+    ))).accepted
+    for turn in range(1, 4):
+        game.turn_number = turn
+        begin_window(game, unit.owner)
+        TurnProcessor(game)._process_movement(unit.owner)
+        finish_window(game, unit.owner)
+        problems = [e for e in summary_view(unit.owner)['entries'] if 'blocked:' in e['detail']]
+        assert len(problems) == (1 if turn == 1 else 0)
+        assert public_journey_progress(game, unit.owner, unit)['waiting_reason'] == 'insufficient_antimatter'
+        if turn == 1:
+            uid = unit.id
+            data = json.loads(json.dumps(serialize_game_state(game)))
+            assert deserialize_game_state(game, data)
+            unit = game.galaxy.get_unit_by_id(uid)
+    game.turn_number += 1
+    begin_window(game, unit.owner)
+    unit.antimatter_component.current_hit_points = 0
+    TurnProcessor(game)._process_movement(unit.owner)
+    assert any('storage unavailable' in e.detail for e in unit.owner.briefing.pending)
+    unit.antimatter_component.current_hit_points = unit.antimatter_component.max_hit_points
+    unit.antimatter_component.current_amount = 100
+    TurnProcessor(game)._process_movement(unit.owner)
+    assert unit.position.x > 100
+    assert any('resumed after fuel wait' in e.detail for e in unit.owner.briefing.pending)
+    assert not unit.owner.briefing.fuel_waits
+    assert not any(e.category == 'problem' for e in game.players[1].briefing.pending)
+
+
 @pytest.mark.parametrize("count", [2, 6])
 def test_window_starts_before_resolution_and_wraps_round(count, monkeypatch):
     game = setup(count)

@@ -50,13 +50,7 @@ The final save preserves an ongoing battle and future missions; this was a bound
 
 ## Confirmed issues and observations
 
-### P3 — An unchanged fuel wait repeats a significant briefing warning
-
-**Observed:** Scout 48 exhausted its 22 AM on the deliberately under-fuelled gas-giant approach. It correctly stopped moving and retained its order with `waiting_reason: insufficient_antimatter`. Resolutions **79–106** generated **28 successive** `Movement blocked: insufficient antimatter` briefing events, with new event IDs, despite unchanged fuel and position.
-
-**Impact:** The current-order wait already explains the persistent condition. Repeating the same problem adds planning noise; by the documented shared briefing/Automatic-mode rules it can also keep prompting a human player. The latter UI consequence was not tested by clicking the human modal.
-
-**Suggested improvement:** Emit the significant event on entry into the fuel wait, then use a persistent unit warning or optional periodic reminder. Report recovery or a materially different problem as a new event. Keep the wait visible in every observation.
+No remaining confirmed issues.
 
 ## Further improvement suggestions
 

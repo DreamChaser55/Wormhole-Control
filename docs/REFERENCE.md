@@ -174,6 +174,10 @@ support orders, voluntary cancellations and normal temporary-unit expiration are
 omitted. The economy footer shows net credits, metal, crystal and total colony
 population changes; economy-only turns do not open the modal in Automatic mode.
 
+Fuel-blocked movement reports entry into the wait, a different fuel/storage
+problem, and recovery. An unchanged wait stays visible in current journey progress
+without repeating a significant briefing event, including after saving/loading.
+
 Use **Continue**, **Esc**, or **X** to acknowledge the report. Game controls are
 blocked while it is open. **Open Comms** closes the briefing and opens conversations;
 acknowledgement alone does not mark messages read. Comms no longer opens automatically

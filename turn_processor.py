@@ -211,21 +211,25 @@ class TurnProcessor:
         Rejected payment records a private problem and leaves navigation unchanged.
         """
         storage = unit.antimatter_component
+        from turn_briefing import movement_fuel_state
         from movement_costs import fuel_free_sublight
         if sublight and fuel_free_sublight(unit):
+            movement_fuel_state(unit)
             return True
         if cost <= 0:
+            movement_fuel_state(unit)
             return True
         if storage is None or storage.is_destroyed:
             reason = "antimatter storage unavailable"
         elif storage.current_amount < cost:
             reason = "insufficient antimatter"
         elif storage.consume(cost):
+            movement_fuel_state(unit)
             return True
         else:
             reason = "antimatter payment failed"
         action = "Movement" if sublight else "Jump"
-        unit_event(unit, "problem", f"{action} blocked: {reason}", private=True, once=True)
+        movement_fuel_state(unit, f"{action} blocked: {reason}")
         logger.debug("%s %s blocked: %s", format_unit_for_log(unit), action.lower(), reason)
         return False
 

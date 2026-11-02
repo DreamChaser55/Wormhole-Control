@@ -16,6 +16,9 @@ PRIORITY = {"loss": 0, "capture": 0, "problem": 1, "combat": 2,
             "hazard": 2, "intelligence": 3, "development": 4,
             "discovery": 5, "communications": 6}
 METRICS = ("credits", "metal", "crystal", "population")
+FUEL_PROBLEMS = frozenset(f'{action} blocked: {reason}'
+    for action in ('Movement', 'Jump')
+    for reason in ('antimatter storage unavailable', 'insufficient antimatter', 'antimatter payment failed'))
 
 
 @dataclass(frozen=True)
@@ -61,6 +64,7 @@ class BriefingState:
     seen: dict[str, list[str]] = field(default_factory=dict)
     current: TurnSummary = field(default_factory=TurnSummary)
     acknowledged: bool = True
+    fuel_waits: dict[str, str] = field(default_factory=dict)
 
     def to_dict(self):
         result = asdict(self)
@@ -72,6 +76,28 @@ class BriefingState:
 def _state(player):
     value = getattr(player, "briefing", None)
     return value if isinstance(value, BriefingState) else None
+
+
+def movement_fuel_state(unit, problem=None):
+    """Report entry/change/recovery, keeping unchanged waits quiet across windows."""
+    if not _live(_game(unit)):
+        return
+    state = _state(unit.owner)
+    if state is None:
+        return
+    key = str(unit.id)
+    previous = state.fuel_waits.get(key)
+    if problem == previous:
+        return
+    if problem is None:
+        state.fuel_waits.pop(key, None)
+        if previous is not None:
+            unit_event(unit, 'problem', 'Movement resumed after fuel wait', private=True, once=True)
+    elif problem in FUEL_PROBLEMS:
+        state.fuel_waits[key] = problem
+        while len(state.fuel_waits) > MAX_ENTRIES:
+            state.fuel_waits.pop(next(iter(state.fuel_waits)))
+        unit_event(unit, 'problem', problem, private=True, once=True)
 
 
 def _live(game):
@@ -348,6 +374,13 @@ def state_from_dict(raw):
     for key in ("sequence", "from_turn", "omitted_count"):
         integer(raw[key])
     baseline = metrics(raw["baseline"], nonnegative=True)
+    waits = raw['fuel_waits']
+    if (not isinstance(waits, dict) or len(waits) > MAX_ENTRIES
+            or any(not isinstance(key, str) or not key.isascii() or not key.isdecimal()
+                   or len(key) > 30 or str(int(key)) != key
+                   or not isinstance(value, str) or value not in FUEL_PROBLEMS
+                   for key, value in waits.items())):
+        raise ValueError('Invalid movement fuel wait state')
     seen = raw["seen"]
     if not isinstance(seen, dict) or set(seen) - {"known", "presence"}:
         raise ValueError("Invalid briefing discovery state")
@@ -369,5 +402,5 @@ def state_from_dict(raw):
         raise ValueError("Briefing event before collection window")
     if not raw["collecting"] and (pending or raw["omitted_count"]):
         raise ValueError("Closed briefing has pending events")
-    return BriefingState(**{**raw, "baseline": baseline, "seen": copy.deepcopy(seen),
+    return BriefingState(**{**raw, "baseline": baseline, "seen": copy.deepcopy(seen), 'fuel_waits': dict(waits),
                             "current": current, "pending": pending})
