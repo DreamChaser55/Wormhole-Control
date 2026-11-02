@@ -313,6 +313,10 @@ separate from a wait. Loading/harvesting and any remaining wait appear after arr
 The transporter has speed 100 and Advanced Hyperdrive range 5. Both stations are stationary. These designs have storage, sensors and defenses, with no harvester or special ability, and start with full tanks under the normal construction rules.
 
 **Continuous Mine** fills cargo, unloads at a compatible refinery and repeats.
+Its root progress and sidebar identify approaching the mine, mining, delivering,
+or unloading; show raw cargo and capacity; and name the selected or next compatible
+reachable owned refinery. Missing-refinery guidance names the required metal/crystal
+type. Raw cargo becomes spendable only after delivery.
 **Continuous Resupply** alternates harvesting at a star or hydrogen nebula and
 refueling automatically chosen owned ships or one manually chosen owned/allied depot. **Continuous Trade** travels between active Civilian Habitats in
 different sectors; payout scales with distance. A Trade Module requires Engines.

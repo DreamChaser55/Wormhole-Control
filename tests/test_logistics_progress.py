@@ -16,6 +16,61 @@ from unit_components.antimatter import AntimatterStorage
 from unit_components.constructor import instantiate_unit_from_template
 
 
+@pytest.mark.parametrize('crystal', [False, True])
+def test_continuous_mine_explains_cargo_refinery_and_delivery_after_load(crystal):
+    from domain.celestials import MetalAsteroid, Comet
+    from unit_components.mining import MiningComponent, MetalRefineryComponent, CrystalRefineryComponent
+    from unit_components.movement import Engines
+    from game_ai.observation import build_observation
+    from gui.sidebar.order_formatting import format_order_state_data
+    game = campaign()
+    game.galaxy.game = game
+    unit = ship(game)
+    unit.position = Position(180, 0)
+    unit.add_component(Engines(unit, speed=100))
+    unit.add_component(AntimatterStorage(unit, max_capacity=500))
+    unit.add_component(MiningComponent(unit, mining_rate=10, max_cargo=20))
+    body = (Comet if crystal else MetalAsteroid)((0, 0), 'Sol')
+    game.galaxy.systems['Sol'].add_celestial_body(body)
+    assert issue(game, unit.owner, Command('continuous_mine', (unit.id,), target_id=body.id)).accepted
+    root = unit.commander_component.current_order
+    state = root.progress_view(game.galaxy)
+    assert state['phase'] == 'mining' and not state['refinery_available']
+    assert state['required_refinery_types'] == ['crystal' if crystal else 'metal']
+    refinery = ship(game, 'Refinery')
+    refinery.position = Position(1000, 0)
+    refinery.add_component((CrystalRefineryComponent if crystal else MetalRefineryComponent)(refinery))
+    def tick():
+        unit.commander_component.prepare_for_movement()
+        TurnProcessor(game)._process_movement(unit.owner)
+        unit.update()
+    resource = 'crystal' if crystal else 'metal'
+    before = getattr(unit.owner, resource)
+    for _ in range(4):
+        tick()
+        if root.progress_view(game.galaxy)['phase'] == 'delivering':
+            break
+    state = root.progress_view(game.galaxy)
+    assert state['phase'] == 'delivering' and state['refinery_id'] == refinery.id
+    assert state['raw_crystal' if crystal else 'raw_metal'] == 20
+    assert getattr(unit.owner, resource) == before
+    actor = next(u for u in build_observation(game, unit.owner)['units'] if u['id'] == unit.id)
+    assert actor['current_order']['progress']['refinery_id'] == refinery.id
+    assert any('Phase: Delivering' in line for line in format_order_state_data(root.get_state_data()))
+    assert root.progress_view(game.galaxy, set())['refinery_id'] is None
+    uid = unit.id
+    assert deserialize_game_state(game, json.loads(json.dumps(serialize_game_state(game))))
+    unit = game.galaxy.get_unit_by_id(uid)
+    root = unit.commander_component.current_order
+    assert root.progress_view(game.galaxy) == state
+    for _ in range(15):
+        tick()
+        if getattr(unit.owner, resource) > before:
+            break
+    assert getattr(unit.owner, resource) == before + 20
+    assert root.progress_view(game.galaxy)['phase'] == 'approaching_mine'
+
+
 @pytest.mark.parametrize('harvesting', [True, False])
 def test_source_return_is_movement_then_wait_in_public_views_and_after_load(harvesting):
     game = campaign()

@@ -858,6 +858,14 @@ arrival, loading/harvesting resumes and a continuing lack of demand becomes a
 waiting reason. The sidebar uses the same distinction. These views derive from
 the saved phase/reason and child approach without advancing logistics.
 
+Continuous Mine roots derive `progress.phase` (`approaching_mine`, `mining`,
+`delivering`, `unloading`, or terminal status), `raw_metal`, `raw_crystal`,
+`cargo_capacity`, `required_refinery_types`, `refinery_id`, `refinery_available`
+and `refinery_selected` from the active cycle. Refinery IDs require normal unit
+disclosure; a missing compatible reachable refinery is explicit guidance. Cargo
+remains unspendable until unloading. The sidebar uses the same derived state;
+observing or loading never advances mining or delivery.
+
 Multiplication observations include radius, projected recipient gains, net AM,
 caster cooldown and friendly units' shared recipient recovery. Enemy observations
 do not expose these deadlines. Their component-independent lifetime is described

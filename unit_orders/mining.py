@@ -161,6 +161,47 @@ class ContinuousMineOrder(Order):
     def __init__(self, unit: 'Unit', parameters: Dict[str, Any] = None, parent_order: Optional[Order] = None):
         super().__init__(unit, OrderType.CONTINUOUS_MINE, parameters, parent_order)
 
+    def progress_view(self, galaxy, known_unit_ids=None):
+        """Describe the real cycle and refinery choice without starting any work."""
+        from domain.celestials import MetalAsteroid, Comet
+        mining = self.unit.mining_component
+        if mining is None:
+            return {'phase': 'blocked', 'waiting_reason': 'capability_unavailable'}
+        target = galaxy.get_celestial_body_by_id(self.parameters.get('target_id'))
+        child = self.sub_orders[0] if self.sub_orders else None
+        delivering = child is not None and child.order_type == OrderType.UNLOAD_RESOURCES
+        refinery = (galaxy.get_unit_by_id(child.parameters.get('target_unit_id')) if delivering
+                    else self._find_closest_refinery(galaxy))
+        if refinery is not None and known_unit_ids is not None and refinery.id not in known_unit_ids:
+            refinery = None
+        phase = self.status.name.lower()
+        if self.status in {OrderStatus.PENDING, OrderStatus.IN_PROGRESS}:
+            if delivering:
+                component = (getattr(refinery, 'metal_refinery_component', None)
+                             or getattr(refinery, 'crystal_refinery_component', None))
+                in_range = (refinery is not None and component is not None and self.unit.in_system == refinery.in_system
+                            and self.unit.in_hex == refinery.in_hex
+                            and distance(self.unit.position, refinery.position) <= component.unload_range)
+                phase = 'unloading' if in_range else 'delivering'
+            else:
+                in_range = (target is not None and self.unit.in_system == target.in_system
+                            and self.unit.in_hex == target.in_hex
+                            and distance(self.unit.position, target.position) <= mining.mining_range)
+                phase = 'mining' if in_range else 'approaching_mine'
+        required = []
+        if mining.raw_metal_cargo > 0 or isinstance(target, MetalAsteroid):
+            required.append('metal')
+        if mining.raw_crystal_cargo > 0 or isinstance(target, Comet):
+            required.append('crystal')
+        return {'phase': phase, 'raw_metal': mining.raw_metal_cargo,
+                'raw_crystal': mining.raw_crystal_cargo, 'cargo_capacity': mining.max_cargo,
+                'required_refinery_types': required,
+                'refinery_id': refinery.id if refinery else None,
+                'refinery_available': refinery is not None, 'refinery_selected': delivering}
+
+    def get_state_data(self):
+        return dict(super().get_state_data(), **self.progress_view(self.unit.game.galaxy))
+
     def execute(self, galaxy_ref: 'Galaxy') -> None:
         super().execute(galaxy_ref)
 

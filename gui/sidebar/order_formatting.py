@@ -181,7 +181,15 @@ def format_order_state_data(state_data: dict, galaxy: typing.Any = None) -> list
         target_id = parameters.get("target_id", "Unknown")
         continuous_mine_type_styled = f"<font color='{MINE_COLOR}'><b>🔁 Mine (continuously):</b></font>"
         target_styled = f"<font color='{INFO_COLOR}'><i>Target ID: {target_id}</i></font>"
-        return [f"{continuous_mine_type_styled} {target_styled}"]
+        lines = [f"{continuous_mine_type_styled} {target_styled}",
+                 '  Phase: ' + escape(state_data.get('phase', 'pending').replace('_', ' ').title()),
+                 f"  Raw cargo: {state_data.get('raw_metal', 0):g} metal, {state_data.get('raw_crystal', 0):g} crystal / {state_data.get('cargo_capacity', 0):g}"]
+        refinery = state_data.get('refinery_id')
+        lines.append(f'  Refinery: #{refinery}' if refinery is not None else '  Compatible reachable refinery unavailable')
+        required = ', '.join(state_data.get('required_refinery_types', []))
+        if required:
+            lines.append('  Required refinery: ' + escape(required))
+        return lines
 
     elif order_type == "TRADE":
         target_unit_id = parameters.get("target_unit_id", "Unknown")

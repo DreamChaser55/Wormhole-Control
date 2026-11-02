@@ -273,6 +273,8 @@ def order_layers(unit, relation, visible_ids, body_ids):
         if kind == "stabilize_wormhole" and not hidden:
             from wormhole_stabilization import state_view
             progress = state_view(unit, order=order)
+        if kind == 'continuous_mine' and not hidden:
+            progress = order.progress_view(unit.game.galaxy, visible_ids)
         if fuel_order and not hidden:
             progress = {'phase': order.public_phase, 'waiting_reason': order.public_waiting_reason,
                         'return_reason': order.public_return_reason,
