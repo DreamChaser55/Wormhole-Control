@@ -105,15 +105,15 @@ def setup_logging(log_to_file: bool = False):
 
     Install filtered stderr output and, when log_to_file is True, append to
     rotating game.log in the working directory after closing previous destinations.
-    INFO is normal; WORMHOLE_DEBUG_LOG=true opts into DEBUG traces. The active
-    file rotates at 5 MiB with three retained backups.
+    INFO is normal; DEBUG_LOG=true opts into application-wide DEBUG traces.
+    The active file rotates at 5 MiB with three retained backups.
     False leaves the file untouched apart from flushing an old owned handler.
     Cleanup errors propagate after all owned handlers have been processed. A
     file-opening error propagates with the new stderr handler still usable and
     owned. Returns None; importing this module does not configure logging.
     """
     root_logger = logging.getLogger()
-    level = logging.DEBUG if os.environ.get('WORMHOLE_DEBUG_LOG', '').lower() in {'1', 'true', 'yes'} else logging.INFO
+    level = logging.DEBUG if os.environ.get('DEBUG_LOG', '').lower() in {'1', 'true', 'yes'} else logging.INFO
     root_logger.setLevel(level)
 
     # These clients include complete request bodies in DEBUG records. The game

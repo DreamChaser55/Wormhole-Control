@@ -21,7 +21,7 @@ def isolated_logging(tmp_path, monkeypatch):
     levels = {logger: logger.level for logger in loggers}
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(game_logging, "_application_handlers", [])
-    monkeypatch.setenv('WORMHOLE_DEBUG_LOG', 'true')
+    monkeypatch.setenv('DEBUG_LOG', 'true')
     for handler in original_handlers:
         root.removeHandler(handler)
     try:
@@ -75,7 +75,7 @@ def test_repeated_setup_closes_owned_handlers_without_duplicate_output(
 
 
 def test_verbose_traces_require_opt_in_even_for_debug_child_loggers(monkeypatch, capsys, tmp_path):
-    monkeypatch.delenv('WORMHOLE_DEBUG_LOG', raising=False)
+    monkeypatch.delenv('DEBUG_LOG', raising=False)
     logger = logging.getLogger('wormhole_logging_test')
     logger.setLevel(logging.DEBUG)
     game_logging.setup_logging(log_to_file=True)
@@ -84,7 +84,7 @@ def test_verbose_traces_require_opt_in_even_for_debug_child_loggers(monkeypatch,
     for output in (capsys.readouterr().err, (tmp_path / 'game.log').read_text()):
         assert 'verbose movement trace' not in output
         assert 'useful normal diagnostic' in output
-    monkeypatch.setenv('WORMHOLE_DEBUG_LOG', 'true')
+    monkeypatch.setenv('DEBUG_LOG', 'true')
     game_logging.setup_logging(log_to_file=True)
     logger.debug('opted in trace')
     assert 'opted in trace' in capsys.readouterr().err
@@ -92,7 +92,7 @@ def test_verbose_traces_require_opt_in_even_for_debug_child_loggers(monkeypatch,
 
 
 def test_runtime_logs_rotate_and_keep_redaction_in_every_backup(monkeypatch, tmp_path):
-    monkeypatch.delenv('WORMHOLE_DEBUG_LOG', raising=False)
+    monkeypatch.delenv('DEBUG_LOG', raising=False)
     monkeypatch.setattr(game_logging, 'LOG_MAX_BYTES', 512)
     monkeypatch.setattr(game_logging, 'LOG_BACKUP_COUNT', 2)
     game_logging.setup_logging(log_to_file=True)

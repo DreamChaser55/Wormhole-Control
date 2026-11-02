@@ -1667,9 +1667,10 @@ for fields, types, derived values and the Python API.
 
 Each run writes `game.log` in the root folder. Check it for storage and runtime
 failures.
-Normal logging omits detailed movement/order traces. To enable those for diagnosis,
-set `WORMHOLE_DEBUG_LOG=true` before launching. `game.log` rotates at 5 MiB with
-three backups. The control launcher's raw stderr rotates between launches; see
+Normal logging omits detailed movement/order traces. Set `DEBUG_LOG=true` before
+launching to enable application-wide debug diagnostics, including these traces.
+`game.log` rotates at 5 MiB with three backups. The control launcher's raw stderr
+rotates between launches; see
 [control diagnostics](CODEX_CONTROL.md#transport-and-process-behavior).
 Generated unit mentions in file and console logs include the unit's
 current name and ID, for example `Scout (id:42)`, so identically named ships can
