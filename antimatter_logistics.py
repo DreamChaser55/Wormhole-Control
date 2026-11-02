@@ -157,7 +157,7 @@ def estimate_approach(unit, galaxy, target, origin=None, *, approach_range=ANTIM
     system, coord, point = origin or (unit.in_system, unit.in_hex, unit.position)
     fuel, turns = 0.0, 0
     upkeep = equipment_upkeep(unit)
-    engine, drive = unit.engines_component, unit.hyperdrive_component
+    engine, drive = getattr(unit, 'engines_component', None), getattr(unit, 'hyperdrive_component', None)
     recharge = max(0, getattr(drive, 'recharge_time_remaining', 0)) if origin is None else 0
     speed = engine.effective_speed if engine and engine.is_operational else 0.0
     jump_range = (
