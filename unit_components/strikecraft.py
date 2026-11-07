@@ -4,6 +4,7 @@ import typing
 from typing import TYPE_CHECKING
 import dataclasses
 
+from campaign_graph import sync_docked_sector
 from .base import UnitComponent
 from .enums import WingType
 from geometry import Position
@@ -450,6 +451,7 @@ class StrikecraftBayComponent(UnitComponent):
         unit.in_system = self.unit.in_system
         unit.in_hex = self.unit.in_hex
         unit.position = Position(self.unit.position.x, self.unit.position.y)
+        sync_docked_sector(unit)
         
         if unit in self.launched_units:
             self.launched_units.remove(unit)

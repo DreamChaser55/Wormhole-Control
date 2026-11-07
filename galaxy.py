@@ -7,6 +7,7 @@ import typing
 import math
 import random
 from dataclasses import dataclass, field
+from campaign_graph import sync_docked_sector
 from constants import LOGICAL_GALAXY_SIZE, SECTOR_CIRCLE_RADIUS_LOGICAL, StarType, PlanetType, NebulaType, StormType, SQRT3, MAX_MINEFIELDS_PER_HEX, FieldDensity
 from domain.coordinates import HexCoord
 from geometry import Vector, Position, Circle, hex_distance
@@ -327,6 +328,7 @@ class StarSystem:
         if hex_coord in self.hexes:
             self.hexes[hex_coord].add_unit(unit_to_add)
             unit_to_add.in_system = self.name
+            sync_docked_sector(unit_to_add)
         else:
              logger.debug(f"Warning: Attempted to add unit to invalid hex {hex_coord} in system {self.name}")
 

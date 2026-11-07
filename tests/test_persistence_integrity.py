@@ -7,6 +7,7 @@ from unittest.mock import Mock
 import json
 import random
 import pytest
+import save_manager
 from domain.players import Player
 from domain.identity import GameObject
 from domain.units import Unit
@@ -250,7 +251,6 @@ def mutated_campaign():
 
 
 def test_mutated_campaign_canonical_round_trip_and_reconciliation(tmp_path):
-    import save_manager
     game = mutated_campaign()
     before = canonical(game)
     path = tmp_path / "midgame.json"
@@ -271,6 +271,98 @@ def test_mutated_campaign_canonical_round_trip_and_reconciliation(tmp_path):
     assert all(u.game is restored and u.in_galaxy is restored.galaxy for u, _ in iter_units(restored.galaxy))
     assert GameObject.object_counter > max(o.id for o, _ in iter_objects(restored.galaxy))
     assert ship(restored).id == before["counters"][0]
+
+
+@pytest.fixture
+def carrier_group():
+    game = campaign()
+    game.galaxy.game = game
+    carrier = ship(game, "carrier")
+    carrier.add_component(HangarComponent(carrier, max_slots=1))
+    carrier.add_component(StrikecraftBayComponent(carrier, max_slots=2))
+    shuttle = ship(game, "shuttle", hull=HullSize.TINY)
+    shuttle.add_component(HangarComponent(shuttle, max_slots=1))
+    passenger = ship(game, "passenger", hull=HullSize.TINY)
+    assert shuttle.hangar_component.dock(passenger, game.galaxy)
+    assert carrier.hangar_component.dock(shuttle, game.galaxy)
+    docked = ship(game, "docked wing", hull=HullSize.STRIKECRAFT_WING)
+    launched = ship(game, "launched wing", hull=HullSize.STRIKECRAFT_WING)
+    for wing in (docked, launched):
+        wing.add_component(StrikecraftWingComponent(wing))
+        assert carrier.strikecraft_bay_component.dock(wing, game.galaxy)
+    game.turn_number += 1
+    assert carrier.strikecraft_bay_component.deploy(launched, game.galaxy)
+    return game, carrier, shuttle, passenger, docked, launched
+
+
+@pytest.mark.parametrize("destination_system", ["Sol", "Beta"])
+def test_moved_carrier_and_docked_craft_round_trip(tmp_path, carrier_group, destination_system):
+    game, carrier, shuttle, passenger, docked, launched = carrier_group
+    destination_hex = (1, 0)
+    if destination_system == "Sol":
+        assert game.galaxy.systems["Sol"].move_unit_between_hexes(carrier, destination_hex)
+    else:
+        assert game.galaxy.move_unit_between_systems(carrier, "Sol", destination_system, destination_hex)
+
+    path = tmp_path / "carrier.json"
+    save_manager.save_game_to_file(game, str(path))
+    restored = campaign()
+    assert save_manager.load_game_from_file(restored, str(path))
+
+    expected_location = (destination_system, destination_hex)
+    assert all((craft.in_system, craft.in_hex) == expected_location for craft in (shuttle, passenger, docked))
+    destination = restored.galaxy.systems[destination_system].hexes[destination_hex]
+    restored_carrier, = destination.units
+    assert restored_carrier.id == carrier.id
+    restored_shuttle, = restored_carrier.hangar_component.docked_units
+    restored_passenger, = restored_shuttle.hangar_component.docked_units
+    bay = restored_carrier.strikecraft_bay_component
+    restored_docked, = bay.docked_units
+    restored_launched, = restored.galaxy.systems["Sol"].hexes[(0, 0)].units
+    assert [craft.id for craft in (restored_shuttle, restored_passenger, restored_docked, restored_launched)] == [
+        shuttle.id, passenger.id, docked.id, launched.id,
+    ]
+    assert all((craft.in_system, craft.in_hex) == expected_location
+               for craft in (restored_shuttle, restored_passenger, restored_docked))
+    assert (restored_launched.in_system, restored_launched.in_hex) == ("Sol", (0, 0))
+    assert bay.launched_units == [restored_launched]
+    for slot, wing in enumerate((restored_docked, restored_launched)):
+        assert bay.slot_for_wing(wing) == slot
+        assert wing.strikecraft_wing_component.mother_carrier is restored_carrier
+
+    assert bay.deploy(restored_docked, restored.galaxy)
+    assert destination.units == [restored_carrier, restored_docked]
+    assert bay.docked_units == []
+    assert bay.slot_for_wing(restored_docked) == 0
+
+
+def test_rejected_carrier_moves_preserve_craft_locations_and_membership(carrier_group):
+    game, carrier, *_ = carrier_group
+    before = canonical(game)
+    membership = list(iter_objects(game.galaxy))
+    invalid_hex = (2, 0)
+    assert not game.galaxy.systems["Sol"].move_unit_between_hexes(carrier, invalid_hex)
+    assert not game.galaxy.move_unit_between_systems(carrier, "Sol", "Beta", invalid_hex)
+    assert canonical(game) == before
+    assert list(iter_objects(game.galaxy)) == membership
+
+
+@pytest.mark.parametrize("field, value", [("in_system", "Beta"), ("in_hex", [1, 0])])
+def test_inconsistent_docked_location_is_rejected_transactionally(carrier_group, field, value):
+    game, carrier, _, _, docked, _ = carrier_group
+    before, galaxy = canonical(game), game.galaxy
+    data = serialize_game_state(game)
+    system = next(system for system in data["galaxy"]["systems"] if system["name"] == carrier.in_system)
+    sector = next(sector for sector in system["hexes"] if (sector["q"], sector["r"]) == carrier.in_hex)
+    raw_carrier = next(unit for unit in sector["units"] if unit["id"] == carrier.id)
+    raw_docked, = raw_carrier["components"]["StrikecraftBayComponent"]["runtime"]["docked_units"]
+    raw_docked[field] = value
+
+    errors = []
+    assert not deserialize_game_state(game, data, on_error=errors.append)
+    assert errors == [f"Object {docked.id}: inconsistent container location"]
+    assert game.galaxy is galaxy
+    assert canonical(game) == before
 
 
 @pytest.mark.parametrize("mutation", [

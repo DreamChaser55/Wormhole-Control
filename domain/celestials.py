@@ -4,6 +4,7 @@ from __future__ import annotations
 import typing
 from typing import TYPE_CHECKING, Any, Optional
 
+from campaign_graph import sync_docked_sector
 from constants import (
     ASTEROID_FIELD_DENSITY_SPEED_MOD,
     ASTEROID_FIELD_RADIUS,
@@ -250,6 +251,7 @@ class Planet(CelestialBody):
         unit.in_system = self.in_system
         unit.in_hex = self.in_hex
         unit.position = Position(self.position.x, self.position.y)
+        sync_docked_sector(unit)
         unit.is_hidden_in_gas_giant = True
         from titan_abilities import decommission
         decommission(unit, unit.ability_component)

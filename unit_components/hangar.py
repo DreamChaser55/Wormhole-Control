@@ -3,6 +3,7 @@ from game_logging import format_unit_for_log
 from typing import TYPE_CHECKING
 import dataclasses
 
+from campaign_graph import sync_docked_sector
 from .base import UnitComponent
 from geometry import Position
 from constants import HullSize, HANGAR_HULL_COST_PER_SLOT
@@ -106,6 +107,7 @@ class HangarComponent(UnitComponent):
         unit.in_system = self.unit.in_system
         unit.in_hex = self.unit.in_hex
         unit.position = Position(self.unit.position.x, self.unit.position.y)
+        sync_docked_sector(unit)
         
         self.docked_units.append(unit)
         from environmental_resistance import deactivate

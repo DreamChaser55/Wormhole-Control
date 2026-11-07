@@ -1,6 +1,21 @@
 """Traversal of ownership edges, independent of tactical visibility and deployment."""
 
 
+def _docked_children(obj):
+    for component in (getattr(obj, "hangar_component", None), getattr(obj, "strikecraft_bay_component", None)):
+        if component:
+            for unit in component.docked_units:
+                yield unit, component
+
+
+def sync_docked_sector(carrier) -> None:
+    """Update docked craft after their carrier takes its new system and hex."""
+    for unit, _ in _docked_children(carrier):
+        unit.in_system = carrier.in_system
+        unit.in_hex = carrier.in_hex
+        sync_docked_sector(unit)
+
+
 def iter_objects(galaxy):
     """Yield (object, owning container), rejecting repeated ownership and cycles."""
     seen = set()
@@ -12,10 +27,8 @@ def iter_objects(galaxy):
         yield obj, container
         for unit in getattr(obj, "hidden_units", ()):
             yield from visit(unit, obj)
-        for component in (getattr(obj, "hangar_component", None), getattr(obj, "strikecraft_bay_component", None)):
-            if component:
-                for unit in component.docked_units:
-                    yield from visit(unit, component)
+        for unit, component in _docked_children(obj):
+            yield from visit(unit, component)
 
     if galaxy:
         for system in getattr(galaxy, "systems", {}).values():
