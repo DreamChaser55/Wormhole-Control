@@ -39,7 +39,7 @@ from constants import (
     DEFAULT_ANTIMATTER_CAPACITY, DEFAULT_ANTIMATTER_HARVEST_RATE,
     ANTIMATTER_HARVESTER_HULL_COST, MINELAYER_HULL_COST,
     DEFAULT_JUMP_RANGE, HullSize, DEFAULT_SENSOR_SHORT_RANGE, REPAIR_CREDIT_COST_PER_HP,
-    CONSTRUCTOR_BUILD_RANGE,
+    CONSTRUCTOR_BUILD_RANGE, DEFAULT_CIVILIAN_HABITAT_BONUS,
 )
 
 
@@ -290,7 +290,7 @@ def assemble_unit_from_template(template_name, template, owner, system_name, hex
         ))
 
     if template.get("has_civilian_habitat_component"):
-        bonus = float(template.get("civilian_habitat_bonus", 50.0))
+        bonus = float(template.get("civilian_habitat_bonus", DEFAULT_CIVILIAN_HABITAT_BONUS))
         cost = template.get("civilian_habitat_hull_cost")
         if cost is None:
             from custom_unit_templates import calc_civilian_habitat_hull_cost
@@ -1045,7 +1045,7 @@ def get_component_hull_cost(component_name: str, unit: 'Unit', config: Optional[
         return 10.0
 
     elif comp_cls == CivilianHabitatComponent:
-        bonus = float(config.get("economic_bonus", 50.0))
+        bonus = float(config.get("economic_bonus", DEFAULT_CIVILIAN_HABITAT_BONUS))
         return float(CivilianHabitatComponent.calc_hull_cost(bonus))
 
     elif comp_cls == OrbitalDefenseComponent:
@@ -1204,7 +1204,7 @@ def instantiate_component_for_unit(component_name: str, unit: 'Unit', config: Op
         return ColonyComponent(unit, hull_cost=cost)
 
     elif comp_cls == CivilianHabitatComponent:
-        bonus = float(config.get("economic_bonus", 50.0))
+        bonus = float(config.get("economic_bonus", DEFAULT_CIVILIAN_HABITAT_BONUS))
         return CivilianHabitatComponent(unit, economic_bonus=bonus, hull_cost=cost)
 
     elif comp_cls == OrbitalDefenseComponent:

@@ -30,7 +30,7 @@ from constants import (
     REPAIR_CREDIT_COST_PER_HP, HYPERDRIVE_HEX_JUMP_COST, HYPERDRIVE_SYSTEM_JUMP_COST,
     ENGINE_ANTIMATTER_COST_PER_TURN, BASELINE_ENGINE_SPEED,
     DEFAULT_ORBITAL_DEFENSE_RADIUS, DEFAULT_ORBITAL_DEFENSE_ATTACK_BONUS,
-    DEFAULT_ORBITAL_DEFENSE_DEFENSE_BONUS, ORBITAL_DEFENSE_HULL_COST
+    DEFAULT_ORBITAL_DEFENSE_DEFENSE_BONUS, ORBITAL_DEFENSE_HULL_COST, DEFAULT_CIVILIAN_HABITAT_BONUS
 )
 
 logger = logging.getLogger(__name__)
@@ -255,7 +255,7 @@ def calc_marines_hull_cost(marines_count: int) -> float:
     return MarinesComponent.calc_hull_cost(marines_count)
 
 
-def calc_civilian_habitat_hull_cost(economic_bonus: float = 50.0) -> float:
+def calc_civilian_habitat_hull_cost(economic_bonus: float = DEFAULT_CIVILIAN_HABITAT_BONUS) -> float:
     """Compute the hull cost of a Civilian Habitat component."""
     return CivilianHabitatComponent.calc_hull_cost(economic_bonus)
 
@@ -368,7 +368,7 @@ class ComponentConfig:
 
     # Civilian Habitat
     has_civilian_habitat_component: bool = False
-    civilian_habitat_bonus: float = 50.0
+    civilian_habitat_bonus: float = DEFAULT_CIVILIAN_HABITAT_BONUS
     civilian_habitat_hull_cost: float = 15.0
 
     # Orbital Defense
@@ -934,7 +934,7 @@ def template_from_dict(key: str, d: Dict[str, Any]) -> CustomUnitTemplate:
         colony_hull_cost=d.get("colony_hull_cost", 10),
 
         has_civilian_habitat_component=d.get("has_civilian_habitat_component", False),
-        civilian_habitat_bonus=float(d.get("civilian_habitat_bonus", 50.0)),
+        civilian_habitat_bonus=float(d.get("civilian_habitat_bonus", DEFAULT_CIVILIAN_HABITAT_BONUS)),
         civilian_habitat_hull_cost=float(d.get("civilian_habitat_hull_cost", 15.0)),
 
         has_orbital_defense_component=d.get("has_orbital_defense_component", False),

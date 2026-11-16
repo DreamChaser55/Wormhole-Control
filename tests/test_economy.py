@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from constants import PlanetType
+from constants import DEFAULT_CIVILIAN_HABITAT_BONUS, TAX_RATE, PlanetType
 from domain.celestials import Planet, Moon, ColonizableAsteroid
 from domain.players import Player
 from economy import IncomeBreakdown, calculate_income_breakdown, calculate_player_income
@@ -57,7 +57,7 @@ def test_colony_income_and_passive_resources(kind, sabotaged):
         body.passive_metal, body.passive_crystal = 5.5, 2.25
     if sabotaged:
         spy(body, enemy)
-    expected = IncomeBreakdown(colony_credits=1 if sabotaged else 2,
+    expected = IncomeBreakdown(colony_credits=20 * TAX_RATE * (0.5 if sabotaged else 1),
                                metal=5.5 if kind is Planet else 0,
                                crystal=2.25 if kind is Planet else 0)
     assert_settlement(game, owner, expected)
@@ -74,12 +74,12 @@ def test_siphoning_requires_hostility_and_does_not_stack_agents(relationship):
     spy(body, viewer)
     other_spy = Player('Other infiltrator', (1, 2, 3))
     spy(body, other_spy)
-    expected = IncomeBreakdown(siphoned_credits=2 if relationship == 'enemy' else 0)
+    expected = IncomeBreakdown(siphoned_credits=80 * TAX_RATE * 0.25 if relationship == 'enemy' else 0)
     assert_settlement(game, viewer, expected)
 
 
 @pytest.mark.parametrize('state,expected_habitats', [
-    ('active', 100), ('capacity', 50), ('destroyed', 50), ('offline', 50),
+    ('active', 2), ('capacity', 1), ('destroyed', 1), ('offline', 1),
 ])
 def test_habitat_eligibility_and_capacity(state, expected_habitats):
     game = campaign()
@@ -93,7 +93,8 @@ def test_habitat_eligibility_and_capacity(state, expected_habitats):
     elif state == 'offline':
         units[0]._dismantle_job = SimpleNamespace(phase='working', settled=False)
     assert_settlement(game, owner, IncomeBreakdown(
-        colony_credits=body.population * 0.1, habitat_credits=expected_habitats))
+        colony_credits=body.population * TAX_RATE,
+        habitat_credits=expected_habitats * DEFAULT_CIVILIAN_HABITAT_BONUS))
 
 
 def test_empty_income_and_immutable_result():

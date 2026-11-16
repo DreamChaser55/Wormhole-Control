@@ -170,7 +170,7 @@ RETROFIT_COMPONENTS: List[Dict[str, Any]] = [
         "display_name": "Civilian Habitat",
         "comp_cls": CivilianHabitatComponent,
         "is_dynamic": False,
-        "description": "Provides direct economic tax bonuses (+50 credits/turn) when stationed at colonized celestial bodies.",
+        "description": "Provides direct economic tax bonuses (+12 credits/turn) when stationed at colonized celestial bodies.",
     },
     {
         "comp_key": "OrbitalDefenseComponent",

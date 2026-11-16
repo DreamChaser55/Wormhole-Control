@@ -265,19 +265,20 @@ def test_colony_infiltration_and_sabotages(test_setup):
     assert planet.has_infiltrating_agent_from(p1)
     agent = planet.infiltrating_agents[0]
 
-    # Baseline Economy: 80 pop * TAX_RATE (0.1) = 8.0 credits
+    from constants import TAX_RATE
+    baseline = 80 * TAX_RATE
     p2.credits = 0.0
     p1.credits = 0.0
-    assert calculate_player_income(galaxy, p2) == 8.0
+    assert calculate_player_income(galaxy, p2) == baseline
     assert calculate_player_income(galaxy, p1) == 0.0
 
-    # Sabotage Economy: P2 income halved to 4.0, P1 siphons 25% (2.0 credits)
+    # Sabotage halves the colony's income and siphons 25% of base revenue.
     sab_order = SabotageOrder(spy_unit, {"agent_id": agent.id, "sabotage_type": SabotageType.ECONOMY})
     sab_order.execute(galaxy)
     assert planet.is_sabotaged(SabotageType.ECONOMY)
 
-    assert calculate_player_income(galaxy, p2) == 4.0
-    assert calculate_player_income(galaxy, p1) == 2.0
+    assert calculate_player_income(galaxy, p2) == baseline * 0.5
+    assert calculate_player_income(galaxy, p1) == baseline * 0.25
 
     # Sabotage Growth: Halts population growth
     planet.population = 50.0

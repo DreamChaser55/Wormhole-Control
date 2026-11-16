@@ -2,6 +2,7 @@ import logging
 from typing import TYPE_CHECKING, List, Dict, Optional, Any
 
 from .base import UnitComponent
+from constants import DEFAULT_CIVILIAN_HABITAT_BONUS
 
 if TYPE_CHECKING:
     from domain.units import Unit
@@ -22,17 +23,16 @@ class CivilianHabitatComponent(UnitComponent):
     DISPLAY_NAME: str = "Civilian Habitat"
     SIDEBAR_ORDER: int = 10
 
-    def __init__(self, unit: 'Unit', economic_bonus: float = 50.0, hull_cost: float = 15.0):
+    def __init__(self, unit: 'Unit', economic_bonus: float = DEFAULT_CIVILIAN_HABITAT_BONUS, hull_cost: float = 15.0):
         super().__init__(unit, hull_cost=hull_cost)
         self.economic_bonus: float = float(economic_bonus)
 
     @staticmethod
-    def calc_hull_cost(economic_bonus: float = 50.0) -> float:
+    def calc_hull_cost(economic_bonus: float = DEFAULT_CIVILIAN_HABITAT_BONUS) -> float:
         """Calculates hull cost based on economic bonus rate."""
-        # 15.0 base hull cost for baseline 50 credits/turn bonus
         if economic_bonus <= 0:
             return 0.0
-        return float(max(5.0, (economic_bonus / 50.0) * 15.0))
+        return float(max(5.0, (economic_bonus / DEFAULT_CIVILIAN_HABITAT_BONUS) * 15.0))
 
     def has_colonized_celestial_object_in_sector(self, galaxy: Optional['Galaxy'] = None) -> bool:
         """Checks if the unit's current sector contains a colonized celestial body

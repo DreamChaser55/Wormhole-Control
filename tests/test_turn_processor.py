@@ -61,8 +61,8 @@ def test_process_resource_generation():
     tp = TurnProcessor(game, presentation=ApplicationTurnPresentation(game))
     tp._process_resource_generation(player)
     
-    # Expected generated credits: (50 + 100) * TAX_RATE = 150 * 0.1 = 15.0
-    assert player.credits == 1015.0
+    from constants import TAX_RATE
+    assert player.credits == 1000 + (50 + 100) * TAX_RATE
 
 def test_process_movement_sublight():
     game = MagicMock()

@@ -36,7 +36,8 @@ DEFAULT_HYPERDRIVE_RECHARGE_DURATION: int = 3
 DEFAULT_JUMP_RANGE: int = 5 # in hexes
 DEFAULT_STANDOFF_DISTANCE: float = 150.0  # Logical distance maintained when following or escorting a target unit
 UPKEEP_COST_PER_HULL_POINT: float = 0.01  # Credits per used hull point per turn
-TAX_RATE: float = 0.1  # 10% tax rate
+TAX_RATE: float = 0.5  # Credits per population per owner turn
+DEFAULT_CIVILIAN_HABITAT_BONUS: float = 12.0
 POPULATION_PER_HABITAT: float = 25.0  # Population required per supported civilian habitat module
 BASE_HABITAT_CAPACITY: int = 1  # Base habitat modules supported by any colonized celestial body with population > 0
 

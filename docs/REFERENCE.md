@@ -331,7 +331,8 @@ Colony ships settle habitable planets, moons and colonizable asteroids, or load
 population from friendly/allied colonies. See [planetary traits](#planetary-traits)
 for growth and passive yields. Each populated colony supports `max(1, floor(population / 25))`
 modules of each kind: one at 25 population, two at 50. Civilian Habitats use their
-owner's colony capacity and provide 50 credits/turn each while active. Orbital
+owner's colony capacity and provide 12 credits/turn each while active. Colonies
+earn 0.5 credits per population each owner turn. Orbital
 Defense shares capacity across allied colonies and installations, providing its
 [equipment bonuses](#component-catalogue) to allies in range.
 
