@@ -74,7 +74,9 @@ support.civilian_habitat_component.civilian_habitat_bonus for its income per own
 Each populated colony supports max(1, floor(population / 25)) habitats; count existing
 and pending habitats before adding more. Unsupported habitats generate no income.
 Raw cargo is not spendable until refined. No credits-for-minerals substitution exists.
-Fortification upgrades also require minerals; repairs and wing replenishment remain credit-only.
+Fortification upgrades also require minerals. Build progress consumes 2 AM per owner
+turn from the builder or bay. Repairs and bay replenishment need 0.25 AM per HP restored.
+Supply fuel to keep paid work advancing.
 Construct and set_wing_production support independent nullable turret_type_override
 (mass_driver, beam, missile) and defense_type_override (armor, shields, point_defense).
 The turret override changes every installed turret's type, preserving variants and stats.

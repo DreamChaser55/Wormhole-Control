@@ -52,6 +52,14 @@ def storage_ready(unit):
     return bool(storage and not storage.is_destroyed)
 
 
+def work_fuel_blocker(unit, cost):
+    if not storage_ready(unit):
+        return 'antimatter_storage_unavailable'
+    if unit.antimatter_component.current_amount < cost:
+        return 'insufficient_antimatter'
+    return None
+
+
 def endpoint_ready(unit, galaxy):
     from dismantling import offline
     if (

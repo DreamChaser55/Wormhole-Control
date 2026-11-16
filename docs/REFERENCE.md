@@ -245,6 +245,9 @@ materials. Installing a refinery consumes the same 5 matching minerals. Each
 refinery adds 600 credits to the usual hull-based price. Identical hull usage
 costs the same materials regardless of weapon or defense type.
 Repairs, wing replenishment, upkeep, recruitment and abilities have no mineral charge.
+Each construction progress turn costs the builder or strikecraft bay 2 AM. Repairs
+and wing replenishment cost the worker 0.25 AM per HP restored. Paid jobs wait when
+the worker lacks fuel and resume after resupply.
 There is no credit substitution for missing minerals.
 
 Queued and approaching construction reserve the full three-resource price in the

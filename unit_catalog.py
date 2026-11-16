@@ -3,7 +3,7 @@ from custom_unit_templates import template_from_dict, template_to_dict
 from unit_naming import initial_unit_name, normalize_unit_name
 from resource_costs import design_resources
 from constants import (
-    DEFAULT_ANTIMATTER_HARVEST_RATE, DEFAULT_SENSOR_SHORT_RANGE,
+    DEFAULT_ANTIMATTER_HARVEST_RATE, DEFAULT_SENSOR_SHORT_RANGE, REPAIR_AM_PER_HP, CONSTRUCTION_AM_PER_OWNER_TURN,
     INHIBITOR_ANTIMATTER_COST_PER_50_RADIUS, CLOAKING_BASIC_ANTIMATTER_COST_PER_TURN,
     CLOAKING_ADVANCED_ANTIMATTER_COST_PER_RADIUS,
 )
@@ -54,6 +54,13 @@ def describe_template(key, raw):
     }.items():
         if data.get('has_' + flag):
             support[flag] = {field: data[field] for field in fields}
+    if 'constructor_component' in support:
+        support['constructor_component']['antimatter_per_build_turn'] = CONSTRUCTION_AM_PER_OWNER_TURN
+    if 'repair_component' in support:
+        support['repair_component']['antimatter_per_hp'] = REPAIR_AM_PER_HP
+    if 'strikecraft_bay' in support:
+        support['strikecraft_bay'].update(antimatter_per_build_turn=CONSTRUCTION_AM_PER_OWNER_TURN,
+                                         antimatter_per_replenished_hp=REPAIR_AM_PER_HP)
     if 'cloaking_device' in support and data['cloaking_type'] == 'BASIC':
         support['cloaking_device']['cloaking_radius'] = 0
     if 'cloaking_device' in support:

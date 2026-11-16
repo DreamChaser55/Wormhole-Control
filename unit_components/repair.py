@@ -4,7 +4,7 @@ from typing import Optional, TYPE_CHECKING
 
 from .base import UnitComponent
 from geometry import distance
-from constants import REPAIR_CREDIT_COST_PER_HP, REPAIR_RATE_PER_HULL_POINT
+from constants import REPAIR_AM_PER_HP, REPAIR_CREDIT_COST_PER_HP, REPAIR_RATE_PER_HULL_POINT
 
 if TYPE_CHECKING:
     from domain.units import Unit
@@ -42,6 +42,7 @@ class RepairComponent(UnitComponent):
     def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
         data = super().get_sidebar_data(game_state)
         data.append({'type': 'label', 'text': f"Repair Rate: {self.repair_rate} HP/turn", 'object_id': '#sidebar_info_label', 'height': 20})
+        data.append({'type': 'label', 'text': f"{REPAIR_AM_PER_HP:g} AM per HP restored", 'height': 20})
         data.append({'type': 'label', 'text': f"Repair Range: {self.repair_range}", 'object_id': '#sidebar_info_label', 'height': 20})
         from component_visibility import unit_details_are_public_in_game
         if unit_details_are_public_in_game(self.unit, game_state):
@@ -100,11 +101,15 @@ class RepairComponent(UnitComponent):
             return
 
         player = self.unit.owner
-        if player.credits <= 0:
+        if self.credit_cost_per_hp > 0 and player.credits <= 0:
             logger.debug(f"Repair by {format_unit_for_log(self.unit)} on {format_unit_for_log(self.target)} halted due to insufficient credits.")
             return
 
-        max_hp_to_repair = min(self.repair_rate, player.credits / self.credit_cost_per_hp)
+        tank = self.unit.antimatter_component
+        if tank is None or tank.is_destroyed:
+            return
+        credit_budget = player.credits / self.credit_cost_per_hp if self.credit_cost_per_hp else float('inf')
+        max_hp_to_repair = min(self.repair_rate, credit_budget, tank.current_amount / REPAIR_AM_PER_HP)
         if max_hp_to_repair < 1.0:
             return
 
@@ -122,6 +127,7 @@ class RepairComponent(UnitComponent):
             repair_budget -= healed
 
         if hp_repaired > 0:
+            tank.consume(hp_repaired * REPAIR_AM_PER_HP)
             cost = int(hp_repaired * self.credit_cost_per_hp)
             player.credits = max(0, player.credits - cost)
             logger.debug(f"Unit {format_unit_for_log(self.unit)} repaired {format_unit_for_log(self.target)} for {hp_repaired} HP, costing {cost} credits.")

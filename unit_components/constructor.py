@@ -39,7 +39,7 @@ from constants import (
     DEFAULT_ANTIMATTER_CAPACITY, DEFAULT_ANTIMATTER_HARVEST_RATE,
     ANTIMATTER_HARVESTER_HULL_COST, MINELAYER_HULL_COST,
     DEFAULT_JUMP_RANGE, HullSize, DEFAULT_SENSOR_SHORT_RANGE, REPAIR_CREDIT_COST_PER_HP,
-    CONSTRUCTOR_BUILD_RANGE, DEFAULT_CIVILIAN_HABITAT_BONUS,
+    CONSTRUCTOR_BUILD_RANGE, DEFAULT_CIVILIAN_HABITAT_BONUS, CONSTRUCTION_AM_PER_OWNER_TURN,
 )
 
 
@@ -520,6 +520,10 @@ class Constructor(UnitComponent):
             target_name = self.current_construction_target["template_name"]
             progress = self.construction_progress
             total = self.time_to_build
+            from antimatter_logistics import work_fuel_blocker
+            status = ("Waiting for antimatter" if work_fuel_blocker(self.unit, CONSTRUCTION_AM_PER_OWNER_TURN)
+                      else f"{CONSTRUCTION_AM_PER_OWNER_TURN:g} AM per build turn")
+            data.append({'type': 'label', 'text': status, 'height': 20})
             data.append({'type': 'label', 'text': f"Constructing: {target_name}", 'object_id': '#sidebar_info_label', 'height': 25})
             data.append({
                 'type': 'progress_bar',
@@ -804,6 +808,10 @@ class Constructor(UnitComponent):
             return
         if self.current_construction_target:
             if not self._check_construction_site(galaxy):
+                return
+            tank = self.unit.antimatter_component
+            if tank is None or not tank.consume(CONSTRUCTION_AM_PER_OWNER_TURN):
+                logger.debug("Construction by %s is waiting for antimatter.", format_unit_for_log(self.unit))
                 return
             self.construction_progress += 1
             if self.construction_progress >= self.time_to_build:

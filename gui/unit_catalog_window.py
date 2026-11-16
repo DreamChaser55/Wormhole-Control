@@ -4,7 +4,7 @@ import pygame
 import pygame_gui
 from pygame_gui import elements
 
-from constants import HullSize
+from constants import CONSTRUCTION_AM_PER_OWNER_TURN, HullSize
 from display_config import display_config_for
 from events import ConstructEvent
 from unit_catalog import CATEGORIES, describe_template
@@ -49,6 +49,7 @@ def details_html(entry):
              f"Initial unit name: {escape(entry['default_unit_name'])}",
              f"{label(entry['hull_size'])} {entry['kind']} · {entry['turns']} turns",
              f"<b>Cost:</b> {ResourceCost.from_dict(entry['resource_cost']).describe()}",
+             f"Builder fuel: {CONSTRUCTION_AM_PER_OWNER_TURN:g} AM per work turn",
              f"Hull: {entry['hull_used']:.2f}/{entry['hull_capacity']:g} · HP: {entry['hit_points']} · Upkeep: {entry['upkeep']:.2f}",
              '<b>Movement</b><br>' + values(entry['movement']),
              f"Fuel capacity: {entry['fuel_capacity']:g}",

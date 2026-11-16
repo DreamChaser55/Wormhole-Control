@@ -338,6 +338,10 @@ class StrikecraftBayComponent(UnitComponent):
                     label(" / ".join(overrides))
             if status == 'building':
                 label(f"{self.construction_progress}/{slot['production_turns']} owner turns complete")
+                from antimatter_logistics import work_fuel_blocker
+                from constants import CONSTRUCTION_AM_PER_OWNER_TURN
+                if work_fuel_blocker(self.unit, CONSTRUCTION_AM_PER_OWNER_TURN):
+                    label("Waiting for antimatter", '#sidebar_status_charging_label')
 
             wing = wings.get(slot['wing_id'])
             if wing is not None:
@@ -510,6 +514,9 @@ class StrikecraftBayComponent(UnitComponent):
         if not owner:
             return
 
+        from constants import CONSTRUCTION_AM_PER_OWNER_TURN, REPAIR_AM_PER_HP
+        tank = self.unit.antimatter_component
+
         # 1. Update ongoing replenishment
         if self.replenishing_unit:
             # If the unit was deployed or destroyed in the meantime, cancel replenishment
@@ -517,6 +524,9 @@ class StrikecraftBayComponent(UnitComponent):
                 self.replenishing_unit = None
                 self.replenish_progress = 0
             else:
+                missing = self.replenishing_unit.max_hit_points - self.replenishing_unit.current_hit_points
+                if missing > 0 and (tank is None or not tank.consume(min(10, missing) * REPAIR_AM_PER_HP)):
+                    return
                 self.replenish_progress += 1
                 if self.replenish_progress >= 1: # 1 turn to restore up to 10 hull HP
                     self.replenishing_unit.heal_hull(10)
@@ -541,6 +551,8 @@ class StrikecraftBayComponent(UnitComponent):
 
         # 2. Update ongoing construction
         if self.constructing:
+            if tank is None or not tank.consume(CONSTRUCTION_AM_PER_OWNER_TURN):
+                return
             self.construction_progress += 1
             if self.construction_progress >= self.production_template(self.construction_slot_index)['build_time']:
                 self.finish_auto_construction(galaxy)

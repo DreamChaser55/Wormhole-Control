@@ -449,3 +449,42 @@ def test_completed_construction_cannot_return_its_consumed_payment():
     order.refund_charge()
     order.cancel()
     assert resource_balances(actor.owner) == ResourceCost().to_dict()
+
+
+def test_paid_construction_waits_for_fuel_and_resumes_without_another_payment():
+    from constants import CONSTRUCTION_AM_PER_OWNER_TURN
+    from turn_processor import TurnProcessor
+
+    game = campaign()
+    unit = builder(game)
+    tank = unit.antimatter_component
+    tank.current_amount = 0
+    owner = unit.owner
+    assert issue(game, owner, build(unit)).accepted
+    job = unit.constructor_component
+    balance = (owner.metal, owner.crystal)
+    processor = TurnProcessor(game)
+    processor.process_player_turn(owner)
+    assert job.current_construction_target and job.construction_progress == 0
+    tank.add(CONSTRUCTION_AM_PER_OWNER_TURN)
+    processor.process_player_turn(owner)
+    assert job.construction_progress == 1 and tank.current_amount == 0
+    assert (owner.metal, owner.crystal) == balance
+
+
+def test_repair_restores_only_as_many_hp_as_fuel_can_cover():
+    from constants import REPAIR_AM_PER_HP
+    from unit_components.repair import RepairComponent
+
+    game = campaign()
+    worker, target = ship(game), ship(game, 'Damaged vessel')
+    target.current_hit_points -= 10
+    repairs = RepairComponent(worker)
+    worker.add_component(repairs)
+    repairs.set_target(target)
+    worker.antimatter_component.current_amount = 3 * REPAIR_AM_PER_HP
+    starting_credits = worker.owner.credits
+    repairs.update(game.galaxy)
+    assert target.current_hit_points == target.max_hit_points - 7
+    assert worker.antimatter_component.current_amount == 0
+    assert worker.owner.credits == starting_credits - 3

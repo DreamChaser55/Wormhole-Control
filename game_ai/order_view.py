@@ -38,6 +38,11 @@ def construction_progress(unit, order, active):
     if job:
         progress.update(turns_completed=getattr(constructor, prefix + '_progress', 0),
                         turns_required=getattr(constructor, 'time_to_build' if kind == 'construct' else 'refit_time', 0))
+    if phase == 'building':
+        from antimatter_logistics import work_fuel_blocker
+        from constants import CONSTRUCTION_AM_PER_OWNER_TURN
+        if wait := work_fuel_blocker(unit, CONSTRUCTION_AM_PER_OWNER_TURN):
+            progress.update(phase='stalled', waiting_reason=wait)
     if not constructor or constructor.is_destroyed or getattr(unit, 'is_disabled', False):
         progress.update(phase='stalled', waiting_reason='capability_unavailable')
     return progress
