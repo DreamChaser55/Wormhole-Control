@@ -146,6 +146,12 @@ with evidence, date and uncertainty. Use important_events for dated, confirmed p
 Use lessons for reusable gameplay or command constraints. Use misc for practical reminders
 that serve none of the other purposes. Reference related items without copying them across fields.
 The engine records receipts.
+Every fifth round and after a major change, review memory against the current board
+and order history. Drop completed or abandoned objectives and resolved commitments,
+replace contradicted beliefs, and remove stale events and reminders. Retain dates
+for facts that still inform decisions and keep durable lessons. Use null for unchanged
+fields, an empty list to clear an obsolete replaceable list, and the complete revised
+list when keeping some entries. Lesson patches merge with existing lessons.
 The top-level intelligence
 section contains only owned agents and discovered enemy agents on friendly/allied hosts. Use
 player_commands for player-level sabotage and relocation with unit_ids=[]. Never infer undiscovered

@@ -226,7 +226,9 @@ sections replace their previous contents. Strategy describes the multi-turn appr
 Objectives state measurable outcomes. Commitments track accepted work. Beliefs capture
 estimates with evidence and uncertainty. Event memory records confirmed history.
 Lessons retain reusable constraints, and misc holds reminders that fit nowhere else.
-Receipts come from the engine. Planners place each fact in its most useful section. Planning instructions require objectives
+Receipts come from the engine. Planners place each fact in its most useful section.
+Every fifth round and after major changes, they reconcile memory with the current
+board and order history and remove outdated entries from replaceable sections. Planning instructions require objectives
 and commitments to match accepted orders, compare mission value with remaining
 travel before replacement, and consult terminal history before repeating failures.
 Zero-command plans are valid when useful work should continue.
