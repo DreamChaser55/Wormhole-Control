@@ -10,7 +10,6 @@ FEEDBACK FROM PLAYTESTING:
 - If a hex contains a solid body, the unit icons on the hex in system view should skip the central position, so they don’t overlap with the body icon.
 - Metal refinery should cost only a small amount of metal. Crystal refinery should cost only a small amount of crystal. The refinery components themselves should cost more credits.
 - Unstable wormhole should cause the passing units to lose some antimatter.
-- Add low-cost constructor template unit with only basic hyperdrive.
 - Add some constant low metal income from a specific colonizable planet type, just like Ice planet provides constant low crystal income.
 - Owned planet should have some non-zero sensor range.
 - Remove pulsar antimatter drain, since it makes the star completely useless for antimatter harvesting. Instead, add antimatter drain to some nebula or storm type.

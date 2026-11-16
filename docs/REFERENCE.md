@@ -626,6 +626,7 @@ report mandatory returns and endurance losses.
 | Industrial Hub | Economy | LARGE station | 92.99/100 | 3790 | 143 | 47 | 29 | 0.93 | Designed for industrial support. Stationary installation. |
 | Shipyard | Logistics | SMALL station | 20.00/25 | 850 | 33 | 10 | 11 | 0.20 | Designed for stationary construction. Stationary installation. |
 | Small Repair Ship | Logistics | SMALL ship | 24.19/25 | 976 | 37 | 13 | 12 | 0.24 | Designed for local repair. Intra-system travel only. |
+| Local Constructor | Logistics | SMALL ship | 24.88/25 | 996 | 38 | 13 | 12 | 0.25 | Low-cost mobile constructor for outposts and refits. Basic Hyperdrive permits travel within one system. |
 | Antimatter Cache Station | Logistics | SMALL station | 25.00/25 | 1000 | 38 | 13 | 12 | 0.25 | Small stationary fuel reserve with 460 AM storage. Accept deliveries and supply local friendly ships through Transfer Antimatter or Take Antimatter. |
 | Constructor | Logistics | MEDIUM ship | 36.50/50 | 1595 | 62 | 19 | 17 | 0.36 | Designed for mobile construction and refitting. Inter-system travel. |
 | Small Repair Station | Logistics | MEDIUM station | 41.99/50 | 1760 | 67 | 21 | 18 | 0.42 | Designed for stationary repair. Stationary installation. |
