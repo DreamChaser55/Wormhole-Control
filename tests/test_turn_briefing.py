@@ -476,3 +476,25 @@ def test_loss_section_follows_each_viewers_relationship():
     assert entry.category == 'enemy_losses'
     assert entry.owner_name == victim.owner.name
     assert entry.to_dict()['owner_id'] == victim.owner.id
+
+
+def test_briefing_reports_idle_transition_once():
+    from game_ai.contracts import Command
+    from tests.support.commands import issue
+    from unit_components.antimatter import AntimatterStorage
+    from unit_components.movement import Engines
+
+    game = campaign()
+    unit = ship(game, 'Moving ship')
+    unit.add_component(Engines(unit, speed=100))
+    unit.add_component(AntimatterStorage(unit, max_capacity=200))
+    assert issue(game, unit.owner, Command(
+        'move', (unit.id,), system_name='Sol', hex_coord=(0, 0), position=(150, 0),
+    )).accepted
+    for expected in (1, 0):
+        begin_window(game, unit.owner)
+        TurnProcessor(game).process_player_turn(unit.owner)
+        finish_window(game, unit.owner)
+        events = unit.owner.briefing.current.entries
+        assert sum(e.detail == 'Idle after finishing orders' for e in events) == expected
+        game.turn_number += 1

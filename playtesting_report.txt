@@ -1,6 +1,5 @@
 FEEDBACK FROM PLAYTESTING:
 - Make construction and repair consume antimatter.
-- Report in the turn summary when owned unit finishes all orders and becomes idle (only once, no further reports if it stays idle).
 - Completely hide game graphics and GUI during AI enemy's turn, so the human player cannot see their units or bottom bar / sidebar info.
 - Rename “Transfer Antimatter” context menu button to “Give Antimatter”. Rename corresponding function in the AI interface.
 - Add current construction progress to turn summary.

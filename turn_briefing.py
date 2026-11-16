@@ -67,6 +67,7 @@ class BriefingState:
     current: TurnSummary = field(default_factory=TurnSummary)
     acknowledged: bool = True
     fuel_waits: dict[str, str] = field(default_factory=dict)
+    busy_unit_ids: list[int] = field(default_factory=list)
 
     def to_dict(self):
         result = asdict(self)
@@ -274,6 +275,17 @@ def initialize_campaign(game):
     finish_window(game, game.players[game.current_player_index])
 
 
+def _owned_units(game, player):
+    from campaign_graph import iter_units
+    return (unit for unit, _ in iter_units(getattr(game, 'galaxy', None))
+            if unit.owner is player and unit.current_hit_points > 0)
+
+
+def _has_orders(unit):
+    commander = unit.commander_component
+    return commander is not None and commander.get_active_orders_count() > 0
+
+
 def begin_window(game, player):
     state = _state(player)
     if state is None:
@@ -290,6 +302,7 @@ def begin_window(game, player):
     state.initialized, state.collecting = True, True
     state.from_turn = int(game.turn_number)
     state.baseline = economy_snapshot(game, player)
+    state.busy_unit_ids = [unit.id for unit in _owned_units(game, player) if _has_orders(unit)]
     state.pending, state.omitted_count = [], 0
 
 
@@ -298,6 +311,12 @@ def finish_window(game, player):
     if state is None or not state.collecting:
         return
     refresh_discoveries(game)
+    previously_busy = set(state.busy_unit_ids)
+    if previously_busy:
+        for unit in _owned_units(game, player):
+            if unit.id in previously_busy and not _has_orders(unit):
+                record(game, player, 'development', 'Idle after finishing orders', subject=unit, once=True)
+    state.busy_unit_ids = []
     delta = tuple((key, round(value - state.baseline[key], 6))
                   for key, value in economy_snapshot(game, player).items())
     state.current = TurnSummary(state.from_turn, int(game.turn_number),
@@ -383,7 +402,12 @@ def state_from_dict(raw):
             raise ValueError("Briefing exceeds retention limit")
         return result
 
+    if isinstance(raw, dict):
+        raw = {"busy_unit_ids": [], **raw}
     fields(raw, BriefingState.__dataclass_fields__)
+    busy = raw["busy_unit_ids"]
+    if not isinstance(busy, list) or len({integer(value) for value in busy}) != len(busy):
+        raise ValueError("Invalid briefing busy units")
     for key in ("initialized", "collecting", "acknowledged"):
         if type(raw[key]) is not bool:
             raise ValueError("Invalid briefing flag")
@@ -416,7 +440,7 @@ def state_from_dict(raw):
         raise ValueError("Briefing event outside report window")
     if any(entry.turn < max(1, raw["from_turn"]) for entry in pending):
         raise ValueError("Briefing event before collection window")
-    if not raw["collecting"] and (pending or raw["omitted_count"]):
+    if not raw["collecting"] and (pending or raw["omitted_count"] or busy):
         raise ValueError("Closed briefing has pending events")
     return BriefingState(**{**raw, "baseline": baseline, "seen": copy.deepcopy(seen), 'fuel_waits': dict(waits),
                             "current": current, "pending": pending})

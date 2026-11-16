@@ -175,6 +175,9 @@ support orders, voluntary cancellations and normal temporary-unit expiration are
 omitted. The economy footer shows net credits, metal, crystal and total colony
 population changes; economy-only turns do not open the modal in Automatic mode.
 
+A surviving owned unit that finishes its orders and becomes idle appears once
+in the next briefing. It stays quiet on later turns until it finishes new work.
+
 Fuel-blocked movement reports entry into the wait, a different fuel/storage
 problem, and recovery. An unchanged wait stays visible in current journey progress
 without repeating a significant briefing event, including after saving/loading.
