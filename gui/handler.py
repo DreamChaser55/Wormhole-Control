@@ -83,7 +83,7 @@ class GUI_Handler:
         self.player_color_indicator: typing.Optional[pygame_gui.elements.UIPanel] = None
         self.current_player_bg_color: typing.Optional[Color] = None
         self.current_player_border_color: typing.Optional[Color] = None
-        self.credits_label: typing.Optional[pygame_gui.elements.UILabel] = None
+        self.credits_label: typing.Optional[pygame_gui.elements.UIButton] = None
         self.metal_label: typing.Optional[pygame_gui.elements.UILabel] = None
         self.crystal_label: typing.Optional[pygame_gui.elements.UILabel] = None
         self.population_label: typing.Optional[pygame_gui.elements.UILabel] = None

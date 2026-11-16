@@ -149,6 +149,10 @@ def process_event(gui, event: pygame.event.Event) -> typing.Optional[dict]:
             gui.show_main_menu()
 
         # 4. In-Game HUD Buttons
+        elif getattr(gui, 'credits_label', None) is not None and event.ui_element is gui.credits_label:
+            from .layout_hud import show_economy_breakdown
+            show_economy_breakdown(gui)
+            action_result = {'action': 'ui_handled'}
         elif gui.end_turn_button and event.ui_element == gui.end_turn_button:
             logger.debug("End Turn button pressed (GUI)")
             action_result = {'action': 'end_turn'}

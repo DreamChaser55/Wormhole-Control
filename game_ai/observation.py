@@ -7,7 +7,7 @@ from typing import Any
 from resource_costs import ResourceCost
 from constants import HullSize
 from titan_acquisition import capacity as titan_capacity
-from economy import total_population
+from economy import recurring_economy, total_population
 
 from .rules import (
     ability_states,
@@ -31,7 +31,7 @@ from component_visibility import public_components
 from order_history import history_view
 from turn_briefing import summary_view
 
-OBSERVATION_SCHEMA_VERSION = 45
+OBSERVATION_SCHEMA_VERSION = 46
 COMMAND_HELP = {name: spec.description for name, spec in COMMAND_SPECS.items()}
 
 
@@ -188,8 +188,7 @@ def build_observation(game: Any, player: Any) -> dict[str, Any]:
                 "resource_budget": resource_budget,
                 "metal": _rounded(player.metal),
                 "crystal": _rounded(player.crystal),
-                "income": _safe_game_metric(game, "get_player_income", player),
-                "upkeep": _safe_game_metric(game, "get_player_upkeep", player),
+                **recurring_economy(galaxy, player),
             },
         },
         "players": [
@@ -776,16 +775,6 @@ def _relation(viewer: Any, owner: Any) -> str:
     if hasattr(viewer, "is_allied_with") and viewer.is_allied_with(owner):
         return "ally"
     return "enemy"
-
-
-def _safe_game_metric(game: Any, name: str, player: Any) -> float | None:
-    method = getattr(game, name, None)
-    if not callable(method):
-        return None
-    try:
-        return _rounded(method(player))
-    except (TypeError, ValueError, OverflowError):
-        return None
 
 
 def _position(position: Any) -> list[float]:

@@ -1,6 +1,7 @@
 """Player income and fleet upkeep calculations."""
 import typing
 from dataclasses import dataclass
+from itertools import chain
 
 from constants import TAX_RATE, UPKEEP_COST_PER_HULL_POINT
 from domain.celestials import Planet, Moon, ColonizableAsteroid
@@ -18,13 +19,15 @@ class IncomeBreakdown:
     siphoned_credits: float = 0.0
     metal: float = 0.0
     crystal: float = 0.0
+    colonies: tuple[dict, ...] = ()
+    habitats: tuple[dict, ...] = ()
 
     @property
     def total_credits(self) -> float:
         return self.colony_credits + self.habitat_credits + self.siphoned_credits
 
 
-def calculate_income_breakdown(galaxy: typing.Any, player: Player) -> IncomeBreakdown:
+def calculate_income_breakdown(galaxy: typing.Any, player: Player, *, details=False) -> IncomeBreakdown:
     """Preview one owner's income without changing resources or world state.
 
     Use current colony ownership, population, sabotage and habitat eligibility.
@@ -33,32 +36,43 @@ def calculate_income_breakdown(galaxy: typing.Any, player: Player) -> IncomeBrea
     growth and upkeep resolve separately; an absent galaxy produces zero income.
     """
     colony_credits = habitat_credits = siphoned_credits = metal = crystal = 0.0
+    colonies, habitats = [], []
     if galaxy is None:
         return IncomeBreakdown()
 
     for system in galaxy.systems.values():
-        for _, body in system.get_all_celestial_bodies():
+        for body in _bodies(system):
             if not isinstance(body, (Planet, Moon, ColonizableAsteroid)):
                 continue
             base_tax = body.population * TAX_RATE
             if body.owner == player:
-                colony_credits += base_tax * (0.5 if body.is_sabotaged(SabotageType.ECONOMY) else 1.0)
-                metal += max(0.0, getattr(body, 'passive_metal', 0.0))
-                crystal += max(0.0, getattr(body, 'passive_crystal', 0.0))
+                tax = base_tax * (0.5 if body.is_sabotaged(SabotageType.ECONOMY) else 1.0)
+                local_metal = max(0.0, getattr(body, 'passive_metal', 0.0))
+                local_crystal = max(0.0, getattr(body, 'passive_crystal', 0.0))
+                colony_credits += tax
+                metal += local_metal
+                crystal += local_crystal
+                if details:
+                    colonies.append(dict(body_id=body.id, name=body.name, system_name=body.in_system,
+                                         credits=tax, metal=local_metal, crystal=local_crystal))
             elif are_enemies(player, body.owner) and any(
                 agent.owner == player and agent.active_sabotage == SabotageType.ECONOMY
                 for agent in body.infiltrating_agents
             ):
                 siphoned_credits += base_tax * 0.25
 
-        for unit, _ in system.get_all_units():
+        for unit in _deployed(system):
             if unit.owner != player:
                 continue
-            habitat = unit.civilian_habitat_component
+            habitat = getattr(unit, 'civilian_habitat_component', None)
             if habitat and not habitat.is_destroyed and habitat.is_active(galaxy):
                 habitat_credits += habitat.economic_bonus
+                if details:
+                    habitats.append(dict(unit_id=unit.id, name=unit.name, system_name=unit.in_system,
+                                         credits=habitat.economic_bonus))
 
-    return IncomeBreakdown(colony_credits, habitat_credits, siphoned_credits, metal, crystal)
+    return IncomeBreakdown(colony_credits, habitat_credits, siphoned_credits, metal, crystal,
+                           tuple(colonies), tuple(habitats))
 
 
 def calculate_player_income(galaxy: typing.Any, player: Player) -> float:
@@ -71,8 +85,17 @@ def _bodies(system):
     if get_all is not None:
         yield from (body for _, body in get_all())
     else:
-        for sector in system.hexes.values():
+        for sector in getattr(system, 'hexes', {}).values():
             yield from getattr(sector, 'celestial_bodies', ())
+
+
+def _deployed(system):
+    get_all = getattr(system, 'get_all_units', None)
+    if get_all is not None:
+        yield from (unit for unit, _ in get_all())
+    else:
+        for sector in getattr(system, 'hexes', {}).values():
+            yield from getattr(sector, 'units', ())
 
 
 def total_population(galaxy: typing.Any, player: Player) -> float:
@@ -105,37 +128,36 @@ def calculate_unit_upkeep(hull_size: typing.Optional[HullSize], current_hull_usa
     return max(0.0, float(current_hull_usage) * UPKEEP_COST_PER_HULL_POINT)
 
 
+def _unit_upkeep(galaxy, player):
+    for system in getattr(galaxy, 'systems', {}).values():
+        submerged = (unit for body in _bodies(system) for unit in (getattr(body, 'hidden_units', None) or ()))
+        for unit in chain(_deployed(system), submerged):
+            if getattr(unit, 'owner', None) != player or getattr(unit, 'is_temporary', False):
+                continue
+            credits = calculate_unit_upkeep(
+                getattr(unit, 'hull_size', None), getattr(unit, 'current_hull_usage', 0.0),
+            )
+            if credits > 0:
+                yield unit, credits
+
+
 def calculate_player_upkeep(galaxy: typing.Any, player: Player) -> float:
-    """Calculates total credit upkeep cost per turn for a player's active fleet.
+    """Return recurring credit upkeep for deployed and submerged owned units."""
+    return sum(credits for _, credits in _unit_upkeep(galaxy, player))
 
-    Args:
-        galaxy: Active Galaxy object or None.
-        player (Player): Player whose upkeep is being computed.
 
-    Returns:
-        float: Total upkeep cost per turn based on hull sizes of active units.
-    """
-    total_upkeep = 0.0
-    if galaxy:
-        for system_obj in galaxy.systems.values():
-            for unit, _ in system_obj.get_all_units():
-                if getattr(unit, 'owner', None) != player:
-                    continue
-                if getattr(unit, 'is_temporary', False):
-                    continue
-                total_upkeep += calculate_unit_upkeep(
-                    getattr(unit, 'hull_size', None),
-                    getattr(unit, 'current_hull_usage', 0.0)
-                )
-            for _, body in system_obj.get_all_celestial_bodies():
-                if getattr(body, 'hidden_units', None):
-                    for unit in body.hidden_units:
-                        if getattr(unit, 'owner', None) != player:
-                            continue
-                        if getattr(unit, 'is_temporary', False):
-                            continue
-                        total_upkeep += calculate_unit_upkeep(
-                            getattr(unit, 'hull_size', None),
-                            getattr(unit, 'current_hull_usage', 0.0)
-                        )
-    return total_upkeep
+def recurring_economy(galaxy, player) -> dict:
+    """An owner-only breakdown using the same rates as turn settlement."""
+    income = calculate_income_breakdown(galaxy, player, details=True)
+    units = [dict(unit_id=unit.id, name=unit.name, system_name=unit.in_system, credits=credits)
+             for unit, credits in _unit_upkeep(galaxy, player)]
+    return {
+        "income": income.total_credits,
+        "upkeep": sum(unit["credits"] for unit in units),
+        "income_breakdown": {
+            "colonies": list(income.colonies),
+            "habitats": list(income.habitats),
+            "siphoned_credits": income.siphoned_credits,
+        },
+        "upkeep_breakdown": units,
+    }

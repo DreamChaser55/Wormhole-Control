@@ -105,3 +105,19 @@ def test_empty_income_and_immutable_result():
     assert_settlement(game, player, IncomeBreakdown())
     with pytest.raises(FrozenInstanceError):
         calculate_income_breakdown(game.galaxy, player).metal = 5
+
+
+def test_observation_itemizes_only_the_players_own_economy():
+    from game_ai.observation import build_observation
+
+    game = campaign()
+    owner, enemy = game.players
+    colony = add_colony(game, owner)
+    add_colony(game, enemy)
+    vessel = ship(game, 'Depot')
+    vessel.add_component(CivilianHabitatComponent(vessel))
+    ship(game, 'Enemy vessel', owner=1)
+    resources = build_observation(game, owner)['active_player']['resources']
+    assert [entry['body_id'] for entry in resources['income_breakdown']['colonies']] == [colony.id]
+    assert [entry['unit_id'] for entry in resources['upkeep_breakdown']] == [vessel.id]
+    assert resources['income'] == pytest.approx(calculate_player_income(game.galaxy, owner))

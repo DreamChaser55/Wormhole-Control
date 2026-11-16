@@ -200,16 +200,13 @@ def setup_game_ui(gui) -> None:
     crystal_label_width = int(180 * gui.scale_x)
 
     credits_x = resource_start_x
-    gui.credits_label = pygame_gui.elements.UILabel(
+    gui.credits_label = pygame_gui.elements.UIButton(
         relative_rect=pygame.Rect(credits_x, padding, credits_label_width, -1),
         text="Credits: 0",
         manager=gui.manager,
         container=gui.bottom_bar_panel,
         object_id='#resource_label'
     )
-    gui.credits_label.text_horiz_alignment = 'left'
-    gui.credits_label.tool_tip_delay = 0.3
-    gui.credits_label.tool_tip_wrap_width = int(200 * gui.scale_x)
 
     metal_x = credits_x + credits_label_width + resource_spacing
     gui.metal_label = pygame_gui.elements.UILabel(
@@ -389,20 +386,6 @@ def update_resource_display(gui, player: 'Player') -> None:
     if gui.credits_label:
         gui.credits_label.set_text(f"Credits: {player.credits:.0f}")
 
-        total_income = gui.game_instance.get_player_income(player)
-        total_upkeep = gui.game_instance.get_player_upkeep(player)
-        net_change = total_income - total_upkeep
-        sign = "+" if net_change >= 0 else ""
-        net_color = "#00FF00" if net_change >= 0 else "#FF4040"
-
-        tooltip_text = (
-            f"Income: <font color='#00FF00'>+{total_income:.1f}</font><br>"
-            f"Upkeep: <font color='#FF4040'>-{total_upkeep:.1f}</font><br>"
-            f"Net: <font color='{net_color}'>{sign}{net_change:.1f}</font>"
-        )
-        gui.credits_label.tool_tip_text = tooltip_text
-        if gui.credits_label.tool_tip is not None:
-            gui.credits_label.tool_tip.text_block.set_text(tooltip_text)
     if gui.metal_label:
         gui.metal_label.set_text(f"Metal: {player.metal:.0f}")
     if gui.crystal_label:
@@ -411,6 +394,40 @@ def update_resource_display(gui, player: 'Player') -> None:
         from economy import total_population
         population = total_population(getattr(gui.game_instance, 'galaxy', None), player)
         gui.population_label.set_text(f"Population: {population:,.1f}")
+
+
+def show_economy_breakdown(gui) -> None:
+    from economy import recurring_economy
+    from html import escape
+
+    game = gui.game_instance
+    player = game.current_player
+    if player is None:
+        return
+    report = recurring_economy(game.galaxy, player)
+    income, upkeep = report["income"], report["upkeep"]
+    details = report["income_breakdown"]
+    rows = [f"<b>Income {income:,.2f} · Upkeep {upkeep:,.2f} · Net {income - upkeep:+,.2f}</b>",
+            "<b>Colonies</b>"]
+    rows.extend(
+        f'{escape(row["name"])} ({escape(row["system_name"] or "")}) · {row["credits"]:,.2f} credits'
+        f' · {row["metal"]:g} metal · {row["crystal"]:g} crystal'
+        for row in details["colonies"]
+    )
+    if not details["colonies"]:
+        rows.append("No owned colonies.")
+    if details["habitats"]:
+        rows.append("<b>Civilian habitats</b>")
+        rows.extend(f'{escape(row["name"])} (#{row["unit_id"]}) · {row["credits"]:,.2f} credits'
+                    for row in details["habitats"])
+    if details["siphoned_credits"]:
+        rows.append(f'Intelligence income · {details["siphoned_credits"]:,.2f} credits')
+    rows.append("<b>Fleet upkeep</b>")
+    rows.extend(f'{escape(row["name"])} (#{row["unit_id"]}) · {row["credits"]:,.2f} credits'
+                for row in report["upkeep_breakdown"])
+    if not report["upkeep_breakdown"]:
+        rows.append("No recurring fleet upkeep.")
+    gui.show_info_dialog("<br>".join(rows), title="Income and Upkeep")
 
 
 def update_comms_button(gui) -> None:

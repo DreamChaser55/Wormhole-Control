@@ -197,7 +197,9 @@ stating omitted counts if necessary.
 
 ## Economy and logistics
 
-The bottom bar shows total population across all colonies you own.
+The bottom bar shows total population across all colonies you own. Click
+**Credits** for a scrollable popup with each colony's income, active habitat
+bonuses, and individual unit upkeep for the next income phase.
 
 Press **E** or **End Turn** when finished issuing orders. The hot-seat sequence
 resolves the active player's movement, mine contacts, income, upkeep, growth and
