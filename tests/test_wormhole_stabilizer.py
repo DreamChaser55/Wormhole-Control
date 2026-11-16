@@ -329,7 +329,7 @@ def test_actual_enemy_crossing_uses_live_stability(monkeypatch, protected, rever
     assert traveler.in_system == ('Sol' if reverse else 'Beta')
     assert traveler.current_hit_points == traveler.max_hit_points * (1 if protected else .8)
     assert bool(draws) is not protected
-    assert traveler.antimatter_component.current_amount == 75
+    assert traveler.antimatter_component.current_amount == (75 if protected else 62.5)
 
 
 def test_refit_installs_real_component_with_fixed_cost():

@@ -4,6 +4,7 @@ from geometry import distance
 STABILIZER_HULL_COST = 15.0
 STABILIZER_RANGE = 500.0
 STABILIZER_UPKEEP = 5.0
+FUEL_LOSS_PER_STABILITY_POINT = 0.25
 
 
 def in_range(unit, target):
@@ -85,6 +86,10 @@ def is_stabilized(galaxy, wormhole):
 
 def effective_stability(galaxy, wormhole):
     return 100 if is_stabilized(galaxy, wormhole) else wormhole.stability
+
+
+def crossing_fuel_loss(stability):
+    return max(0, 100 - stability) * FUEL_LOSS_PER_STABILITY_POINT
 
 
 def interrupt(unit, reason='capability_unavailable'):

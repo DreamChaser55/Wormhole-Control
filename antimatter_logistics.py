@@ -279,7 +279,9 @@ def estimate_approach(unit, galaxy, target, origin=None, *, approach_range=ANTIM
                     return None
                 local(wormhole.in_hex, wormhole.position)
                 exit_wormhole = galaxy.wormholes[wormhole.exit_wormhole_id]
-                jump(get_hyperdrive_system_jump_cost(unit.hull_size))
+                from wormhole_stabilization import crossing_fuel_loss, effective_stability
+                jump(get_hyperdrive_system_jump_cost(unit.hull_size)
+                     + crossing_fuel_loss(effective_stability(galaxy, wormhole)))
                 system, coord, point = (
                     next_system,
                     exit_wormhole.in_hex,

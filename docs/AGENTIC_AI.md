@@ -1011,7 +1011,7 @@ recursive redaction. Owned/allied units expose `wormhole_stabilizer` capability
 and operating state; enemies expose only ordinary public equipment details.
 
 Already-disclosed wormholes retain natural `stability` and add
-`effective_stability` and `stabilized`. These public connection properties reveal
+`effective_stability`, `stabilized` and `crossing_fuel_loss`. These public connection properties reveal
 no supporting unit IDs, counts or locations and disclose no additional bodies.
 The public Logistics catalogue includes the Tender and Station designs.
 See [stabilization rules](REFERENCE.md#wormhole-stabilization) for payment timing,

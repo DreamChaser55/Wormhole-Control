@@ -989,7 +989,9 @@ Cancellation, replacement, capture, destruction, docking, atmospheric hiding or
 loss of required equipment ends support. Temporary disablement pauses it;
 displacement removes protection and prompts another approach. Multiple sources
 provide redundancy without stacking benefits, and each source pays upkeep.
-After the last source stops, normal instability risk immediately returns.
+After the last source stops, normal instability risk immediately returns. Each successful unstable crossing
+also drains 0.25 AM per point below 100% effective stability, up to the available
+fuel after the jump debit. Stabilized crossings suppress both effects.
 
 Maintaining support suspends stance combat and blocks queued work until cancelled.
 Naturally stable wormholes are valid targets but gain no extra benefit. The unit

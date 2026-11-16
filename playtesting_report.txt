@@ -4,7 +4,6 @@ FEEDBACK FROM PLAYTESTING:
 - Report in the turn summary when owned unit finishes all orders and becomes idle (only once, no further reports if it stays idle).
 - Show income and upkeep breakdown in the popup and in the info given to AI. Individual colonies with income and units with upkeep should be listed.
 - Metal refinery should cost only a small amount of metal. Crystal refinery should cost only a small amount of crystal. The refinery components themselves should cost more credits.
-- Unstable wormhole should cause the passing units to lose some antimatter.
 - Owned planet should have some non-zero sensor range.
 - Remove pulsar antimatter drain, since it makes the star completely useless for antimatter harvesting. Instead, add antimatter drain to some nebula or storm type.
 - Black hole star type should double hyperdrive recharge time of units in its hex.

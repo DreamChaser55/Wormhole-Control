@@ -306,3 +306,18 @@ def test_save_load_preserves_inward_approach_identity_progress_and_queue(multiho
     assert restored.position == Position(0, 0)
     _advance(continuation)
     assert restored.in_system == 'Beta'
+
+
+def test_unstable_crossing_drains_fuel_after_the_jump(monkeypatch):
+    world = _world()
+    world.entry.stability = 60
+    unit = world.unit
+    unit.position = world.entry.position
+    fuel = unit.antimatter_component.current_amount
+    monkeypatch.setattr("turn_processor.random.random", lambda: 1.0)
+    assert issue(world.game, unit.owner, _move_to_target(world)).accepted
+    _advance(world)
+    assert unit.in_system == 'Beta'
+    assert unit.antimatter_component.current_amount == pytest.approx(
+        fuel - get_hyperdrive_system_jump_cost(unit.hull_size) - 10
+    )
