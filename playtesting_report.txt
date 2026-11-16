@@ -3,7 +3,6 @@ FEEDBACK FROM PLAYTESTING:
 - Make construction and repair consume antimatter.
 - Report in the turn summary when owned unit finishes all orders and becomes idle (only once, no further reports if it stays idle).
 - Show income and upkeep breakdown in the popup and in the info given to AI. Individual colonies with income and units with upkeep should be listed.
-- Show total population of all owned worlds.
 - Income boost from Civilian habitats seems too big. Compare it with population income from colonized bodies, which seems to low. Rebalance both values.
 - AI should receive info about Civilian habitat income boost, and that it is good to build them around owned worlds to increase income.
 - Metal refinery should cost only a small amount of metal. Crystal refinery should cost only a small amount of crystal. The refinery components themselves should cost more credits.

@@ -201,9 +201,8 @@ def order_outcome(order, outcome, reason):
 
 def economy_snapshot(game, player):
     result = {key: float(getattr(player, key, 0)) for key in METRICS[:3]}
-    result["population"] = sum(float(getattr(body, "population", 0))
-        for system in getattr(getattr(game, "galaxy", None), "systems", {}).values()
-        for _, body in system.get_all_celestial_bodies() if getattr(body, "owner", None) is player)
+    from economy import total_population
+    result["population"] = total_population(getattr(game, "galaxy", None), player)
     return result
 
 

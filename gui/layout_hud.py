@@ -231,6 +231,16 @@ def setup_game_ui(gui) -> None:
     )
     gui.crystal_label.text_horiz_alignment = 'left'
 
+    population_x = crystal_x + crystal_label_width + resource_spacing
+    gui.population_label = pygame_gui.elements.UILabel(
+        relative_rect=pygame.Rect(population_x, padding, int(220 * gui.scale_x), -1),
+        text="Population: 0",
+        manager=gui.manager,
+        container=gui.bottom_bar_panel,
+        object_id='#resource_label'
+    )
+    gui.population_label.text_horiz_alignment = 'left'
+
     # --- Galaxy Generation Rect ---
     galaxy_rect_x = 0
     galaxy_rect_y = display_config_for(gui).top_bar_height
@@ -397,6 +407,10 @@ def update_resource_display(gui, player: 'Player') -> None:
         gui.metal_label.set_text(f"Metal: {player.metal:.0f}")
     if gui.crystal_label:
         gui.crystal_label.set_text(f"Crystal: {player.crystal:.0f}")
+    if getattr(gui, 'population_label', None):
+        from economy import total_population
+        population = total_population(getattr(gui.game_instance, 'galaxy', None), player)
+        gui.population_label.set_text(f"Population: {population:,.1f}")
 
 
 def update_comms_button(gui) -> None:

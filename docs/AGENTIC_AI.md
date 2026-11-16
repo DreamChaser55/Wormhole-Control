@@ -40,7 +40,7 @@ persistent writes; load reconciliation and selected tactical/deployable checks u
 that mode. Other target checks retain the recording default, as described in the
 [preflight guarantees](#commit-guarantees-and-lifecycle-feedback). The observation includes:
 
-- the active player's economy;
+- the active player's economy and total population across owned colonies;
 - public system topology, navigation anchors, detailed nearby bodies (including planetary traits, colonizability, passive mineral yields, and antimatter harvesting sources/multipliers), and physical summaries of remote bodies;
 - owned and allied units;
 - enemy units only when detailed visibility permits them (concealed from long-range radar presence when cloaked or inside nebulae or asteroid fields);

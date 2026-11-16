@@ -7,6 +7,7 @@ from typing import Any
 from resource_costs import ResourceCost
 from constants import HullSize
 from titan_acquisition import capacity as titan_capacity
+from economy import total_population
 
 from .rules import (
     ability_states,
@@ -30,7 +31,7 @@ from component_visibility import public_components
 from order_history import history_view
 from turn_briefing import summary_view
 
-OBSERVATION_SCHEMA_VERSION = 40
+OBSERVATION_SCHEMA_VERSION = 41
 COMMAND_HELP = {name: spec.description for name, spec in COMMAND_SPECS.items()}
 
 
@@ -180,6 +181,7 @@ def build_observation(game: Any, player: Any) -> dict[str, Any]:
             "id": int(player.id),
             "name": str(player.name),
             "team_id": int(player.team_id),
+            "total_population": total_population(galaxy, player),
             "resources": {
                 "credits": _rounded(player.credits),
                 "resource_budget": resource_budget,

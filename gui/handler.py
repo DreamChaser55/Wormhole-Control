@@ -86,6 +86,7 @@ class GUI_Handler:
         self.credits_label: typing.Optional[pygame_gui.elements.UILabel] = None
         self.metal_label: typing.Optional[pygame_gui.elements.UILabel] = None
         self.crystal_label: typing.Optional[pygame_gui.elements.UILabel] = None
+        self.population_label: typing.Optional[pygame_gui.elements.UILabel] = None
         self.side_bar_info_panel: typing.Optional[pygame_gui.elements.UIPanel] = None
         self.side_bar_scroll_container: typing.Optional[pygame_gui.elements.UIScrollingContainer] = None
         self.sidebar_scroll_identity = None
@@ -198,7 +199,7 @@ class GUI_Handler:
         self.load_save_selection_list = self.load_save_confirm_button = self.load_save_cancel_button = None
         self.save_file_paths = {}
         self.back_button = self.reset_view_button = self.comms_button = self.view_mode_label = self.end_turn_button = self.player_turn_label = self.player_color_indicator = None
-        self.credits_label = self.metal_label = self.crystal_label = None
+        self.credits_label = self.metal_label = self.crystal_label = self.population_label = None
         self.context_menu_buttons = []
         self.context_menu_target = None
         self.context_menu_options = []

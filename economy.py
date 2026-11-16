@@ -66,6 +66,15 @@ def calculate_player_income(galaxy: typing.Any, player: Player) -> float:
     return calculate_income_breakdown(galaxy, player).total_credits
 
 
+def total_population(galaxy: typing.Any, player: Player) -> float:
+    return sum(
+        float(getattr(body, "population", 0))
+        for system in getattr(galaxy, "systems", {}).values()
+        for _, body in system.get_all_celestial_bodies()
+        if getattr(body, "owner", None) is player
+    )
+
+
 def calculate_unit_upkeep(hull_size: typing.Optional[HullSize], current_hull_usage: float) -> float:
     """Calculates credit upkeep cost per turn for an individual unit design or instance.
 
