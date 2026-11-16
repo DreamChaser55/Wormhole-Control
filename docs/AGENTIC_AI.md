@@ -138,8 +138,10 @@ the viewer's relationship at the time. An empty entries list means no important 
 The engine collects committed events from just before the player's previous End
 Turn resolution through the next owner-turn opening effects. It freezes the report
 before presentation and AI scheduling. Observations, semantic repairs and manual
-retries reuse that report without consuming it. Current observation visibility and
-command legality take precedence over historical references. No additional model
+retries reuse that report without consuming it. A separate `construction_progress` list appears in the summary while owned
+ship, station or wing builds are underway. It reports their current completed
+and required turns. Current observation visibility and command legality take
+precedence over historical references. No additional model
 request creates the summary, and model settings and command contracts are unchanged.
 
 Human, built-in and Codex controllers share the same disclosure rules and report

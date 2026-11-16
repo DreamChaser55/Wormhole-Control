@@ -6,7 +6,7 @@ import pygame
 import pygame_gui
 
 from player_controller import PlayerController
-from turn_briefing import BriefingState, entry_text
+from turn_briefing import BriefingState, current_construction, entry_text
 from app_preferences import AppPreferences, TurnSummaryMode
 
 
@@ -84,6 +84,17 @@ def current_travel_html(game, player):
     return '<br><br><b>Current travel</b><br>Estimates assume sufficient fuel and unchanged conditions; action time and queued missions add time.<br><br>' + '<br><br>'.join(rows)
 
 
+def current_construction_html(game, player):
+    rows = current_construction(game, player)
+    if not rows:
+        return ""
+    return "<br><br><b>Current construction</b><br><br>" + "<br><br>".join(
+        escape(f'{row["builder"]} · {row["design"]} · '
+               f'{row["turns_completed"]}/{row["turns_required"]} turns complete')
+        for row in rows
+    )
+
+
 class TurnBriefingWindow:
     def __init__(self, gui, player):
         self.gui, self.player = gui, player
@@ -103,7 +114,8 @@ class TurnBriefingWindow:
         pad = max(8, int(14 * gui.scale_x))
         button_height = max(28, int(38 * gui.scale_y))
         self.text = pygame_gui.elements.UITextBox(
-            html_text=summary_html(player.briefing.current) + current_travel_html(gui.game_instance, player),
+            html_text=(summary_html(player.briefing.current) + current_construction_html(gui.game_instance, player)
+                       + current_travel_html(gui.game_instance, player)),
             relative_rect=pygame.Rect(pad, pad, content_width - 2 * pad, content_height - button_height - 3 * pad),
             manager=gui.manager, container=self.window, object_id="#turn_briefing_text")
         button_width = max(100, int(155 * gui.scale_x))

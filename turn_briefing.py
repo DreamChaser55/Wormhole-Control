@@ -326,9 +326,39 @@ def finish_window(game, player):
     state.acknowledged = False
 
 
-def summary_view(player):
+def current_construction(game, player):
+    from unit_templates import get_all_templates_for_player
+
+    rows = []
+    templates = get_all_templates_for_player(player)
+    for unit in _owned_units(game, player):
+        constructor = unit.constructor_component
+        job = getattr(constructor, 'current_construction_target', None)
+        if job:
+            key = job['template_name']
+            rows.append(dict(unit_id=unit.id, builder=unit.name, template_name=key,
+                             design=templates.get(key, {}).get('name', key), system_name=job['system_name'],
+                             hex_coord=list(job['hex_coord']), turns_completed=constructor.construction_progress,
+                             turns_required=constructor.time_to_build))
+        bay = unit.strikecraft_bay_component
+        if bay and bay.constructing:
+            design = bay.production_template(bay.construction_slot_index)
+            if design:
+                key = bay.slot_views()[bay.construction_slot_index]['production_template']
+                rows.append(dict(unit_id=unit.id, builder=unit.name, template_name=key,
+                                 design=design['name'], system_name=unit.in_system, hex_coord=list(unit.in_hex),
+                                 turns_completed=bay.construction_progress, turns_required=design['build_time']))
+    return rows
+
+
+def summary_view(player, game=None):
     state = _state(player)
-    return copy.deepcopy((state.current if state else TurnSummary()).to_dict())
+    summary = copy.deepcopy((state.current if state else TurnSummary()).to_dict())
+    if game is not None:
+        rows = current_construction(game, player)
+        if rows:
+            summary["construction_progress"] = rows
+    return summary
 
 
 def entry_text(entry):

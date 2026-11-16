@@ -31,7 +31,7 @@ from component_visibility import public_components
 from order_history import history_view
 from turn_briefing import summary_view
 
-OBSERVATION_SCHEMA_VERSION = 48
+OBSERVATION_SCHEMA_VERSION = 49
 COMMAND_HELP = {name: spec.description for name, spec in COMMAND_SPECS.items()}
 
 
@@ -273,7 +273,7 @@ def build_observation(game: Any, player: Any) -> dict[str, Any]:
             "construction_templates": construction_templates,
             "wing_templates": _wing_catalog(visible_unit_objects, player),
         },
-        "turn_summary": summary_view(player),
+        "turn_summary": summary_view(player, game),
     }
 
 

@@ -136,7 +136,8 @@ remembered per body and campaign during the application session, not in saves.
 
 ### Turn-start briefing
 
-Current travel appears in the ship's order sidebar and briefing: leaving an
+The briefing also shows current ship, station and wing construction progress in
+owner turns. Current travel appears in the ship's order sidebar and briefing: leaving an
 inhibition field, drive recharge, approach, or waiting for antimatter. Remaining
 travel estimates use current equipment and known terrain, assuming enough fuel
 and unchanged conditions. Loading, mission actions and later queued orders add
