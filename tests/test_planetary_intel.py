@@ -5,8 +5,8 @@ from types import SimpleNamespace
 import pygame
 import pytest
 
-from constants import PlanetType
-from domain.celestials import Planet, Moon, ColonizableAsteroid
+from constants import NebulaType, PlanetType
+from domain.celestials import ColonizableAsteroid, Moon, Nebula, Planet
 from domain.players import Player
 from game_ai.commands import CommandGateway
 from game_ai.contracts import Command, CommandBatch
@@ -435,21 +435,31 @@ def test_commit_accepts_contact_loss_with_recorded_intel(monkeypatch):
     assert unit.troop_transport_component.troops == 40
 
 
-def test_colony_sensors_detect_nearby_enemies_without_a_scout():
-    from constants import COLONY_SENSOR_RADIUS
+@pytest.mark.parametrize('cls', [Planet, Moon, ColonizableAsteroid])
+@pytest.mark.parametrize('terrain, sensor_range', [(None, 1500), (NebulaType.DENSE, 500)])
+def test_colony_sensors_reach_beyond_the_surface(cls, terrain, sensor_range):
+    from game_ai.observation import _body_view
+    from gui.sidebar.panels_world import build_celestial_body_panel
 
     game = campaign()
-    body = world(game, owner=0)
+    body = world(game, cls, owner=0)
+    if terrain:
+        game.galaxy.systems['Sol'].add_celestial_body(Nebula((0, 0), 'Sol', terrain))
+    radius = body.collision_radius + sensor_range
     enemy = ship(game, owner=1)
-    enemy.position = Position(COLONY_SENSOR_RADIUS, 0)
-    assert enemy.id in VisibilityService.compute(game.galaxy, body.owner).visible_enemy_unit_ids
+    enemy.position = Position(radius, 0)
+    assert enemy.id in VisibilityService.compute(game.galaxy, body.owner, record_intel=False).visible_enemy_unit_ids
     enemy.position.x += 1
-    assert enemy.id not in VisibilityService.compute(game.galaxy, body.owner).visible_enemy_unit_ids
+    assert enemy.id not in VisibilityService.compute(game.galaxy, body.owner, record_intel=False).visible_enemy_unit_ids
+
+    observed = _body_view(body, body.owner, game=game)
+    assert observed['base_sensor_radius'] == pytest.approx(body.collision_radius + 1500)
+    assert observed['effective_sensor_radius'] == pytest.approx(radius)
+    assert any(row.get('text') == f'Short-range sensors: {sensor_range:g} units from surface'
+               for row in build_celestial_body_panel(game, body))
 
 
 def test_dense_nebula_scales_short_range_and_rounds_long_range_down():
-    from constants import NebulaType
-    from domain.celestials import Nebula
     from environmental_effects import long_range_sensor_hexes, sensor_radius
 
     game = campaign()

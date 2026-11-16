@@ -85,9 +85,10 @@ uninhabited uses null and `neutral`. Last-known ownership is dated history, not
 current control, even if last observed earlier in the same round. Population and
 `planetary_defenses` are omitted without current knowledge. Current owned worlds
 include their base `population_growth_rate` as a fraction per round and
-`base_sensor_radius` measured from the body's center. Physical traits and
-capacity remain available. Remote `body_summary.colonizable_count` and
-`colonizable_capacity` describe geography, not unclaimed worlds.
+`base_sensor_radius`, the body's collision radius plus 1,500 units of reach
+from its surface. Physical traits and capacity remain available. Remote
+`body_summary.colonizable_count` and `colonizable_capacity` describe physical
+colony sites regardless of ownership.
 
 The shared ownership policy uses effective short-range contact with the body's
 surface or long-range coverage of its sector, including allied and intelligence
@@ -970,9 +971,10 @@ explanations in its observation; repository documentation is not implicitly
 included in its request.
 
 Systems expose `system_type` as `stellar` or `nebula`. Dense Nebula fills each
-sector of a nebula system, covers one third of ordinary sensor ranges, and
-conceals enemy units from long-range detection. Colonies report their current
-`effective_sensor_radius` after terrain penalties.
+sector of a nebula system, reduces sensor ranges to one third, and conceals
+enemy units from long-range detection. A colony's `effective_sensor_radius`
+adds its `collision_radius` to its reach after terrain penalties. In Dense Nebula,
+that reach extends 500 units from the surface.
 
 Friendly/allied `capability_details.engines.effective_speed` includes current
 terrain drag; `sensors.effective_long_range_hexes` includes magnetic suppression.

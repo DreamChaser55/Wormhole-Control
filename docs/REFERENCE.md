@@ -1325,9 +1325,11 @@ and the Small Sensor Outpost and Medium Sensor Station provide fixed coverage.
 
 Ships and stations provide short-range visual coverage and long-range sector
 detection, shared across allies. Owned colonies also provide shared short-range
-coverage within 1,500 units of the body's center. Unexplored space is hidden; explored sectors keep
-last-seen turn intel until sensors refresh it. Embedded agents also share their
-host's sensor coverage with their owner and allies.
+coverage extending 1,500 units from the body's surface. Terrain penalties scale
+this reach, so a colony in Dense Nebula covers 500 units beyond its surface.
+Unexplored space is hidden, and explored sectors keep last-seen turn intel until
+sensors refresh it. Embedded agents also share their host's sensor coverage with
+their owner and allies.
 
 Colony ownership on planets, moons and colonizable asteroids requires current
 shared sensor coverage. Long-range sensors reveal ownership throughout covered

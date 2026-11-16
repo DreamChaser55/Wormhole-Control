@@ -4,7 +4,7 @@ import pygame
 from unittest.mock import MagicMock, patch
 from geometry import Position
 from display_config import DEFAULT_DISPLAY_CONFIG
-from constants import (COLONY_SENSOR_RADIUS, DEFAULT_SENSOR_SHORT_RANGE, NebulaType, PlanetType,
+from constants import (COLONY_SENSOR_RANGE, DEFAULT_SENSOR_SHORT_RANGE, NebulaType, PlanetType,
                        SECTOR_CIRCLE_RADIUS_LOGICAL, SECTOR_FOG_OF_WAR_COLOR)
 from domain.celestials import Moon, Nebula, Planet
 from domain.players import Player
@@ -265,11 +265,12 @@ class TestDrawFogOfWar:
         assert area.width <= SCREEN_W and area.height <= SCREEN_H
 
 @pytest.mark.parametrize('allied', [False, True])
-@pytest.mark.parametrize('body_type, terrain, radius', [
-    (Planet, None, COLONY_SENSOR_RADIUS),
-    (Moon, NebulaType.DENSE, COLONY_SENSOR_RADIUS / 3),
+@pytest.mark.parametrize('body_type, terrain, sensor_range', [
+    (Planet, None, COLONY_SENSOR_RANGE),
+    (Planet, NebulaType.DENSE, COLONY_SENSOR_RANGE / 3),
+    (Moon, NebulaType.DENSE, COLONY_SENSOR_RANGE / 3),
 ])
-def test_colony_fog_matches_detection_and_updates_on_capture(allied, body_type, terrain, radius):
+def test_colony_fog_matches_detection_and_updates_on_capture(allied, body_type, terrain, sensor_range):
     game = campaign()
     game.screen = _make_screen()
     game.sector_zoom = TEST_DYNAMIC_RADIUS / game.display_config.sector_radius
@@ -288,8 +289,9 @@ def test_colony_fog_matches_detection_and_updates_on_capture(allied, body_type, 
         system.add_celestial_body(Nebula((0, 0), 'Sol', terrain))
 
     inside, outside = ship(game, 'Inside', owner=1), ship(game, 'Outside', owner=1)
-    inside.position = Position(body.position.x + radius * .8, body.position.y)
-    outside.position = Position(body.position.x + radius * 1.2, body.position.y)
+    surface_x = body.position.x + body.collision_radius
+    inside.position = Position(surface_x + sensor_range * .8, body.position.y)
+    outside.position = Position(surface_x + sensor_range * 1.2, body.position.y)
     renderer = _make_renderer(game)
 
     def fog_alpha(unit):

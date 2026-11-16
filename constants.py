@@ -38,7 +38,7 @@ DEFAULT_STANDOFF_DISTANCE: float = 150.0  # Logical distance maintained when fol
 UPKEEP_COST_PER_HULL_POINT: float = 0.01  # Credits per used hull point per turn
 TAX_RATE: float = 0.5  # Credits per population per owner turn
 DEFAULT_CIVILIAN_HABITAT_BONUS: float = 12.0
-COLONY_SENSOR_RADIUS: float = 1500.0
+COLONY_SENSOR_RANGE: float = 1500.0  # From the colony body's surface
 POPULATION_PER_HABITAT: float = 25.0  # Population required per supported civilian habitat module
 BASE_HABITAT_CAPACITY: int = 1  # Base habitat modules supported by any colonized celestial body with population > 0
 
