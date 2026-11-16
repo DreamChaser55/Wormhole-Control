@@ -8,7 +8,6 @@ FEEDBACK FROM PLAYTESTING:
 - Show total population of all owned worlds.
 - Income boost from Civilian habitats seems too big. Compare it with population income from colonized bodies, which seems to low. Rebalance both values.
 - AI should receive info about Civilian habitat income boost, and that it is good to build them around owned worlds to increase income.
-- Sort the filenames in Load Game menu by file modification time (files modified later should be higher, most recently modified file should be at the top).
 - If a hex contains a solid body, the unit icons on the hex in system view should skip the central position, so they don’t overlap with the body icon.
 - Remove the popup on Construct order Build button (in the modal menu). Remove any other similarly non-useful button popups.
 - Metal refinery should cost only a small amount of metal. Crystal refinery should cost only a small amount of crystal. The refinery components themselves should cost more credits.

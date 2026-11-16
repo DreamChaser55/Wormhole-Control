@@ -856,15 +856,16 @@ def list_save_files() -> List[dict]:
                 with open(filepath, "r", encoding="utf-8") as f:
                     data = json.load(f)
                     game_state = data.get("game_state", {})
-                    saves.append({
+                    summary = {
                         "filename": fname,
                         "filepath": filepath,
                         "turn_number": game_state.get("turn_number", 1),
                         "timestamp": data.get("timestamp", ""),
                         "current_system": game_state.get("current_system_name", "Galaxy")
-                    })
+                    }
+                saves.append((os.stat(filepath).st_mtime_ns, fname, summary))
             except Exception:
                 continue
 
-    saves.sort(key=lambda s: s["filename"], reverse=True)
-    return saves
+    saves.sort(reverse=True, key=lambda save: (save[0], save[1]))
+    return [summary for _, _, summary in saves]

@@ -415,3 +415,22 @@ class TestSaveLoad(unittest.TestCase):
         finally:
             game.control_service.shutdown()
             game.ai_coordinator.shutdown()
+
+
+def test_list_save_files_uses_modification_time(tmp_path, monkeypatch):
+    import save_manager
+
+    monkeypatch.setattr(save_manager, "SAVES_DIR", str(tmp_path))
+    for name, mtime, timestamp in [
+        ("z.json", 1000, "2026-11-11"),
+        ("a.json", 3000, "2025-01-01"),
+        ("m.json", 2000, "2026-01-01"),
+    ]:
+        save = tmp_path / name
+        save.write_text(json.dumps({"timestamp": timestamp}), encoding="utf-8")
+        os.utime(save, (mtime, mtime))
+    (tmp_path / "invalid.json").write_text("bad save", encoding="utf-8")
+
+    assert [save["filename"] for save in save_manager.list_save_files()] == [
+        "a.json", "m.json", "z.json",
+    ]

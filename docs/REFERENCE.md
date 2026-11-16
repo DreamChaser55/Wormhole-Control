@@ -1602,7 +1602,8 @@ teams and text.
 ### Saving and loading
 
 Use **Esc → Save Game** to write a JSON campaign under `saves/`. **Load Game** is
-available from the main menu and during a match. Loading validates a separate
+available from the main menu and during a match, with the most recently modified
+files at the top. Loading validates a separate
 candidate before replacing the live campaign; a rejected save leaves play intact.
 See [Campaign persistence](SAVE_FORMAT.md) for the current format, restoration and
 load warnings. AI memory storage is described in
