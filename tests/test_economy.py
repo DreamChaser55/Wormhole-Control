@@ -9,7 +9,7 @@ from constants import DEFAULT_CIVILIAN_HABITAT_BONUS, TAX_RATE, PlanetType
 from domain.celestials import Planet, Moon, ColonizableAsteroid
 from domain.players import Player
 from economy import IncomeBreakdown, calculate_income_breakdown, calculate_player_income
-from save_manager import serialize_game_state
+from save_manager import deserialize_game_state, serialize_game_state
 from tests.support.campaigns import campaign, ship
 from turn_processor import TurnProcessor
 from unit_components.civilian_habitat import CivilianHabitatComponent
@@ -121,3 +121,47 @@ def test_observation_itemizes_only_the_players_own_economy():
     assert [entry['body_id'] for entry in resources['income_breakdown']['colonies']] == [colony.id]
     assert [entry['unit_id'] for entry in resources['upkeep_breakdown']] == [vessel.id]
     assert resources['income'] == pytest.approx(calculate_player_income(game.galaxy, owner))
+
+
+@pytest.mark.parametrize('load_save', [False, True], ids=['new', 'loaded'])
+def test_barren_and_ferrous_passive_metal_income(load_save):
+    from game_ai.observation import build_observation
+    from gui.sidebar.panels_world import build_celestial_body_panel
+
+    game = campaign()
+    owner, enemy = game.players
+    starting_metal = 37.5
+    owner.metal = starting_metal
+    barren = Planet((0, 0), 'Sol', PlanetType.BARREN)
+    ferrous = Planet((1, 0), 'Sol', PlanetType.FERROUS)
+    enemy_ferrous = Planet((0, 0), 'Beta', PlanetType.FERROUS)
+    unowned_ferrous = Planet((1, 0), 'Beta', PlanetType.FERROUS)
+    for body, colony_owner in (
+        (barren, owner),
+        (ferrous, owner),
+        (enemy_ferrous, enemy),
+        (unowned_ferrous, None),
+    ):
+        body.owner = colony_owner
+        body.population = 20.0 if colony_owner is not None else 0.0
+        game.galaxy.systems[body.in_system].add_celestial_body(body)
+
+    if load_save:
+        # Simulate a save made with the previous Barren yield.
+        barren.passive_metal = 2.0
+        assert deserialize_game_state(game, serialize_game_state(game))
+        owner = game.players[0]
+
+    assert owner.metal == starting_metal
+    resources = build_observation(game, owner)['active_player']['resources']
+    colonies = resources['income_breakdown']['colonies']
+    assert {row['body_id']: row['metal'] for row in colonies} == {barren.id: 0.0, ferrous.id: 8.0}
+
+    planets = game.galaxy.systems['Sol'].celestial_bodies_by_id
+    barren_panel = build_celestial_body_panel(game, planets[barren.id])
+    ferrous_panel = build_celestial_body_panel(game, planets[ferrous.id])
+    assert not any(row.get('text', '').startswith('Passive metal:') for row in barren_panel)
+    assert any(row.get('text') == 'Passive metal: +8/turn' for row in ferrous_panel)
+
+    TurnProcessor(game).end_turn()
+    assert owner.metal == starting_metal + 8.0

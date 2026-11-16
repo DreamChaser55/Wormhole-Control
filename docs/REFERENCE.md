@@ -1467,7 +1467,7 @@ conceal ships there from long-range detection. Blue and Red Giants use the enlar
 | **Oceanic** | Yes | 120.0 | 2.5% / turn | 0.0 | 0.0 | 0.0x |
 | **Desert** | Yes | 75.0 | 1.5% / turn | 0.0 | 0.0 | 0.0x |
 | **Ice** | Yes | 60.0 | 1% / turn | 0.0 | 2.0 | 0.0x |
-| **Barren** | Yes | 40.0 | 0.8% / turn | 2.0 | 0.0 | 0.0x |
+| **Barren** | Yes | 40.0 | 0.8% / turn | 0.0 | 0.0 | 0.0x |
 | **Volcanic** | Yes | 50.0 | 0.8% / turn | 5.0 | 0.0 | 0.0x |
 | **Ferrous** | Yes | 70.0 | 1.2% / turn | 8.0 | 0.0 | 0.0x |
 | **Greenhouse** | Yes | 35.0 | 0.5% / turn | 0.0 | 3.0 | 0.0x |
@@ -1476,9 +1476,9 @@ conceal ships there from long-range detection. Blue and Red Giants use the enlar
 
 Moons support 50 population with 1% growth per owner turn; colonizable asteroids
 support 20 with 0.5% growth. Population is clamped to capacity before growth or
-growth-sabotage checks. Colonized planets deposit passive metal/crystal directly
-into the owner's treasury each turn. Barren worlds yield 2 metal, like the
-2 crystal provided by Ice worlds. Gas giants cannot be colonized.
+growth-sabotage checks. During the owner's income phase, each colonized planet
+deposits the passive metal and crystal yields listed above into that player's
+treasury. Gas giants cannot be colonized.
 
 ### Environmental fields
 

@@ -42,10 +42,13 @@ that mode. Other target checks retain the recording default, as described in the
 
 - the active player's economy and total population across owned colonies. Public
   player records include a `defeated` flag.
-  `resources.income_breakdown` itemizes owned colonies and active habitats,
-  with aggregate siphoned credits. `resources.upkeep_breakdown` lists each
-  owned unit owing upkeep; these are the rates used by turn settlement.
-- public system topology, navigation anchors, detailed nearby bodies (including planetary traits, colonizability, passive mineral yields, and antimatter harvesting sources/multipliers), and physical summaries of remote bodies;
+  `resources.income_breakdown` itemizes credits and passive mineral yields for
+  owned colonies, credits for active habitats, and aggregate siphoned credits.
+  `resources.upkeep_breakdown` lists each owned unit owing upkeep. These are the
+  rates used by turn settlement.
+- public system topology, navigation anchors, detailed nearby bodies (including
+  planetary traits, colonizability, and antimatter harvesting sources and
+  multipliers), and physical summaries of remote bodies;
 - owned and allied units;
 - enemy units only when detailed visibility permits them (concealed from long-range radar presence when cloaked or inside nebulae or asteroid fields);
 - celestial fields (asteroid, debris, ice) with density parameters (`density`, `max_hull_size`), solidity status (`is_solid: false`), and exact `effect_radius` values that restrict hulls exceeding the field's maximum allowable hull, rejecting forbidden commands with `hazard_blocked`;
