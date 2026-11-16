@@ -155,6 +155,7 @@ class SystemViewRenderer:
 
             # Draw celestial bodies
             scale_val = self._map_scale()
+            solid_icon_radius = None
             for body in hex_obj.celestial_bodies:
                 body_color = DARK_GRAY
                 body_radius = int(3 * scale_val)
@@ -221,6 +222,10 @@ class SystemViewRenderer:
                 if should_draw_circle:
                     pygame.draw.circle(self.screen, body_color, (hex_center_pixel.x, hex_center_pixel.y), body_radius)
 
+                if body.is_solid:
+                    ring = int(3 * scale_val) if isinstance(body, (Planet, Moon, ColonizableAsteroid)) else 0
+                    solid_icon_radius = max(solid_icon_radius or 0, body_radius + ring)
+
                 if body in self.game.selected_objects:
                     # Stable visual envelopes include ownership rings and animated effects.
                     selection_radius = body_radius
@@ -257,11 +262,10 @@ class SystemViewRenderer:
 
             if num_units_in_hex > 0:
                 new_system_view_icon_base_size = 3.0 * scale_val
-                icon_draw_width = new_system_view_icon_base_size * 2 
                 icon_draw_height = new_system_view_icon_base_size * 2 
                 icon_padding_x = 3.0 * scale_val
                 icon_padding_y = 3.0 * scale_val 
-                icon_slot_width = icon_draw_width + icon_padding_x
+                icon_slot_width = icon_draw_height + icon_padding_x
                 icon_slot_height = icon_draw_height + icon_padding_y
                 icons_per_row = 3
 
@@ -271,17 +275,18 @@ class SystemViewRenderer:
                 block_start_y = hex_center_pixel.y - (total_block_visual_height / 2.0)
 
                 for i, unit in enumerate(visible_units):
-                    row_index = i // icons_per_row
-                    col_index = i % icons_per_row
-
-                    num_icons_in_this_row = min(icons_per_row, num_units_in_hex - (row_index * icons_per_row))
-                    current_row_visual_width = (num_icons_in_this_row * icon_draw_width) + ((num_icons_in_this_row - 1) * icon_padding_x if num_icons_in_this_row > 0 else 0)
-                    
-                    row_start_x = hex_center_pixel.x - (current_row_visual_width / 2.0)
-
-
-                    icon_center_x = row_start_x + (col_index * icon_slot_width) + (icon_draw_width / 2.0)
-                    icon_center_y = block_start_y + (row_index * icon_slot_height) + (icon_draw_height / 2.0)
+                    if solid_icon_radius is None:
+                        row, column = divmod(i, icons_per_row)
+                        row_count = min(icons_per_row, num_units_in_hex - row * icons_per_row)
+                        icon_center_x = hex_center_pixel.x + (column - (row_count - 1) / 2) * icon_slot_width
+                        icon_center_y = block_start_y + row * icon_slot_height + icon_draw_height / 2
+                    else:
+                        ring, slot = divmod(i, 6)
+                        count = min(6, num_units_in_hex - ring * 6)
+                        angle = -math.pi / 2 + math.tau * slot / count
+                        radius = solid_icon_radius + (6 + 9 * ring) * scale_val
+                        icon_center_x = hex_center_pixel.x + radius * math.cos(angle)
+                        icon_center_y = hex_center_pixel.y + radius * math.sin(angle)
 
                     unit_screen_x = icon_center_x
                     

@@ -7,7 +7,6 @@ FEEDBACK FROM PLAYTESTING:
 - Show total population of all owned worlds.
 - Income boost from Civilian habitats seems too big. Compare it with population income from colonized bodies, which seems to low. Rebalance both values.
 - AI should receive info about Civilian habitat income boost, and that it is good to build them around owned worlds to increase income.
-- If a hex contains a solid body, the unit icons on the hex in system view should skip the central position, so they don’t overlap with the body icon.
 - Metal refinery should cost only a small amount of metal. Crystal refinery should cost only a small amount of crystal. The refinery components themselves should cost more credits.
 - Unstable wormhole should cause the passing units to lose some antimatter.
 - Add some constant low metal income from a specific colonizable planet type, just like Ice planet provides constant low crystal income.
