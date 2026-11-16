@@ -77,7 +77,7 @@ def test_long_range_and_friendly_knowledge_are_separate_from_sensed_ids():
     assert view(game, body).status == 'last_known'
     body.owner = game.players[0]
     snapshot = VisibilityService.compute(game.galaxy, game.players[0], record_intel=False)
-    assert body.id not in snapshot.sensed_colony_ids
+    assert body.id in snapshot.sensed_colony_ids
     assert ownership_view(game, game.players[0], body, snapshot).status == 'current'
 
 
@@ -433,3 +433,15 @@ def test_commit_accepts_contact_loss_with_recorded_intel(monkeypatch):
     assert unit.commander_component.current_order is not existing
     assert unit.commander_component.current_order.status == OrderStatus.IN_PROGRESS
     assert unit.troop_transport_component.troops == 40
+
+
+def test_colony_sensors_detect_nearby_enemies_without_a_scout():
+    from constants import COLONY_SENSOR_RADIUS
+
+    game = campaign()
+    body = world(game, owner=0)
+    enemy = ship(game, owner=1)
+    enemy.position = Position(COLONY_SENSOR_RADIUS, 0)
+    assert enemy.id in VisibilityService.compute(game.galaxy, body.owner).visible_enemy_unit_ids
+    enemy.position.x += 1
+    assert enemy.id not in VisibilityService.compute(game.galaxy, body.owner).visible_enemy_unit_ids

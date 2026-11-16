@@ -31,7 +31,7 @@ from component_visibility import public_components
 from order_history import history_view
 from turn_briefing import summary_view
 
-OBSERVATION_SCHEMA_VERSION = 42
+OBSERVATION_SCHEMA_VERSION = 43
 COMMAND_HELP = {name: spec.description for name, spec in COMMAND_SPECS.items()}
 
 
@@ -397,7 +397,9 @@ def _body_view(
         if current:
             data["planetary_defenses"] = defense_view(body)
             if owner is not None:
+                from constants import COLONY_SENSOR_RADIUS
                 data["population_growth_rate"] = body.population_growth_rate
+                data["base_sensor_radius"] = COLONY_SENSOR_RADIUS
     if include_system:
         data["system_name"] = str(body.in_system)
     for name in (

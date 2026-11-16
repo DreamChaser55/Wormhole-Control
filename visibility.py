@@ -67,6 +67,9 @@ class VisibilityService:
         # nebulae_by_hex: (system_name, hex_coord) -> list of (position, radius)
         nebulae_by_hex: Dict[Tuple[str, HexCoord], List[Tuple[typing.Any, float]]] = {}
 
+        from constants import COLONY_SENSOR_RADIUS
+        from planetary_intel import is_colony_body
+
         all_units: List['Unit'] = []
         for system_name, system in galaxy.systems.items():
             for hex_coord, hex_obj in system.hexes.items():
@@ -133,11 +136,11 @@ class VisibilityService:
                     elif hasattr(body, 'has_infiltrating_agent_from'):
                         is_infiltrated_body = body.has_infiltrating_agent_from(viewer)
 
+                    key = (system_name, hex_coord)
+                    if is_colony_body(body) and are_allies(getattr(body, 'owner', None), viewer):
+                        short_range_by_hex.setdefault(key, []).append((body.position, COLONY_SENSOR_RADIUS))
                     if is_infiltrated_body:
-                        key = (system_name, hex_coord)
-                        if key not in short_range_by_hex:
-                            short_range_by_hex[key] = []
-                        short_range_by_hex[key].append((body.position, 500.0))
+                        short_range_by_hex.setdefault(key, []).append((body.position, 500.0))
                         long_range_covered.add(key)
 
         from titan_abilities import coverage
@@ -158,7 +161,6 @@ class VisibilityService:
             for sys_name, h_coord in long_range_covered:
                 viewer.record_sector_intel(sys_name, h_coord, current_turn)
 
-        from planetary_intel import is_colony_body
         for system_name, system in galaxy.systems.items():
             for coord, sector in system.hexes.items():
                 key = (system_name, coord)

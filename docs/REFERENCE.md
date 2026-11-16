@@ -1278,7 +1278,8 @@ carrier support; the Testing Huge ship demonstrates Tracking Lock and Flak Barra
 ### Visibility and concealment
 
 Ships and stations provide short-range visual coverage and long-range sector
-detection, shared across allies. Unexplored space is hidden; explored sectors keep
+detection, shared across allies. Owned colonies also provide shared short-range
+coverage within 1,500 units of the body's center. Unexplored space is hidden; explored sectors keep
 last-seen turn intel until sensors refresh it. Embedded agents also share their
 host's sensor coverage with their owner and allies.
 
