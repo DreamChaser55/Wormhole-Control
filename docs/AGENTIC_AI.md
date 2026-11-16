@@ -847,7 +847,7 @@ recipient deadlines before the next command. A queued pulse reserves only its
 caster cost: recipients are determined at execution. Pending pickup, delivery or
 travel never finances an immediate cast.
 
-`transfer_antimatter` and `take_antimatter` require functional storage, friendly
+`give_antimatter` and `take_antimatter` require functional storage, friendly
 endpoints, and normal approach capability. Queued pickup/delivery may depend on
 preceding resource changes.
 

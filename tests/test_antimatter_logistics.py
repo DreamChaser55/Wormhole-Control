@@ -1035,8 +1035,8 @@ def test_capture_and_component_removal_do_not_reset_pulse_deadlines():
 
 
 @pytest.mark.parametrize('amount,kind,prior', [
-    (0, 'transfer_antimatter', 'take_antimatter'),
-    (600, 'take_antimatter', 'transfer_antimatter'),
+    (0, 'give_antimatter', 'take_antimatter'),
+    (600, 'take_antimatter', 'give_antimatter'),
 ])
 def test_ai_advertises_queued_pickup_delivery_dependencies(amount, kind, prior):
     from game_ai.rules import command_guidance

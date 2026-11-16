@@ -640,7 +640,7 @@ class OrderSystem:
         from antimatter_logistics import exchange_blocker
         units = [u.id for u in event.units if exchange_blocker(u, event.target_unit, self.game.galaxy) is None and (event.shift_pressed or u.antimatter_component.current_amount > 0)]
         if units:
-            issue(self.game, {'type': 'transfer_antimatter', 'unit_ids': units, 'target_id': event.target_unit.id, 'queue': event.shift_pressed})
+            issue(self.game, {'type': 'give_antimatter', 'unit_ids': units, 'target_id': event.target_unit.id, 'queue': event.shift_pressed})
 
     def handle_continuous_resupply(self, event: ContinuousResupplyEvent):
         """Issue continuous harvesting through the shared command gateway."""

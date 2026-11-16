@@ -5821,7 +5821,7 @@
       "bulk antimatter storage",
       "fuel distribution"
     ],
-    "description": "Stationary bulk antimatter reservoir. Accept deliveries and supply friendly ships through Transfer Antimatter or receiver-issued Take Antimatter.",
+    "description": "Stationary bulk antimatter reservoir. Accept deliveries and supply friendly ships through Give Antimatter or receiver-issued Take Antimatter.",
     "is_custom": true,
     "has_troop_transport_component": false,
     "troop_capacity": 40,
@@ -5924,7 +5924,7 @@
       "forward antimatter cache",
       "local refuelling"
     ],
-    "description": "Small stationary fuel reserve with 460 AM storage. Accept deliveries and supply local friendly ships through Transfer Antimatter or Take Antimatter.",
+    "description": "Small stationary fuel reserve with 460 AM storage. Accept deliveries and supply local friendly ships through Give Antimatter or Take Antimatter.",
     "is_custom": true,
     "has_troop_transport_component": false,
     "troop_capacity": 40,

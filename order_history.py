@@ -41,6 +41,8 @@ def bounded_history(events):
                 item[key] = value[:200]
         if "reason" in item:
             item["reason"] = public_reason(item["reason"])
+        if item.get('type') == 'transfer_antimatter':
+            item['type'] = 'give_antimatter'
         if item.get('type') == 'load_colonists' and item.get('outcome') == 'completed':
             facts = loading_outcome_view(event.get('loading_outcome'))
             if facts is not None:

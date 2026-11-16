@@ -31,7 +31,7 @@ from component_visibility import public_components
 from order_history import history_view
 from turn_briefing import summary_view
 
-OBSERVATION_SCHEMA_VERSION = 49
+OBSERVATION_SCHEMA_VERSION = 50
 COMMAND_HELP = {name: spec.description for name, spec in COMMAND_SPECS.items()}
 
 
@@ -555,7 +555,7 @@ def _capability_details(unit: Any, game: Any) -> dict[str, Any]:
     if getattr(unit, "colony_component", None) is not None:
         ranges["colony"] = {"distance_from_body_surface": DEFAULT_STANDOFF_DISTANCE}
     if getattr(unit, "antimatter_component", None) is not None:
-        ranges["transfer_antimatter"] = {"range": ANTIMATTER_TRANSFER_RANGE}
+        ranges["give_antimatter"] = {"range": ANTIMATTER_TRANSFER_RANGE}
     details["support_ranges"] = ranges
     colony = getattr(unit, "colony_component", None)
     if colony is not None:

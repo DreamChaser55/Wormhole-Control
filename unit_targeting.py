@@ -8,7 +8,7 @@ HOSTILE_LEGACY_ABILITIES = LEGACY_UNIT_ABILITIES - {"ion_bolt"}
 UTILITY_BODY_COMMANDS = frozenset({"mine", "continuous_mine", "colonize", "load_colonists", "enter_gas_giant", "infiltrate_planet"})
 UTILITY_UNIT_COMMANDS = frozenset({"protect", "repair", "unload_resources", "trade", "dock",
                                    "dock_in_hangar", "dock_in_strikecraft_bay", "infiltrate_unit",
-                                   "transfer_antimatter", "take_antimatter"})
+                                   "give_antimatter", "take_antimatter"})
 
 
 def intelligence_distance(first, second):
@@ -38,7 +38,7 @@ def utility_approach_range(unit, target, command_type):
         reach = INTELLIGENCE_OPERATIONAL_RANGE
         if command_type == 'infiltrate_planet':
             reach += target.collision_radius
-    elif command_type in {"transfer_antimatter", "take_antimatter"}:
+    elif command_type in {"give_antimatter", "take_antimatter"}:
         reach = ANTIMATTER_TRANSFER_RANGE
     elif command_type in {"colonize", "load_colonists", "enter_gas_giant"}:
         reach = getattr(target, "collision_radius", getattr(target, "radius", 0.0)) + DEFAULT_STANDOFF_DISTANCE

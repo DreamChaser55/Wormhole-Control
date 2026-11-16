@@ -305,7 +305,7 @@ def build_sector_context_menu_options(game, clicked_object, clicked_sector_coord
                     from antimatter_logistics import exchange_blocker
                     fuel_actors = [a for a in actors if exchange_blocker(a, target_object, game.galaxy) is None]
                     if fuel_actors:
-                        options.append(("Transfer Antimatter", "transfer_antimatter"))
+                        options.append(("Give Antimatter", "give_antimatter"))
                     if fuel_actors:
                         options.append(("Take Antimatter", "take_antimatter"))
                     if len(actors) == 1 and fuel_actors and fuel_actors[0].engines_component and fuel_actors[0].engines_component.is_operational:

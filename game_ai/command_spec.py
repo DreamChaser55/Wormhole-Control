@@ -6,7 +6,7 @@ from copy import deepcopy
 import math
 from construction_customization import TURRET_TYPES, DEFENSE_TYPES, validate_override_values
 
-CONTRACT_VERSION = 25
+CONTRACT_VERSION = 26
 MAX_COMMANDS = 40
 MAX_UNITS = 12
 MAX_WAYPOINTS = 16
@@ -64,7 +64,7 @@ COMMAND_SPECS = {
     "dock_in_strikecraft_bay": _spec("Dock a wing in a friendly strikecraft bay.", ("target_id",)),
     "deploy_unit": _spec("Deploy the identified docked craft. Observe deployment before commanding newly launched actors in a separate batch; launch placement can fail. Servicing wings cannot relaunch until next owner turn.", ("target_id",)),
     "deploy_all_wings": _spec("Deploy all ready docked wings. Observe which wings launched before commanding them in a separate batch; blocked wings remain docked. Servicing wings cannot relaunch until next owner turn.", capability=("strikecraft_bay_component",)),
-    "transfer_antimatter": _spec("Transfer antimatter to a friendly unit.", ("target_id",), capability=("antimatter_component",)),
+    "give_antimatter": _spec("Give antimatter to a friendly unit.", ("target_id",), capability=("antimatter_component",)),
     "take_antimatter": _spec("Approach a friendly source and take antimatter without changing its orders.", ("target_id",), capability=("antimatter_component",)),
     "continuous_antimatter_transport": _spec("Load at source_id (unit). Deliver to target_id (owned/allied unit), or omit/null target_id to automatically supply owned units galaxy-wide. recipient_priority: nearest (default) or service_urgency (least remaining active-service fuel first). minimum_load_fraction: departure tank fraction in (0,1], default 1. Return fuel remains reserved; no demand waits; manual destination loss fails.", ("source_id", "target_id", "recipient_priority", "minimum_load_fraction"), ("source_id",), capability=("antimatter_component", "engines_component"), single_unit=True),
     "continuous_resupply": _spec("Harvest at source_id (star or hydrogen nebula). Deliver to target_id (owned/allied unit), or omit/null target_id to automatically supply owned units galaxy-wide. recipient_priority: nearest (default) or service_urgency (least remaining active-service fuel first). minimum_load_fraction: departure tank fraction in (0,1], default 1. Retains 60 AM; no demand waits; manual destination loss fails.", ("source_id", "target_id", "recipient_priority", "minimum_load_fraction"), ("source_id",), capability=("harvester_component", "antimatter_component")),

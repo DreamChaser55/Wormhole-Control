@@ -210,7 +210,7 @@ Requires the active player to be controlled by Codex. It returns a new opaque tu
 ```
 
 ```json
-{"data":{"turn_token":"opaque-value","observation":{"schema_version":49}}}
+{"data":{"turn_token":"opaque-value","observation":{"schema_version":50}}}
 ```
 
 Treat the observation as the only permitted source of game facts. Never infer hidden targets from saves, source files, logs, rendered pixels, or previous campaigns. IDs and available options in an old observation may be stale.
@@ -586,7 +586,7 @@ targets and persistent deployment counts. Unused OpenAI command fields stay null
 {"type":"use_ability","unit_ids":[101],"ability":"guardian_link","target_id":102}
 {"type":"use_ability","unit_ids":[101],"ability":"multiply_antimatter"}
 {"type":"use_ability","unit_ids":[101],"ability":"nebula_catalyst","target_id":201,"system_name":"Sol","hex_coord":[0,0],"position":[200,0]}
-{"type":"transfer_antimatter","unit_ids":[101],"target_id":102}
+{"type":"give_antimatter","unit_ids":[101],"target_id":102}
 {"type":"take_antimatter","unit_ids":[101],"target_id":102,"queue":true}
 {"type":"continuous_antimatter_transport","unit_ids":[101],"source_id":102,"target_id":103,"queue":false}
 {"type":"continuous_antimatter_transport","unit_ids":[101],"source_id":102,"target_id":null}

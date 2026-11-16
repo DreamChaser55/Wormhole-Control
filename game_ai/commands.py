@@ -1290,7 +1290,7 @@ class CommandGateway:
             "dock",
             "dock_in_hangar",
             "dock_in_strikecraft_bay",
-            "transfer_antimatter",
+            "give_antimatter",
             "take_antimatter",
             "trade",
         } or (command.type == "use_ability" and command.target_id is not None):
@@ -1559,7 +1559,7 @@ class CommandGateway:
             )
         if command.type == "deploy_all_wings":
             return (lambda unit: DeployAllWingsOrder(unit), "Deploy all wings")
-        if command.type in {"transfer_antimatter", "take_antimatter"}:
+        if command.type in {"give_antimatter", "take_antimatter"}:
             self._require_friendly(player, target_unit)
             from unit_orders.fuel_transport import TakeAntimatterOrder
             cls = TakeAntimatterOrder if command.type == 'take_antimatter' else TransferAntimatterOrder
@@ -2212,7 +2212,7 @@ class CommandGateway:
             error = continuous_route_blocker(unit, source, target, self.game.galaxy, harvesting=harvesting)
             if error:
                 raise _Rejected(error, 'Antimatter route unavailable: ' + error.replace('_', ' ') + '.')
-        elif command.type in {'transfer_antimatter', 'take_antimatter'}:
+        elif command.type in {'give_antimatter', 'take_antimatter'}:
             from antimatter_logistics import exchange_blocker
             target = self._visible_unit(unit.owner, command.target_id)
             error = exchange_blocker(unit, target, self.game.galaxy)

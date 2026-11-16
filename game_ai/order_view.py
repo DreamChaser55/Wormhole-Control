@@ -209,6 +209,8 @@ def order_layers(unit, relation, visible_ids, body_ids):
         if order is None:
             return None
         kind = enum_name(order.order_type)
+        if kind == "transfer_antimatter":
+            kind = "give_antimatter"
         if root and kind == 'return_for_service':
             origin = 'system'
         private_agent_order = kind in {"extract_agent", "eliminate_agent"}

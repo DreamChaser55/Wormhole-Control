@@ -223,11 +223,11 @@ def handle_context_menu_action(game, action_id: str, target: typing.Any, *, loca
                     shift_pressed
                 ))
 
-        elif extracted_action_id in ('transfer_antimatter', 'take_antimatter'):
+        elif extracted_action_id in ('give_antimatter', 'take_antimatter'):
             if isinstance(target, Unit):
                 from tactical_ui import issue
                 from antimatter_logistics import exchange_blocker
-                actors = [u.id for u in selected_units if exchange_blocker(u, target, game.galaxy) is None and (shift_pressed or (u.antimatter_component.current_amount > 0 if extracted_action_id == 'transfer_antimatter' else u.antimatter_component.current_amount < u.antimatter_component.max_capacity))]
+                actors = [u.id for u in selected_units if exchange_blocker(u, target, game.galaxy) is None and (shift_pressed or (u.antimatter_component.current_amount > 0 if extracted_action_id == 'give_antimatter' else u.antimatter_component.current_amount < u.antimatter_component.max_capacity))]
                 if actors:
                     issue(game, {'type': extracted_action_id, 'unit_ids': actors, 'target_id': target.id, 'queue': shift_pressed})
         elif extracted_action_id == 'continuous_antimatter_transport':

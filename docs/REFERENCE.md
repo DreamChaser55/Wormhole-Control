@@ -253,7 +253,7 @@ construction/refit refunds return all recorded resources once to the original pa
 
 ### Antimatter logistics
 
-Every unit with functional Antimatter Storage can donate or receive fuel. **Transfer Antimatter** moves the donor toward the recipient; **Take Antimatter** moves the recipient toward the donor without changing the donor's orders or stance. Both work with owned/allied ships and stations, within 200 units in the same sector, at up to 25 AM per acting unit's owner turn. They conserve fuel and finish when the recipient fills or the donor empties. Shift queues either order. Manual transfers may empty harvesters; Continuous Resupply alone retains its 60 AM reserve. Harvesters remain necessary for stellar and hydrogen-nebula collection.
+Every unit with functional Antimatter Storage can donate or receive fuel. **Give Antimatter** moves the donor toward the recipient; **Take Antimatter** moves the recipient toward the donor without changing the donor's orders or stance. Both work with owned/allied ships and stations, within 200 units in the same sector, at up to 25 AM per acting unit's owner turn. They conserve fuel and finish when the recipient fills or the donor empties. Shift queues either order. Manual transfers may empty harvesters; Continuous Resupply alone retains its 60 AM reserve. Harvesters remain necessary for stellar and hydrogen-nebula collection.
 
 For unattended deliveries, harvesters and transports both offer **Automatic** and
 **Manual** destinations. Sources always remain explicitly selected:
@@ -648,7 +648,7 @@ report mandatory returns and endurance losses.
 | Shipyard | Logistics | SMALL station | 20.00/25 | 850 | 33 | 10 | 11 | 0.20 | Designed for stationary construction. Stationary installation. |
 | Small Repair Ship | Logistics | SMALL ship | 23.94/25 | 968 | 37 | 12 | 12 | 0.24 | Designed for local repair. Intra-system travel only. |
 | Local Constructor | Logistics | SMALL ship | 24.88/25 | 996 | 38 | 13 | 12 | 0.25 | Low-cost mobile constructor for outposts and refits. Basic Hyperdrive permits travel within one system. |
-| Antimatter Cache Station | Logistics | SMALL station | 25.00/25 | 1000 | 38 | 13 | 12 | 0.25 | Small stationary fuel reserve with 460 AM storage. Accept deliveries and supply local friendly ships through Transfer Antimatter or Take Antimatter. |
+| Antimatter Cache Station | Logistics | SMALL station | 25.00/25 | 1000 | 38 | 13 | 12 | 0.25 | Small stationary fuel reserve with 460 AM storage. Accept deliveries and supply local friendly ships through Give Antimatter or Take Antimatter. |
 | Constructor | Logistics | MEDIUM ship | 36.50/50 | 1595 | 62 | 19 | 17 | 0.36 | Designed for mobile construction and refitting. Inter-system travel. |
 | Small Repair Station | Logistics | MEDIUM station | 41.99/50 | 1760 | 67 | 21 | 18 | 0.42 | Designed for stationary repair. Stationary installation. |
 | Wormhole Stabilizer Station | Logistics | MEDIUM station | 42.50/50 | 1775 | 68 | 22 | 18 | 0.42 | Maintain one wormhole within 500 units for 5 AM per owner turn. Both directions become safe for all ships, including enemies. Fuel shortages wait for resupply; support ends when cancelled. |
@@ -661,7 +661,7 @@ report mandatory returns and endurance losses.
 | Fleet Repair Ship | Logistics | LARGE ship | 87.99/100 | 3640 | 138 | 44 | 28 | 0.88 | Designed for fleet repair. Inter-system travel. |
 | Nebula Tender | Logistics | LARGE ship | 88.75/100 | 3662 | 139 | 45 | 28 | 0.89 | Fuel and nebula support ship with Nebula Catalyst. Antimatter Containment reduces magnetic-storm and dust-nebula fuel drain. |
 | Heavy Shipyard | Logistics | LARGE station | 89.69/100 | 3691 | 140 | 45 | 28 | 0.90 | Designed for construction and repair base. Stationary installation. Hangar accepts Tiny vessels, not strikecraft wings. Support facilities do not accelerate construction. |
-| Antimatter Storage Station | Logistics | LARGE station | 90.00/100 | 3700 | 140 | 45 | 29 | 0.90 | Stationary bulk antimatter reservoir. Accept deliveries and supply friendly ships through Transfer Antimatter or receiver-issued Take Antimatter. |
+| Antimatter Storage Station | Logistics | LARGE station | 90.00/100 | 3700 | 140 | 45 | 29 | 0.90 | Stationary bulk antimatter reservoir. Accept deliveries and supply friendly ships through Give Antimatter or receiver-issued Take Antimatter. |
 | Fleet Tanker | Logistics | LARGE ship | 100.00/100 | 4000 | 150 | 50 | 30 | 1.00 | Fleet resupply ship with 775 AM storage. Inter-system travel. Harvest near stars or inside hydrogen nebulae. |
 | Sensor Outpost | Reconnaissance | SMALL station | 22.20/25 | 916 | 35 | 12 | 11 | 0.22 | Small stationary outpost with three-hex radar. The Medium Sensor Station covers six hexes. |
 | Scout | Reconnaissance | SMALL ship | 24.40/25 | 982 | 37 | 13 | 12 | 0.24 | Designed for exploration. Inter-system travel. |

@@ -176,7 +176,7 @@ def supported_commands(unit: Any) -> list[str]:
     if getattr(unit, "mining_component", None):
         commands.extend(["mine", "continuous_mine", "unload_resources"])
     if getattr(unit, "antimatter_component", None):
-        commands.extend(["transfer_antimatter", "take_antimatter"])
+        commands.extend(["give_antimatter", "take_antimatter"])
         if has_operational_engines(unit):
             commands.append("continuous_antimatter_transport")
     if getattr(unit, "harvester_component", None) and getattr(
@@ -374,7 +374,7 @@ def command_guidance(
             if candidate is not unit
             and compatible_strikecraft_bay_component(unit, candidate) is not None
         ],
-        "transfer_antimatter": [
+        "give_antimatter": [
             candidate.id
             for candidate in friendly_units
             if candidate is not unit
@@ -392,8 +392,8 @@ def command_guidance(
     }
     from antimatter_logistics import exchange_blocker, continuous_route_blocker
     fuel_targets = [candidate for candidate in friendly_units if exchange_blocker(unit, candidate, game.galaxy) is None
-                    and utility_approach_blocker(unit, candidate, game.galaxy, "transfer_antimatter") is None]
-    target_options['transfer_antimatter'] = [candidate.id for candidate in fuel_targets if unit.antimatter_component.current_amount > 0 and candidate.antimatter_component.current_amount < candidate.antimatter_component.max_capacity]
+                    and utility_approach_blocker(unit, candidate, game.galaxy, "give_antimatter") is None]
+    target_options['give_antimatter'] = [candidate.id for candidate in fuel_targets if unit.antimatter_component.current_amount > 0 and candidate.antimatter_component.current_amount < candidate.antimatter_component.max_capacity]
     target_options['take_antimatter'] = [candidate.id for candidate in fuel_targets if candidate.antimatter_component.current_amount > 0]
     if getattr(unit, 'antimatter_component', None) and unit.antimatter_component.current_amount >= unit.antimatter_component.max_capacity:
         target_options['take_antimatter'] = []
@@ -414,8 +414,8 @@ def command_guidance(
 
     # Empty/full tanks can still plan a pickup followed by delivery, or the
     # reverse. Keep conditional target choices separate from standalone ones.
-    for kind, prior in (('transfer_antimatter', 'take_antimatter'),
-                        ('take_antimatter', 'transfer_antimatter')):
+    for kind, prior in (('give_antimatter', 'take_antimatter'),
+                        ('take_antimatter', 'give_antimatter')):
         if kind in supported and kind not in legal and prior in legal:
             choices = [candidate.id for candidate in fuel_targets if (
                 candidate.antimatter_component.current_amount > 0 if kind == 'take_antimatter'
@@ -626,10 +626,10 @@ def command_guidance(
         if command_type in supported:
             legal.add(command_type)
 
-    if "transfer_antimatter" in legal:
+    if "give_antimatter" in legal:
         storage = getattr(unit, "antimatter_component", None)
         if storage is None or float(getattr(storage, "current_amount", 0)) <= 0:
-            legal.discard("transfer_antimatter")
+            legal.discard("give_antimatter")
 
     from .tactical import guidance
     guidance(game, player, unit, legal, options, visible_units, exact_bodies)

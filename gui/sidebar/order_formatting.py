@@ -22,7 +22,7 @@ DEPLOY_COLOR = "#00FFFF"                # Cyan for Deploy order type
 ABILITY_COLOR = "#FF69B4"               # Hot Pink for Use Ability order type
 MINE_COLOR = "#FFA500"                  # Orange for Mine
 UNLOAD_COLOR = "#00FFFF"                # Cyan for Unload Resources
-TRANSFER_ANTIMATTER_COLOR = "#7FFFD4"   # Aquamarine for Transfer Antimatter
+TRANSFER_ANTIMATTER_COLOR = "#7FFFD4"   # Aquamarine for Give Antimatter
 TRADE_COLOR = "#FFD700"                 # Gold for Trade orders
 
 
@@ -208,7 +208,7 @@ def format_order_state_data(state_data: dict, galaxy: typing.Any = None) -> list
         return [f"{unload_type_styled} {target_styled}"]
 
     elif order_type in ("TRANSFER_ANTIMATTER", "TAKE_ANTIMATTER"):
-        label = "Take Antimatter" if order_type == "TAKE_ANTIMATTER" else "Transfer Antimatter"
+        label = "Take Antimatter" if order_type == "TAKE_ANTIMATTER" else "Give Antimatter"
         return [f"<font color='{TRANSFER_ANTIMATTER_COLOR}'><b>{label}:</b></font> {_target_name_html(state_data)}"]
 
     elif order_type in ("CONTINUOUS_ANTIMATTER_TRANSPORT", "CONTINUOUS_RESUPPLY"):
