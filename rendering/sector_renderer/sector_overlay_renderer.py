@@ -3,9 +3,12 @@ import pygame
 from display_config import display_config_for
 import math
 from constants import SECTOR_CIRCLE_RADIUS_LOGICAL, HOVER_HIGHLIGHT_COLOR, MOVE_ORDER_LINE_COLOR, WORMHOLE_JUMP_ORDER_COLOR, RED, SECTOR_FOG_OF_WAR_COLOR, XP_SPEED_BONUS
+from domain.players import are_allies
+from environmental_effects import colony_sensor_radius, sensor_radius
 from rendering.drawing_utils import draw_selection_brackets, selection_color_for, station_icon_rect
 from geometry import distance, Position
 from domain.units import Unit
+from planetary_intel import is_colony_body
 from unit_orders.base import OrderType
 
 MAX_SAFE_CIRCLE_RADIUS_PX = 250_000
@@ -102,8 +105,16 @@ class SectorOverlayRenderer:
                           if self.game.players and 0 <= self.game.current_player_index < len(self.game.players)
                           else None)
 
+        def add_cutout(position, radius):
+            if not isinstance(radius, (int, float)) or radius <= 0:
+                return
+            pixel = self.parent.grid_renderer.coords_to_pixels(position)
+            sr_px = max(1, min(int(radius * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL), MAX_SAFE_CIRCLE_RADIUS_PX))
+            px, py = int(pixel.x), int(pixel.y)
+            if pygame.Rect(px - sr_px, py - sr_px, 2 * sr_px, 2 * sr_px).colliderect(fog_rect):
+                cutouts.append((px, py, sr_px))
+
         if current_player:
-            from domain.players import are_allies
             for unit in hex_obj.units:
                 is_friendly = are_allies(unit.owner, current_player)
                 is_infiltrated = False
@@ -121,19 +132,12 @@ class SectorOverlayRenderer:
                 if sensors is None or getattr(sensors, 'is_destroyed', False) or not getattr(sensors, 'has_short_range', False):
                     continue
 
-                from environmental_effects import sensor_radius
-                short_range = sensor_radius(unit)
-                if not isinstance(short_range, (int, float)) or short_range <= 0:
-                    continue
-
-                unit_px = self.parent.grid_renderer.coords_to_pixels(unit.position)
-                sr_px = max(1, min(int(short_range * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL), MAX_SAFE_CIRCLE_RADIUS_PX))
-                ucx, ucy = int(unit_px.x), int(unit_px.y)
-                unit_bbox = pygame.Rect(ucx - sr_px, ucy - sr_px, 2 * sr_px, 2 * sr_px)
-                if unit_bbox.colliderect(fog_rect):
-                    cutouts.append((ucx, ucy, sr_px))
+                add_cutout(unit.position, sensor_radius(unit))
 
             for body in getattr(hex_obj, 'celestial_bodies', []):
+                if is_colony_body(body) and are_allies(body.owner, current_player):
+                    add_cutout(body.position, colony_sensor_radius(body, self.game.galaxy))
+
                 is_infiltrated_body = False
                 if hasattr(body, 'infiltrating_agents') and isinstance(body.infiltrating_agents, list):
                     is_infiltrated_body = any(are_allies(ag.owner, current_player) for ag in body.infiltrating_agents)
@@ -143,12 +147,7 @@ class SectorOverlayRenderer:
                         is_infiltrated_body = True
 
                 if is_infiltrated_body:
-                    body_px = self.parent.grid_renderer.coords_to_pixels(body.position)
-                    sr_px = max(1, min(int(500.0 * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL), MAX_SAFE_CIRCLE_RADIUS_PX))
-                    bcx, bcy = int(body_px.x), int(body_px.y)
-                    body_bbox = pygame.Rect(bcx - sr_px, bcy - sr_px, 2 * sr_px, 2 * sr_px)
-                    if body_bbox.colliderect(fog_rect):
-                        cutouts.append((bcx, bcy, sr_px))
+                    add_cutout(body.position, 500.0)
 
         key = (
             screen_size,
@@ -208,7 +207,6 @@ class SectorOverlayRenderer:
 
         sensors = unit.sensors_component
         if sensors and sensors.has_short_range:
-            from environmental_effects import sensor_radius
             sr_px = int(sensor_radius(unit) * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
             self.parent.grid_renderer.draw_range_ring(cx, cy, sr_px, (0, 200, 255))
 

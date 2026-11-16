@@ -6,7 +6,7 @@ No modifier is persisted: turret base/reset state remains owned by the turret.
 from dataclasses import asdict, dataclass
 from decimal import Decimal
 
-from constants import HullSize
+from constants import COLONY_SENSOR_RADIUS, HullSize
 from celestial_descriptions import describe_body
 from geometry import distance
 
@@ -119,6 +119,13 @@ def local_short_range_multiplier(galaxy, system_name, hex_coord, position):
         ):
             multiplier = min(multiplier, float(effects.get('sensor_multiplier', 1)))
     return multiplier
+
+
+def colony_sensor_radius(body, galaxy):
+    """Return a colony's short-range sensor radius with local terrain applied."""
+    return COLONY_SENSOR_RADIUS * local_short_range_multiplier(
+        galaxy, body.in_system, body.in_hex, body.position,
+    )
 
 
 def sensor_radius(unit):

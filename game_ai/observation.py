@@ -399,12 +399,10 @@ def _body_view(
             data["planetary_defenses"] = defense_view(body)
             if owner is not None:
                 from constants import COLONY_SENSOR_RADIUS
+                from environmental_effects import colony_sensor_radius
                 data["population_growth_rate"] = body.population_growth_rate
                 data["base_sensor_radius"] = COLONY_SENSOR_RADIUS
-                from environmental_effects import local_short_range_multiplier
-                data["effective_sensor_radius"] = COLONY_SENSOR_RADIUS * local_short_range_multiplier(
-                    context.galaxy, body.in_system, body.in_hex, body.position,
-                )
+                data["effective_sensor_radius"] = colony_sensor_radius(body, context.galaxy)
     if include_system:
         data["system_name"] = str(body.in_system)
     for name in (

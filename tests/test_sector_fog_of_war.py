@@ -4,7 +4,12 @@ import pygame
 from unittest.mock import MagicMock, patch
 from geometry import Position
 from display_config import DEFAULT_DISPLAY_CONFIG
-from constants import SECTOR_CIRCLE_RADIUS_LOGICAL, SECTOR_FOG_OF_WAR_COLOR, DEFAULT_SENSOR_SHORT_RANGE
+from constants import (COLONY_SENSOR_RADIUS, DEFAULT_SENSOR_SHORT_RANGE, NebulaType, PlanetType,
+                       SECTOR_CIRCLE_RADIUS_LOGICAL, SECTOR_FOG_OF_WAR_COLOR)
+from domain.celestials import Moon, Nebula, Planet
+from domain.players import Player
+from tests.support.campaigns import campaign, ship
+from visibility import VisibilityService
 SECTOR_CIRCLE_CENTER_IN_PX = DEFAULT_DISPLAY_CONFIG.center
 
 # Use a small test surface.  The sector centre (SECTOR_CIRCLE_CENTER_IN_PX) is
@@ -258,5 +263,51 @@ class TestDrawFogOfWar:
         area = kwargs.get('area')
         assert area is not None
         assert area.width <= SCREEN_W and area.height <= SCREEN_H
+
+@pytest.mark.parametrize('allied', [False, True])
+@pytest.mark.parametrize('body_type, terrain, radius', [
+    (Planet, None, COLONY_SENSOR_RADIUS),
+    (Moon, NebulaType.DENSE, COLONY_SENSOR_RADIUS / 3),
+])
+def test_colony_fog_matches_detection_and_updates_on_capture(allied, body_type, terrain, radius):
+    game = campaign()
+    game.screen = _make_screen()
+    game.sector_zoom = TEST_DYNAMIC_RADIUS / game.display_config.sector_radius
+    game.sector_pan_offset = Position(_PAN_X, _PAN_Y)
+    viewer, enemy = game.players
+    system = game.galaxy.systems['Sol']
+    sector = system.hexes[(0, 0)]
+    body = Planet((0, 0), 'Sol', PlanetType.TERRAN) if body_type is Planet else Moon((0, 0), 'Sol')
+    body.owner, body.population = viewer, 50
+    if allied:
+        body.owner = Player('Ally', (0, 100, 200), team_id=viewer.team_id)
+        game.players.append(body.owner)
+    body.position = Position(-500, 300)
+    system.add_celestial_body(body)
+    if terrain:
+        system.add_celestial_body(Nebula((0, 0), 'Sol', terrain))
+
+    inside, outside = ship(game, 'Inside', owner=1), ship(game, 'Outside', owner=1)
+    inside.position = Position(body.position.x + radius * .8, body.position.y)
+    outside.position = Position(body.position.x + radius * 1.2, body.position.y)
+    renderer = _make_renderer(game)
+
+    def fog_alpha(unit):
+        pixel = renderer.grid_renderer.coords_to_pixels(unit.position)
+        return renderer._fog_of_war_surface.get_at((int(pixel.x), int(pixel.y))).a
+
+    snapshot = VisibilityService.compute(game.galaxy, viewer, record_intel=False)
+    renderer.overlay_renderer.draw_fog_of_war(sector, TEST_DYNAMIC_RADIUS)
+    assert inside.id in snapshot.visible_enemy_unit_ids
+    assert outside.id not in snapshot.visible_enemy_unit_ids
+    assert fog_alpha(inside) == 0
+    assert fog_alpha(outside) == SECTOR_FOG_OF_WAR_COLOR[3]
+
+    body.owner = enemy
+    snapshot = VisibilityService.compute(game.galaxy, viewer, record_intel=False)
+    renderer.overlay_renderer.draw_fog_of_war(sector, TEST_DYNAMIC_RADIUS)
+    assert inside.id not in snapshot.visible_enemy_unit_ids
+    assert fog_alpha(inside) == SECTOR_FOG_OF_WAR_COLOR[3]
+
 
 pytestmark = pytest.mark.usefixtures("pygame_context")
