@@ -176,12 +176,6 @@ class UnitCatalogWindow:
         html = details_html(entry) if entry else 'Select a design to inspect its equipment.'
         from location_validation import format_location
         html = f"<b>Construction site:</b> {escape(format_location(self.system_name, self.hex_coord, self.position))}<br><br>" + html
-        if html != self._details_html:
-            scroll = self.details.scroll_bar.start_percentage if self.details.scroll_bar else 0
-            self.details.set_text(html)
-            if previous_key == self.selected_key and self.details.scroll_bar:
-                self.details.scroll_bar.set_scroll_from_start_percentage(scroll)
-            self._details_html = html
         # SelectionList has no public selection setter; restore its item state after a rebuild.
         for item in self.list.item_list:
             selected = self.entries[item['text']]['template_name'] == self.selected_key
@@ -205,8 +199,20 @@ class UnitCatalogWindow:
                     self.queue_button.enable()
                 if affordable and not titan_build_block:
                     self.build_button.enable()
-            self.build_button.set_tooltip('Titan limit: one surviving Titan or reserved acquisition.' if titan_build_block else f'Requires {cost.describe()}. Missing: {cost.shortfall(build_budget).describe()}.')
-            self.queue_button.set_tooltip('Titan limit: one surviving Titan or reserved acquisition.' if titan_queue_block else f'Requires {cost.describe()}. Missing after reservations: {cost.shortfall(queue_budget).describe()}.')
+            if titan_build_block:
+                html += "<br><b>Build unavailable:</b> Titan limit reached."
+            elif not affordable:
+                html += f"<br><b>Build requires:</b> {cost.shortfall(build_budget).describe()} more."
+            if titan_queue_block:
+                html += "<br><b>Queue unavailable:</b> Titan limit reached."
+            elif not cost.affordable(queue_budget):
+                html += f"<br><b>Queue requires:</b> {cost.shortfall(queue_budget).describe()} more after reservations."
+        if html != self._details_html:
+            scroll = self.details.scroll_bar.start_percentage if self.details.scroll_bar else 0
+            self.details.set_text(html)
+            if previous_key == self.selected_key and self.details.scroll_bar:
+                self.details.scroll_bar.set_scroll_from_start_percentage(scroll)
+            self._details_html = html
 
     def process_event(self, event):
         self.update()

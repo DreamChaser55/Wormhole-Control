@@ -494,8 +494,8 @@ show equipment, effective weapon ranges, fuel, abilities, costs and upkeep.
 orders** appends one build per selected builder and also closes the catalogue. These
 buttons work independently of Shift. Queued builds reserve resources and pay when
 they start; idle builders start immediately. Multiple builders show their combined
-credit, metal and crystal price. Affordability and shortage tooltips account for
-existing reservations and refunds from work replaced by Build.
+credit, metal and crystal price. The details panel shows shortages after existing
+reservations and refunds from work replaced by Build.
 
 Wings are produced in Strikecraft Bays aboard mobile carriers and strikecraft
 stations and are not listed in the Constructor catalogue. Each bay slot has its

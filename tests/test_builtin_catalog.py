@@ -581,9 +581,12 @@ def test_catalog_refreshes_mineral_shortages_and_group_affordability(constructio
     price = template_cost(UNIT_TEMPLATES['SHIPYARD_MK1'])
     window.show_entry(describe_template('SHIPYARD_MK1', UNIT_TEMPLATES['SHIPYARD_MK1']))
     assert window.build_button.is_enabled and window.queue_button.is_enabled
+    assert not window.build_button.tool_tip_text and not window.queue_button.tool_tip_text
     setattr(game.players[0], resource, getattr(price, resource) * len(builders) - .25)
     window.update()
     assert not window.build_button.is_enabled and not window.queue_button.is_enabled
+    assert "Build requires:" in window.details.html_text
+    assert "Queue requires:" in window.details.html_text
     before = [unit.commander_component.current_order for unit in builders]
     press_catalog(window, window.build_button)
     assert not events
