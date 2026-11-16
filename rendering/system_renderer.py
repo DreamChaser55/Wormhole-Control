@@ -255,7 +255,11 @@ class SystemViewRenderer:
                 pygame.draw.circle(self.screen, mf_color, (int(hex_center_pixel.x), int(hex_center_pixel.y)), r, 1)
 
             # Draw units
-            visible_units = [u for u in hex_obj.units if self.game.is_unit_visible(u)]
+            visible_units = sorted(
+                (unit for unit in hex_obj.units if self.game.is_unit_visible(unit)),
+                key=lambda unit: HULL_BASE_ICON_SCALES[unit.hull_size],
+                reverse=True,
+            )
             has_hidden_enemy = any(not self.game.is_unit_visible(u) for u in hex_obj.units)
             has_presence = self.game.hex_has_presence(self.game.current_system_name, hex_coord)
 

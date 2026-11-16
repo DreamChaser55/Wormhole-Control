@@ -1,7 +1,7 @@
 from display_config import display_config_for
 import pygame
 from collections import OrderedDict
-from constants import SECTOR_CIRCLE_RADIUS_LOGICAL, WORMHOLE_RADIUS, FOG_PRESENCE_COLOR, MOVE_ORDER_LINE_COLOR, WORMHOLE_JUMP_ORDER_COLOR, XP_SPEED_BONUS
+from constants import HULL_BASE_ICON_SCALES, SECTOR_CIRCLE_RADIUS_LOGICAL, WORMHOLE_RADIUS, FOG_PRESENCE_COLOR, MOVE_ORDER_LINE_COLOR, WORMHOLE_JUMP_ORDER_COLOR, XP_SPEED_BONUS
 
 from domain.units import Unit
 from unit_orders.base import OrderType
@@ -150,7 +150,11 @@ class SectorViewRenderer:
             return
 
         bodies_to_draw = hex_obj.celestial_bodies
-        units_to_draw = [u for u in hex_obj.units if self.game.is_unit_visible(u)]
+        units_to_draw = sorted(
+            (unit for unit in hex_obj.units if self.game.is_unit_visible(unit)),
+            key=lambda unit: HULL_BASE_ICON_SCALES[unit.hull_size],
+            reverse=True,
+        )
         minefields_to_draw = [mf for mf in getattr(hex_obj, 'minefields', []) if self.game.is_minefield_visible(mf)]
         
         if self.game.hex_has_presence(self.game.current_system_name, self.game.current_sector_coord):
