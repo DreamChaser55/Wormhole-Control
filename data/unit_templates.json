@@ -4818,7 +4818,7 @@
     "roles": [
       "income and trade destination"
     ],
-    "description": "Designed for income and trade destination. Stationary installation. Requires a friendly or allied colony and an available colony support slot.",
+    "description": "Adds 12 credits per owner turn when supported by a populated colony you own in the same sector. An active habitat is also a trade destination.",
     "has_troop_transport_component": false,
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,

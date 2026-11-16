@@ -69,7 +69,12 @@ Construct template_names is a single-builder replacement shortlist, not a guaran
 Construct prices gives replacement_shortfall and queued_shortfall; account for every selected builder and earlier commands.
 If any resource is insufficient, defer new builds or submit fewer.
 Mine metal asteroids or comets and unload at the matching refinery; mineral colonies also supply
-passive income. Raw cargo is not spendable until refined. No credits-for-minerals substitution exists.
+passive income. Build Civilian Habitats in sectors with your own populated colonies to
+increase recurring credit income and open trade destinations. Read the design's
+support.civilian_habitat_component.civilian_habitat_bonus for its income per owner turn.
+Each populated colony supports max(1, floor(population / 25)) habitats; count existing
+and pending habitats before adding more. Unsupported habitats generate no income.
+Raw cargo is not spendable until refined. No credits-for-minerals substitution exists.
 Fortification upgrades also require minerals; repairs and wing replenishment remain credit-only.
 Construct and set_wing_production support independent nullable turret_type_override
 (mass_driver, beam, missile) and defense_type_override (armor, shields, point_defense).

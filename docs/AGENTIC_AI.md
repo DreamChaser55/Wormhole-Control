@@ -480,7 +480,8 @@ because configuring production is free. Planetary upgrade options include
 `resource_shortfall` against the available budget. Mineral prices derive uniformly
 from hull capacity and equipment usage, including custom human designs; turret/defense overrides preserve them.
 Use mining, matching refinery deliveries and passive-yield colonies to replenish
-materials. Raw cargo cannot be spent and credits cannot substitute for minerals.
+materials. Planners use the habitat design's income bonus and build habitats in
+sectors with their own populated colonies and spare support capacity. Raw cargo cannot be spent and credits cannot substitute for minerals.
 
 Replacement or cancellation releases the affected pending reservations, not effects
 already completed synchronously (such as a colonist load). Construction/refit jobs
