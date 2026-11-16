@@ -1,5 +1,4 @@
 FEEDBACK FROM PLAYTESTING:
-- Make the number of taken colonists in the load colonists function configurable. Always reserve some minimal number of colonists on the source world, so that future population growth is not extremely slow.
 - Make construction and repair consume antimatter.
 - Report in the turn summary when owned unit finishes all orders and becomes idle (only once, no further reports if it stays idle).
 - Show income and upkeep breakdown in the popup and in the info given to AI. Individual colonies with income and units with upkeep should be listed.

@@ -399,10 +399,12 @@ def build_sector_context_menu_options(game, clicked_object, clicked_sector_coord
                             for kind, info in command_options(game, current_player, unit, [target_object]).items():
                                 if info["targets"]:
                                     options.append(({"recruit_troops": "Recruit Troops...", "invade_planet": "Invade Colony...", "bombard_planet": "Bombard Defenses"}[kind], kind))
-                        if (unit.colony_component and ownership.relation == 'self'
-                                and (ownership.status == 'last_known' or target_object.population > 0)
+                        from unit_components.colony import exportable_population
+                        if (unit.colony_component and not unit.colony_component.is_destroyed
+                                and ownership.relation == 'self'
+                                and (ownership.status == 'last_known' or exportable_population(target_object) > 0)
                                 and unit.colony_component.population_cargo < unit.colony_component.max_cargo):
-                            options.append(("Load Colonists", "load_colonists"))
+                            options.append(("Load Colonists...", "load_colonists"))
             if isinstance(target_object, (Planet, Moon, ColonizableAsteroid)):
                 ownership = ownership_view(game, current_player, target_object)
                 if ownership.relation == 'enemy':

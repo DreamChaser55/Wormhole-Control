@@ -359,11 +359,13 @@ class _BatchProjection:
                 body.id, float(body.population) - self._settled_population.get(body.id, 0)
             )
             required = amount * len(units)
-            if required > available:
+            from unit_components.colony import exportable_population, loading_reserve
+            exportable = exportable_population(body, available)
+            if required > exportable:
                 raise _Rejected(
                     "insufficient_population",
-                    f"Body {body.id} has only {available:g} colonists available; "
-                    f"this command requires {required:g}.",
+                    f"Body {body.id} can supply {exportable:g} colonists after retaining "
+                    f"{loading_reserve(body):g} population; this command requires {required:g}.",
                 )
         for unit in units:
             colony = unit.colony_component

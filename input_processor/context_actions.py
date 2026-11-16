@@ -8,7 +8,7 @@ from domain.units import Unit
 from domain.celestials import Planet, Moon, ColonizableAsteroid, MetalAsteroid, Comet, Wormhole, AsteroidField
 from events import (
     CancelOrdersEvent, IssueMoveOrderEvent, IssuePatrolOrderEvent, JumpInterhexEvent, JumpWormholeEvent,
-    AttackUnitEvent, ColonizeEvent, LoadColonistsEvent, ConstructEvent, RepairUnitEvent,
+    AttackUnitEvent, ColonizeEvent, ConstructEvent, RepairUnitEvent,
     MineEvent, UnloadResourcesEvent, DockEvent, UseAbilityEvent, IssueProtectOrderEvent,
     ContinuousMineEvent, LayMinefieldEvent,
     RefitUnitEvent, TradeEvent, ContinuousTradeEvent,
@@ -68,7 +68,7 @@ def handle_context_menu_action(game, action_id: str, target: typing.Any, *, loca
         if isinstance(target, Wormhole):
             from tactical_ui import issue
             issue(game, {'type': 'stabilize_wormhole', 'unit_ids': [selected_units[0].id], 'target_id': target.id, 'queue': shift_pressed})
-    elif extracted_action_id in ('recruit_troops', 'invade_planet', 'bombard_planet'):
+    elif extracted_action_id in ('load_colonists', 'recruit_troops', 'invade_planet', 'bombard_planet'):
         if len(selected_units) != 1 or not isinstance(target, (Planet, Moon, ColonizableAsteroid)):
             return
         if extracted_action_id == 'bombard_planet':
@@ -212,16 +212,6 @@ def handle_context_menu_action(game, action_id: str, target: typing.Any, *, loca
                 game.event_bus.publish(ColonizeEvent(
                     selected_units,
                     target,
-                    shift_pressed
-                ))
-
-        elif extracted_action_id == "load_colonists":
-            if isinstance(target, (Planet, Moon, ColonizableAsteroid)):
-                amount_to_load = 25
-                game.event_bus.publish(LoadColonistsEvent(
-                    selected_units,
-                    target,
-                    amount_to_load,
                     shift_pressed
                 ))
 

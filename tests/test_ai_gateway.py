@@ -312,7 +312,7 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
         )
 
     def test_colonist_load_can_feed_a_queued_colonize_command(self):
-        player, units, source, target, game = self._colony_fixture()
+        player, units, source, target, game = self._colony_fixture(population=70)
         batch = CommandBatch(
             commands=(
                 Command(
@@ -358,7 +358,7 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
         self.assertTrue(result.accepted)
 
     def test_cancellation_releases_projected_population_reservation(self):
-        player, units, source, _target, game = self._colony_fixture(unit_count=2)
+        player, units, source, _target, game = self._colony_fixture(population=70, unit_count=2)
         batch = CommandBatch(
             commands=(
                 Command(
@@ -383,7 +383,7 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
         self.assertEqual(result.applied_count, 3)
 
     def test_colonize_without_cargo_or_preserved_load_is_rejected_atomically(self):
-        player, units, source, target, game = self._colony_fixture()
+        player, units, source, target, game = self._colony_fixture(population=70)
         batch = CommandBatch(
             commands=(
                 Command(

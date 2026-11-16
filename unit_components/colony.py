@@ -1,4 +1,5 @@
 import logging
+import math
 from game_logging import format_unit_for_log
 from typing import TYPE_CHECKING
 
@@ -10,6 +11,15 @@ if TYPE_CHECKING:
     from game import Game
 
 logger = logging.getLogger(__name__)
+
+def loading_reserve(body) -> int:
+    return max(5, math.ceil(body.max_population * 0.20))
+
+
+def exportable_population(body, population=None) -> float:
+    available = body.population if population is None else population
+    return max(0.0, available - loading_reserve(body))
+
 
 class ColonyComponent(UnitComponent):
     """A component that allows a unit to transport population and colonize planets."""
@@ -61,8 +71,8 @@ class ColonyComponent(UnitComponent):
         if planet.owner != self.unit.owner:
             logger.debug(f"Error: Cannot load population from unowned planet {planet.name}.")
             return False
-        if planet.population < amount:
-            logger.debug(f"Error: Not enough population on {planet.name} to load {amount}.")
+        if not math.isfinite(amount) or amount <= 0 or amount > exportable_population(planet):
+            logger.debug(f"Error: {planet.name} cannot load {amount} colonists and retain its population reserve.")
             return False
         if self.population_cargo + amount > self.max_cargo:
             logger.debug(f"Error: Not enough cargo space to load {amount} population.")

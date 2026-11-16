@@ -381,7 +381,7 @@ def colony_opening_gateway_case() -> GatewayEvaluationCase:
 
 
 def colony_load_forecast_case() -> EvaluationCase:
-    """Opt-in semantic evaluation: actual 25.25 population versus hypothetical 0.25."""
+    """Opt-in semantic evaluation: actual 25.25 population versus hypothetical 12."""
     from copy import deepcopy
     from .colony_planning import colonist_load_advice
     from .observation import OBSERVATION_SCHEMA_VERSION
@@ -394,7 +394,7 @@ def colony_load_forecast_case() -> EvaluationCase:
     actor = observation['units'][0]
     actor['capability_details']['colony']['population_cargo'] = 25
     actor['command_options']['load_colonists']['targets'] = [{
-        'target_id': source['id'], 'maximum_amount': 25.25,
+        'target_id': source['id'], 'maximum_amount': 13.25,
         'population_advice': colonist_load_advice(
             SimpleNamespace(population=25.25, max_population=60, population_growth_rate=.01), 75),
     }]
@@ -406,8 +406,9 @@ def colony_load_forecast_case() -> EvaluationCase:
 
     def check_memory(plan):
         text = json.dumps(plan.memory_patch, ensure_ascii=False)
-        if '25.25' not in text or '0.25' in text:
-            return ('Memory must record actual current population 25.25, without claiming the hypothetical 0.25 as an outcome.',)
+        import re
+        if '25.25' not in text or re.search(r"(?<![.\d])12(?:\.0+)?(?![.\d])", text):
+            return ('Memory must retain actual current population 25.25. The hypothetical reserve of 12 is not a past outcome.',)
         return ()
 
     request = PlanningRequest('evaluation', 'load-forecast-agent', 'AI', 2, observation, {

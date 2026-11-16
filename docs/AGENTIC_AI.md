@@ -242,9 +242,10 @@ loaded amounts plus actual retained population at execution, without target refe
 Later growth may increase current population. Factual memory must use those execution
 facts and observations, correcting conflicting claims. Planning favors a meaningful
 seed on new colonies and retaining half a mature donor, comparing lost growth/income
-with expedition value. Evacuation and deliberate rapid expansion remain legal
-exceptions. Historical colonies omit these forecasts until contact returns; this
-guidance changes neither population validation nor engine growth rules.
+with expedition value. A legal load leaves at least 5 population or 20% of
+capacity rounded up, whichever is larger. Options include the reserve as
+`minimum_retained_population`. Historical colonies omit these forecasts until
+contact returns.
 
 ### Planning context and measurement
 
@@ -730,7 +731,7 @@ same loop. Use one outer `asyncio.run()` for that complete evaluation lifecycle.
 `compare_reasoning_efforts` runs the same fixed cases at Low, Medium, and High
 without changing production settings.
 `colony_load_forecast_case` contrasts a completed 25-colonist load, actual current
-population 25.25 and a hypothetical next-load residue of 0.25. Its score checks
+population 25.25 and a hypothetical next-load reserve of 12. Its score checks
 memory content as well as commands; omitted factual memory or a false residue
 claim fails. It accepts fake or explicitly opted-in live providers. Offline fixture
 checks do not establish live-model reliability.

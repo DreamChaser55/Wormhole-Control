@@ -266,7 +266,7 @@ def test_luna_coordinator_and_codex_control_use_identical_gateway_effects():
                 "commitments": None,
                 "beliefs": None,
                 "lessons": None,
-                "misc": None,
+                "important_events": None,                "misc": None,
             },
             "end_turn": True,
         },

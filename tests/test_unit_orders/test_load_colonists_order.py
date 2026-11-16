@@ -17,6 +17,7 @@ def test_load_colonists_order_in_range():
     planet.owner = unit.owner
     planet.id = 999
     planet.name = "Terra"
+    planet.population = 100
     planet.in_system = "Sol"
     planet.in_hex = (0, 0)
     planet.position = Position(0, 0)
@@ -48,6 +49,7 @@ def test_load_colonists_order_same_hex_out_of_range():
     planet.owner = unit.owner
     planet.id = 999
     planet.name = "Terra"
+    planet.population = 100
     planet.in_system = "Sol"
     planet.in_hex = (0, 0)
     planet.position = Position(0, 0)
@@ -80,6 +82,7 @@ def test_load_colonists_order_different_sector():
     planet.owner = unit.owner
     planet.id = 999
     planet.name = "Terra"
+    planet.population = 100
     planet.in_system = "Sol"
     planet.in_hex = (0, 0)
     planet.position = Position(0, 0)

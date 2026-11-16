@@ -66,11 +66,20 @@ def calculate_player_income(galaxy: typing.Any, player: Player) -> float:
     return calculate_income_breakdown(galaxy, player).total_credits
 
 
+def _bodies(system):
+    get_all = getattr(system, 'get_all_celestial_bodies', None)
+    if get_all is not None:
+        yield from (body for _, body in get_all())
+    else:
+        for sector in system.hexes.values():
+            yield from getattr(sector, 'celestial_bodies', ())
+
+
 def total_population(galaxy: typing.Any, player: Player) -> float:
     return sum(
         float(getattr(body, "population", 0))
         for system in getattr(galaxy, "systems", {}).values()
-        for _, body in system.get_all_celestial_bodies()
+        for body in _bodies(system)
         if getattr(body, "owner", None) is player
     )
 

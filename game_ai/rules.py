@@ -441,11 +441,12 @@ def command_guidance(
             if colony_target_blocker(game, player, body, 'colonize', snapshot) is None
             and utility_approach_blocker(unit, body, game.galaxy, "colonize") is None
         ]
+        from unit_components.colony import exportable_population
         sources = [
             {
                 "target_id": body.id,
                 "maximum_amount": min(
-                    float(body.population) if colony_views[body.id].status == 'current' else remaining, remaining
+                    exportable_population(body) if colony_views[body.id].status == 'current' else remaining, remaining
                 ),
                 **({'preview_note': 'Cargo limit only; colony population is checked when contact returns.'}
                    if colony_views[body.id].status == 'last_known' else
@@ -453,7 +454,7 @@ def command_guidance(
             }
             for body in known_bodies
             if colony_views[body.id].relation == 'self'
-            and (colony_views[body.id].status == 'last_known' or body.population > 0)
+            and (colony_views[body.id].status == 'last_known' or exportable_population(body) > 0)
             and remaining > 0
             and utility_approach_blocker(unit, body, game.galaxy, "load_colonists") is None
         ]

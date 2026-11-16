@@ -386,7 +386,7 @@ def test_automated_controllers_accept_historical_orders(controller, kind, unknow
         game.gui = None
         game.end_turn = lambda: None
         plan = TurnPlan.from_dict(dict(plan=[], commands=[cmd.to_dict()],
-            memory_patch={key: None for key in ('strategy', 'objectives', 'commitments', 'beliefs', 'lessons', 'misc')},
+            memory_patch={key: None for key in ('strategy', 'objectives', 'commitments', 'beliefs', 'important_events', 'lessons', 'misc')},
             end_turn=True), strict=True)
         coordinator = AgentTurnCoordinator(game, provider=FakePlanningProvider([]))
         try:

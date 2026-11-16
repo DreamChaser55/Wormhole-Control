@@ -179,6 +179,10 @@ class LoadColonistsOrder(ColonyContactOrder):
         from planetary_intel import current_ownership
         if not current_ownership(galaxy_ref, self.unit.owner, target):
             return
+        from unit_components.colony import exportable_population
+        if amount > exportable_population(target):
+            self.fail("insufficient_population")
+            return
         cargo_before = self.unit.colony_component.population_cargo
         success = self.unit.colony_component.load_population(target, amount)
 

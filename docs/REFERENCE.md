@@ -328,7 +328,10 @@ refueling automatically chosen owned ships or one manually chosen owned/allied d
 different sectors; payout scales with distance. A Trade Module requires Engines.
 
 Colony ships settle habitable planets, moons and colonizable asteroids, or load
-population from friendly/allied colonies. See [planetary traits](#planetary-traits)
+population from your colonies. Choose **Load Colonists…** and enter an amount,
+then issue or queue the order. Exports leave at least 5 population or 20% of the
+world's capacity rounded up, whichever is larger. The ship checks the reserve
+and cargo space again on arrival. See [planetary traits](#planetary-traits)
 for growth and passive yields. Each populated colony supports `max(1, floor(population / 25))`
 modules of each kind: one at 25 population, two at 50. Civilian Habitats use their
 owner's colony capacity and provide 12 credits/turn each while active. Colonies

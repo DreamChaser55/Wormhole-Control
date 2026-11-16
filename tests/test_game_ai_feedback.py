@@ -146,7 +146,7 @@ class TestFeedbackContracts(unittest.TestCase):
                 "commitments": [],
                 "beliefs": [],
                 "lessons": [],
-                "misc": [],
+                "important_events": None,                "misc": [],
             },
             "end_turn": True,
         }

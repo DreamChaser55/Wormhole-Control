@@ -58,7 +58,7 @@ def test_forecast_evaluation_scores_memory_facts_not_just_legal_commands():
     from game_ai.evaluation import colony_load_forecast_case, score_plan
     case = colony_load_forecast_case()
     correct = TurnPlan((), CommandBatch(), {'beliefs': ['Loaded 25 colonists, retained 25 at execution; source is now 25.25 after growth.']})
-    false = TurnPlan((), CommandBatch(), {'lessons': ['Loading the maximum left only 0.25 population and a long recovery.']})
+    false = TurnPlan((), CommandBatch(), {'lessons': ['Loading the maximum left only 12 population and a long recovery.']})
     assert score_plan(case, correct).passed
     assert not score_plan(case, false).passed
     assert not score_plan(case, TurnPlan((), CommandBatch(), {})).passed
@@ -78,7 +78,11 @@ def test_current_source_exposes_growth_tradeoff_without_mutation(population, rec
     before = deepcopy(unit.owner.ai_memory)
     observation = build_observation(game, unit.owner)
     actor = next(actor for actor in observation['units'] if actor['id'] == unit.id)
-    target = next(t for t in actor['command_options']['load_colonists']['targets'] if t['target_id'] == source.id)
+    targets = actor['command_options']['load_colonists']['targets']
+    if population < 10:
+        assert targets == []
+        return
+    target = next(t for t in targets if t['target_id'] == source.id)
     advice = target['population_advice']
     assert advice['recommended_amount'] == recommended
     assert advice['recommended_retained_population'] == retained
@@ -87,9 +91,8 @@ def test_current_source_exposes_growth_tradeoff_without_mutation(population, rec
     assert source.population == population and unit.owner.ai_memory == before
     if population == 10.1:
         forecast = advice['hypothetical_next_maximum_load']
-        assert forecast['population_after_load'] == 0.1
-        assert forecast['hypothetical_load_amount'] == 10
-        assert forecast['recovery_rounds_to_current_population'] > 400
+        assert forecast['population_after_load'] == 10
+        assert forecast['hypothetical_load_amount'] == pytest.approx(0.1)
         result = issue(game, unit.owner, Command('load_colonists', (unit.id,), target_id=source.id, amount=10))
-        assert result.accepted  # Evacuation/expansion remains a legal strategic exception.
-        assert source.population == pytest.approx(0.1)
+        assert not result.accepted and result.errors[0].code == 'insufficient_population'
+        assert source.population == pytest.approx(10.1)
