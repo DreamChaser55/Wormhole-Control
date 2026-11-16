@@ -101,8 +101,11 @@ def test_star_geometry_and_hazard_scope_are_independent():
     assert 'effect_radius' not in black_hole
     hazard = black_hole['environmental_effects']['hazards'][0]
     assert (hazard['radius'], hazard['amount'], hazard['scope']) == (750, 15, 'radius')
-    pulsar = _body_view(Star('Sol', StarType.PULSAR), None)['environmental_effects']['hazards'][0]
-    assert pulsar['scope'] == 'sector' and pulsar['radius'] is None and pulsar['amount'] == .05
+    effects = _body_view(Star('Sol', StarType.PULSAR), None)['environmental_effects']
+    pulsar = effects['hazards'][0]
+    assert (pulsar['scope'], pulsar['radius'], pulsar['target'], pulsar['amount']) == ('sector', None, 'hull', 4)
+    assert effects['sensor_multiplier'] == pytest.approx(1 / 3)
+    assert effects['long_range_concealment']
     for kind in (StarType.BLUE_GIANT, StarType.RED_GIANT):
         body = Star('Sol', kind)
         assert 'Collision radius: 900 units (solid surface).' in describe_body(body).rules

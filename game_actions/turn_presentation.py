@@ -4,7 +4,7 @@ from typing import Any
 from player_controller import PlayerController
 
 
-def defeat_notice(game):
+def defeat_notice(game: Any) -> tuple[str, ...]:
     """Return the public names in the current handoff notice."""
     import pygame
 

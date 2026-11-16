@@ -18,6 +18,7 @@ from unit_orders.base import Order, OrderStatus, OrderType
 from unit_orders.patrol import PatrolOrder
 from galaxy import StarSystem
 from game_control_protocol import ControlService
+from tests.support.ai import EMPTY_PATCH
 from tests.support.combat import create_combat_ship
 from tests.support.commands import world, issue, waypoint
 
@@ -400,7 +401,7 @@ def test_append_while_returning_preserves_current_return_leg():
 def test_completed_colonist_load_is_not_refunded_by_stop():
     from domain.celestials import Planet
     from constants import PlanetType
-    from unit_components.colony import ColonyComponent
+    from unit_components.colony import ColonyComponent, loading_reserve
     game, player, _, unit = world()
     other = create_combat_ship(game.galaxy, player, "Other", (0, 0))
     for ship in (unit, other):
@@ -409,15 +410,17 @@ def test_completed_colonist_load_is_not_refunded_by_stop():
     body.position = Position(0, 0)
     body.owner, body.population = player, 50
     game.galaxy.systems["Sol"].add_celestial_body(body)
-    batch = (Command("load_colonists", (unit.id,), target_id=body.id, amount=50),
+    reserve = loading_reserve(body)
+    amount = body.population - reserve
+    batch = (Command("load_colonists", (unit.id,), target_id=body.id, amount=amount),
              Command("cancel_orders", (unit.id,)),
-             Command("load_colonists", (other.id,), target_id=body.id, amount=50))
+             Command("load_colonists", (other.id,), target_id=body.id, amount=amount))
     result = issue(game, player, *batch)
     assert not result.accepted and result.errors[-1].code == "insufficient_population"
     assert body.population == 50 and unit.colony_component.population_cargo == 0
     assert not player.order_history
     assert issue(game, player, *batch[:2]).accepted
-    assert body.population == 0 and unit.colony_component.population_cargo == 50
+    assert body.population == reserve and unit.colony_component.population_cargo == amount
     assert player.order_history[-1]["outcome"] == "completed"
 
 
@@ -434,7 +437,7 @@ def test_cancelling_queued_colonist_prerequisite_rejects_later_colonization():
     game.galaxy.systems["Sol"].add_celestial_body(source)
     game.galaxy.systems["Sol"].add_celestial_body(target)
     unit.commander_component.add_order(Order(unit, OrderType.TOGGLE_INHIBITOR))
-    load = LoadColonistsOrder(unit, {"target_id": source.id, "amount": 50})
+    load = LoadColonistsOrder(unit, {"target_id": source.id, "amount": 30})
     unit.commander_component.add_order(load)
     result = issue(game, player, Command("cancel_order", (unit.id,), order_id=load.public_id),
                    Command("colonize", (unit.id,), target_id=target.id, queue=True))
@@ -452,7 +455,7 @@ def test_offline_order_evaluations_and_rejected_plan_recovery():
     report = asyncio.run(run_evaluation(FakePlanningProvider(plans), order_control_cases()))
     assert report.pass_rate == 1.0
     rejected = TurnPlan((), CommandBatch((Command("colonize", (101,), target_id=202),)), {})
-    repaired = TurnPlan((), CommandBatch((Command("load_colonists", (101,), target_id=201, amount=50),
+    repaired = TurnPlan((), CommandBatch((Command("load_colonists", (101,), target_id=201, amount=30),
                                          Command("colonize", (101,), target_id=202, queue=True))), {})
     provider = FakePlanningProvider([rejected, repaired])
     report = asyncio.run(compare_gateway_reasoning_efforts(provider, [colony_opening_gateway_case()], efforts=("medium",)))["medium"]
@@ -469,8 +472,7 @@ def test_luna_and_socket_patrols_have_identical_engine_effects():
     game, player, _, unit = world()
     raw = {"type": "patrol", "unit_ids": [unit.id], "waypoints": [waypoint(), waypoint(700)]}
     command = Command.from_dict(raw)
-    patch_fields = {name: None for name in ("strategy", "objectives", "commitments", "beliefs", "lessons", "misc")}
-    output = TurnPlan((), CommandBatch((command,)), patch_fields).to_dict()
+    output = TurnPlan((), CommandBatch((command,)), EMPTY_PATCH).to_dict()
     response = SimpleNamespace(output_text=json.dumps(output), id="fake", usage=None)
     from unittest.mock import AsyncMock
     provider = OpenAIResponsesProvider(client=SimpleNamespace(responses=SimpleNamespace(create=AsyncMock(return_value=response))))

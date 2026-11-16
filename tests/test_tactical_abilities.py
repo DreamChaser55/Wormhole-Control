@@ -461,6 +461,8 @@ def test_owner_start_deadlines_do_not_depend_on_number_of_players(players_count)
     from turn_processor import TurnProcessor
     game = campaign()
     game.players.extend(Player(str(i), (50, 50, 50)) for i in range(players_count-2))
+    for i in range(1, players_count):
+        ship(game, owner=i)
     caster, target = equipped(game), ship(game, 'target')
     target.position = Position(250, 0)
     assert activate(caster, 'guardian_link', game.galaxy, target.id)

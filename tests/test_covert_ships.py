@@ -10,6 +10,7 @@ import pytest
 from domain.players import Player
 from game_actions.unit_actions import handle_rename_unit
 from game_ai.adapters.fake import FakePlanningProvider
+from game_ai.command_spec import CONTRACT_VERSION
 from game_ai.contracts import Command, CommandBatch, ContractError, TurnPlan
 from game_ai.coordinator import AgentTurnCoordinator
 from game_ai.observation import build_observation
@@ -271,7 +272,7 @@ def test_socket_rename_uses_shared_gateway(covert_world):
     service = ControlService(game, port=0)
     observed = service._dispatch_or_wait({'protocol_version': PROTOCOL_VERSION, 'action': 'observe'}, Future())
     assert observed['data']['observation']['schema_version'] == OBSERVATION_SCHEMA_VERSION
-    assert observed['data']['observation']['command_catalog']['version'] == 25
+    assert observed['data']['observation']['command_catalog']['version'] == CONTRACT_VERSION
     result = service._dispatch_or_wait({'protocol_version': PROTOCOL_VERSION, 'action': 'command',
         'request_id': 'rename', 'turn_token': observed['data']['turn_token'],
         'commands': [{'type': 'rename_unit', 'unit_ids': [covert.id], 'new_name': 'Resolute'}]}, Future())

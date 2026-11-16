@@ -633,7 +633,7 @@ report mandatory returns and endurance losses.
 | Beam Frigate | Combat | MEDIUM ship | 45.00/50 | 1850 | 70 | 23 | 19 | 0.45 | Designed for beam combat. Inter-system travel. |
 | Missile Frigate | Combat | MEDIUM ship | 45.00/50 | 1850 | 70 | 23 | 19 | 0.45 | Designed for missile combat. Inter-system travel. |
 | Kinetic Frigate | Combat | MEDIUM ship | 45.50/50 | 1865 | 71 | 23 | 19 | 0.46 | Designed for kinetic combat. Inter-system travel. |
-| Hazard Escort | Combat | MEDIUM ship | 48.00/50 | 1940 | 73 | 24 | 20 | 0.48 | Reduces plasma, black hole, debris hazards by 75% for this unit while enabled. Costs 2 AM each owner turn, including safe space. Requires functional Abilities and Antimatter Storage. Protection does not change terrain access, sensors or movement. Inter-system travel. Protection starts disabled. |
+| Hazard Escort | Combat | MEDIUM ship | 48.00/50 | 1940 | 73 | 24 | 20 | 0.48 | Hazard Shielding reduces hull damage from plasma storms, black holes, pulsars and debris by 75% while enabled. Costs 2 AM each owner turn and requires functional Abilities and Antimatter Storage. Inter-system travel. Protection starts disabled. |
 | Siege Frigate | Combat | MEDIUM ship | 48.00/50 | 1940 | 73 | 24 | 20 | 0.48 | Dedicated planetary bombardment ship. Inter-system travel. |
 | Troop Transport | Combat | MEDIUM ship | 48.00/50 | 1940 | 73 | 24 | 20 | 0.48 | Dedicated planetary invasion ship. Inter-system travel. |
 | Artillery Frigate | Combat | MEDIUM ship | 49.02/50 | 1971 | 75 | 25 | 20 | 0.49 | Dedicated missile artillery frigate for mobile fire support. Inter-system travel. |

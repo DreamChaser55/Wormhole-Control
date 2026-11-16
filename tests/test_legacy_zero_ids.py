@@ -6,7 +6,7 @@ import pytest
 from geometry import Position
 from domain.celestials import Planet, MetalAsteroid, Wormhole
 from constants import PlanetType
-from unit_components.colony import ColonyComponent
+from unit_components.colony import ColonyComponent, loading_reserve
 from unit_components.mining import MiningComponent
 from unit_components.antimatter import AntimatterStorage
 from unit_components.movement import Hyperdrive
@@ -62,14 +62,17 @@ def test_colony_executor_accepts_body_zero(atmosphere, order_type):
     target.id, target.position = 0, unit.position
     game.galaxy.systems['Sol'].add_celestial_body(target)
     unit.add_component(ColonyComponent(unit))
+    amount = 10
     if order_type is ColonizeOrder:
-        unit.colony_component.population_cargo = 10
+        unit.colony_component.population_cargo = amount
+        expected_population = amount
     else:
-        target.owner, target.population = unit.owner, 20
-    order = order_type(unit, {'target_id': 0, 'amount': 10})
+        expected_population = loading_reserve(target)
+        target.owner, target.population = unit.owner, expected_population + amount
+    order = order_type(unit, {'target_id': 0, 'amount': amount})
     unit.commander_component.add_order(order)
     assert order.status == OrderStatus.COMPLETED
-    assert target.population == 10
+    assert target.population == expected_population
 
 
 def test_gas_entry_target_zero(atmosphere):

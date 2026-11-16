@@ -6037,7 +6037,7 @@
       "patrol and convoy escort",
       "environmental resistance"
     ],
-    "description": "Reduces plasma, black hole, debris hazards by 75% for this unit while enabled. Costs 2 AM each owner turn, including safe space. Requires functional Abilities and Antimatter Storage. Protection does not change terrain access, sensors or movement. Inter-system travel. Protection starts disabled.",
+    "description": "Hazard Shielding reduces hull damage from plasma storms, black holes, pulsars and debris by 75% while enabled. Costs 2 AM each owner turn and requires functional Abilities and Antimatter Storage. Inter-system travel. Protection starts disabled.",
     "is_custom": false,
     "has_troop_transport_component": false,
     "troop_capacity": 40,

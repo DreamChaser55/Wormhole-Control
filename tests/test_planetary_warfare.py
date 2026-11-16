@@ -424,6 +424,8 @@ def test_recovery_runs_once_at_global_round_end(players):
     game = campaign()
     for i in range(2, players):
         game.players.append(Player(str(i), (0, i * 30, 0)))
+    for i in range(1, players):
+        ship(game, owner=i)
     body = world(game)
     body.defense_readiness = .4
     processor = TurnProcessor(game)

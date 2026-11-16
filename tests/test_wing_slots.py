@@ -264,6 +264,7 @@ def test_socket_and_strict_provider_share_per_slot_configuration():
     from game_ai.adapters.base import PlanningRequest
     from game_ai.runtime import get_runtime_config
     from player_controller import PlayerController
+    from game_ai.schema import TURN_PLAN_SCHEMA_NAME
     from tests.support.ai import EMPTY_PATCH
     game, carrier, bay = world()
     game.gui = None
@@ -284,7 +285,7 @@ def test_socket_and_strict_provider_share_per_slot_configuration():
 
     async def fake_response(**kwargs):
         schema = kwargs['text']['format']
-        assert schema['strict'] and schema['name'] == 'wormhole_control_turn_v16'
+        assert schema['strict'] and schema['name'] == TURN_PLAN_SCHEMA_NAME
         assert 'slot_index' in schema['schema']['properties']['commands']['items']['required']
         from game_ai.adapters.openai_responses import PROMPT_CACHE_KEY
         assert kwargs['prompt_cache_key'] == PROMPT_CACHE_KEY

@@ -8,6 +8,7 @@ from types import SimpleNamespace
 import pytest
 
 from constants import HullSize
+from game_ai.command_spec import CONTRACT_VERSION
 from game_ai.contracts import Command
 from game_ai.observation import build_observation
 from geometry import Circle, Position, Vector
@@ -286,6 +287,7 @@ def test_normal_start_builds_economy_escort_and_bomber_carrier():
         result = issue(game, player, Command('construct', (builder.id,), template_name=key, position=position, system_name=builder.in_system, hex_coord=builder.in_hex))
         assert result.accepted, result.errors
         assert player.credits == credits - BUILTINS[key]['build_cost']
+        builder.antimatter_component.add(builder.antimatter_component.max_capacity)
         for _ in range(BUILTINS[key]['build_time']):
             builder.constructor_component.update(game.galaxy)
         constructed[key] = next(u for u, _ in iter_units(game.galaxy) if u.id not in before)
@@ -340,10 +342,12 @@ def test_observation_catalog_deduplicates_builders_and_exposes_bomber_choices():
     create(game, 'FLEET_CARRIER')
     observation = build_observation(game, game.players[0])
     catalog = observation['action_catalogs']
-    assert len(catalog['construction_templates']) == 71
+    assert len(catalog['construction_templates']) == sum(
+        design['hull_size'] != 'STRIKECRAFT_WING' for design in BUILTINS.values()
+    )
     assert len(catalog['wing_templates']) == 5
     assert all(e['description'] and e['roles'] and 'support' in e for e in catalog['construction_templates'])
-    assert observation['command_catalog']['version'] == 25
+    assert observation['command_catalog']['version'] == CONTRACT_VERSION
 
 
 def test_catalog_window_filters_build_dispatch_and_stale_context(pygame_context):

@@ -553,7 +553,7 @@ class TestEvaluation(unittest.TestCase):
             type="load_colonists",
             unit_ids=(101,),
             target_id=201,
-            amount=50,
+            amount=30,
         )
         plan = TurnPlan(
             ("Load first.",), CommandBatch((command,), True), EMPTY_PATCH
@@ -604,7 +604,7 @@ class TestEvaluation(unittest.TestCase):
                         type="load_colonists",
                         unit_ids=(101,),
                         target_id=201,
-                        amount=50,
+                        amount=30,
                     ),
                     Command(
                         type="colonize", unit_ids=(101,), target_id=202, queue=True

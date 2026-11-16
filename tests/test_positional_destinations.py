@@ -23,6 +23,7 @@ from unit_orders.movement import MoveOrder, ReachWaypointOrder
 from unit_orders.patrol import PatrolOrder
 from unit_orders.defend import DefendOrder
 from unit_orders.abilities import UseAbilityOrder
+from unit_templates import UNIT_TEMPLATES
 
 
 def build_world():
@@ -175,11 +176,13 @@ def test_stationary_builder_cannot_build_same_xy_in_other_sector(via_ui):
 @pytest.mark.parametrize("displacement", ["sector", "range"])
 def test_displacement_refunds_once_and_preserves_queued_sibling(displacement):
     game, builder = build_world()
-    assert issue(game, builder.owner, build_command(builder)).accepted
+    command = build_command(builder)
+    cost = UNIT_TEMPLATES[command.template_name]["build_cost"]
+    assert issue(game, builder.owner, command).accepted
     root = builder.commander_component.current_order
     pending = ConstructOrder(builder, dict(root.parameters))
     builder.commander_component.add_order(pending)
-    assert builder.owner.credits == 8540
+    assert builder.owner.credits == 10000 - cost
     if displacement == "sector":
         game.galaxy.systems["Sol"].move_unit_between_hexes(builder, (1, 0))
     else:

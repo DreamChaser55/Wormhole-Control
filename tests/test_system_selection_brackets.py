@@ -56,8 +56,10 @@ def test_unit_brackets_enclose_actual_vertices(zoom, pan):
     interior_square = next(pygame.Rect(call.args[2]) for call in rectangles.call_args_list
                            if call.args[0] is game.screen and call.args[1] == darken_color(BLUE))
     assert interior_square == square
-    groups = [icons[0], [square.topleft, square.bottomright],
-              sum((list(points) for points in icons[1:]), [])]
+    assert len(icons) == 4
+    groups = [[square.topleft, square.bottomright],
+              [point for wing in icons[:3] for point in wing],
+              icons[3]]
     assert len(brackets.call_args_list) == len(sector.units)
     for call, points in zip(brackets.call_args_list, groups):
         left, top, width, height = call.args[2]
@@ -69,9 +71,10 @@ def test_unit_brackets_enclose_actual_vertices(zoom, pan):
 
 @pytest.mark.parametrize('zoom', [0.02, 0.2, 1.0, 4.0])
 @pytest.mark.parametrize('pan', [(0, 0), (31, -19)])
-def test_station_dimensions_match_ship_in_system_view(zoom, pan):
+def test_station_dimensions_match_same_hull_ship_in_system_view(zoom, pan):
     renderer, game, sector = make_scene(zoom, pan)
     sector.units = sector.units[:2]
+    sector.units[1].hull_size = sector.units[0].hull_size
     with patch('rendering.system_renderer.pygame.draw.polygon', wraps=pygame.draw.polygon) as polygons, \
          patch('rendering.system_renderer.pygame.draw.rect', wraps=pygame.draw.rect) as rectangles:
         renderer.draw_system_view()
@@ -140,7 +143,7 @@ def test_selection_visibility_owner_changes_and_overlay_order():
     with patch('rendering.system_renderer.draw_selection_brackets',
                wraps=draw_selection_brackets) as brackets:
         renderer.draw_system_view()
-        assert [c.args[1] for c in brackets.call_args_list] == [(255, 51, 51), (51, 51, 255), (255, 51, 51)]
+        assert [c.args[1] for c in brackets.call_args_list] == [(255, 51, 51), (255, 51, 51), (51, 51, 255)]
         left, top, width, height = brackets.call_args_list[0].args[2]
         assert width == height == 18  # planet + ownership ring + padding
         assert game.overlay_surface.get_at((int(left), int(top)))[:3] == (255, 51, 51)

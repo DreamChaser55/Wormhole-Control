@@ -36,6 +36,8 @@ def world():
     builder = ship(game, 'Builder')
     builder.add_component(Constructor(builder))
     builder.add_component(Engines(builder, speed=1000))
+    builder.antimatter_component.max_capacity = 1000
+    builder.antimatter_component.current_amount = 1000
     return game, builder
 
 
@@ -310,6 +312,7 @@ def test_socket_and_strict_provider_share_override_contract():
     from game_ai.adapters.openai_responses import OpenAIResponsesProvider
     from game_ai.adapters.base import PlanningRequest
     from game_ai.runtime import get_runtime_config
+    from game_ai.schema import TURN_PLAN_SCHEMA_NAME
     from tests.support.ai import EMPTY_PATCH
     game, builder = world()
     game.current_player = builder.owner
@@ -325,7 +328,7 @@ def test_socket_and_strict_provider_share_override_contract():
     output = dict(plan=[], commands=[command(builder).to_dict()], memory_patch=EMPTY_PATCH, end_turn=True)
     async def create(**kwargs):
         schema = kwargs['text']['format']
-        assert schema['strict'] and schema['name'] == 'wormhole_control_turn_v16'
+        assert schema['strict'] and schema['name'] == TURN_PLAN_SCHEMA_NAME
         fields = schema['schema']['properties']['commands']['items']
         assert 'defense_type_override' in fields['required']
         assert fields['properties']['turret_type_override']['enum'] == [None, *TURRET_TYPES]

@@ -797,8 +797,8 @@ and combined upkeep; owned ability states and command options expose blockers.
 Enemy observations gain no equipment or resistance details. Celestial descriptions
 retain baseline values. Protection, upkeep timing, shutdown rules and rounding
 are documented in the [reference](REFERENCE.md#environmental-resistance-abilities).
-The public catalogue includes Hazard Escort, Radiation Surveyor and Pulsar
-Harvester so automated players can construct protected units.
+The public catalogue includes Hazard Escort, Pulsar Harvester, Radiation Surveyor
+and Nebula Tender for hazard shielding, radiation hardening and antimatter containment.
 
 ### Cast abilities
 

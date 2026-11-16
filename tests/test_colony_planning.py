@@ -57,8 +57,8 @@ def test_loading_records_actual_facts_once_and_preserves_them_on_load(approachin
 def test_forecast_evaluation_scores_memory_facts_not_just_legal_commands():
     from game_ai.evaluation import colony_load_forecast_case, score_plan
     case = colony_load_forecast_case()
-    correct = TurnPlan((), CommandBatch(), {'beliefs': ['Loaded 25 colonists, retained 25 at execution; source is now 25.25 after growth.']})
-    false = TurnPlan((), CommandBatch(), {'lessons': ['Loading the maximum left only 12 population and a long recovery.']})
+    correct = TurnPlan((), CommandBatch(), {'important_events': ['Loaded 25 colonists, retained 25 at execution; source is now 25.25 after growth.']})
+    false = TurnPlan((), CommandBatch(), {'important_events': ['Loading the maximum left only 12 population and a long recovery.']})
     assert score_plan(case, correct).passed
     assert not score_plan(case, false).passed
     assert not score_plan(case, TurnPlan((), CommandBatch(), {})).passed

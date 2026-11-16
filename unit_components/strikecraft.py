@@ -332,10 +332,9 @@ class StrikecraftBayComponent(UnitComponent):
             key = slot['production_template']
             if key:
                 label(f"Production · {UNIT_TEMPLATES[key]['name']}")
-                overrides = [slot[field].replace('_', ' ').title()
-                             for field in ('turret_type_override', 'defense_type_override') if slot[field]]
-                if overrides:
-                    label(" / ".join(overrides))
+                for title, field in (('Turrets', 'turret_type_override'), ('Defenses', 'defense_type_override')):
+                    if value := slot[field]:
+                        label(f"{title}: {value.replace('_', ' ').title()}")
             if status == 'building':
                 label(f"{self.construction_progress}/{slot['production_turns']} owner turns complete")
                 from antimatter_logistics import work_fuel_blocker

@@ -183,9 +183,10 @@ async def compare_gateway_reasoning_efforts(
 
 def colony_opening_case() -> EvaluationCase:
     """Minimal regression fixture for the observed zero-cargo colony opening."""
+    from .observation import OBSERVATION_SCHEMA_VERSION
 
     observation = {
-        "schema_version": 26,
+        "schema_version": OBSERVATION_SCHEMA_VERSION,
         "command_catalog": command_catalog(),
         "turn_number": 1,
         "active_player": {
@@ -250,7 +251,7 @@ def colony_opening_case() -> EvaluationCase:
                 "legal_commands": ["load_colonists"],
                 "command_options": {
                     "load_colonists": {
-                        "targets": [{"target_id": 201, "maximum_amount": 50}]
+                        "targets": [{"target_id": 201, "maximum_amount": 30}]
                     },
                     "colonize": {"target_ids": [202]},
                 },
@@ -346,7 +347,7 @@ def colony_opening_gateway_case() -> GatewayEvaluationCase:
             intelligence_component=None,
         )
         unit.sensors_component = Sensors(unit, long_range_hexes=1)
-        source = Planet((0, 0), "Sol", next(iter(PlanetType)))
+        source = Planet((0, 0), "Sol", PlanetType.TERRAN)
         source.id = 201
         source.owner = player
         source.population = 50
@@ -384,13 +385,12 @@ def colony_load_forecast_case() -> EvaluationCase:
     """Opt-in semantic evaluation: actual 25.25 population versus hypothetical 12."""
     from copy import deepcopy
     from .colony_planning import colonist_load_advice
-    from .observation import OBSERVATION_SCHEMA_VERSION
 
     observation = deepcopy(colony_opening_case().request.observation)
-    observation['schema_version'] = OBSERVATION_SCHEMA_VERSION
     observation['turn_number'] = 2
     source = observation['systems'][0]['celestial_bodies'][0]
     source.update(name='Planet 2', population=25.25, max_population=60, ownership_observed_turn=2)
+    observation['action_catalogs']['colonist_sources'][0]['available_population'] = source['population']
     actor = observation['units'][0]
     actor['capability_details']['colony']['population_cargo'] = 25
     actor['command_options']['load_colonists']['targets'] = [{
@@ -407,12 +407,13 @@ def colony_load_forecast_case() -> EvaluationCase:
     def check_memory(plan):
         text = json.dumps(plan.memory_patch, ensure_ascii=False)
         import re
-        if '25.25' not in text or re.search(r"(?<![.\d])12(?:\.0+)?(?![.\d])", text):
+        events = plan.memory_patch.get('important_events') or []
+        if not any('25.25' in event for event in events) or re.search(r"(?<![.\d])12(?:\.0+)?(?![.\d])", text):
             return ('Memory must retain actual current population 25.25. The hypothetical reserve of 12 is not a past outcome.',)
         return ()
 
     request = PlanningRequest('evaluation', 'load-forecast-agent', 'AI', 2, observation, {
-        'objectives': ['Preserve the current expedition. Record the previous load and the actual current source population in beliefs; do not store hypothetical next-load residues as history.'],
+        'objectives': ['Preserve the current expedition. Record the previous load and the observed source population in important events.'],
     })
     return EvaluationCase('colony-load-forecast-versus-outcome', request,
                           forbidden_command_types=frozenset({'load_colonists'}), plan_checks=check_memory)

@@ -15,6 +15,7 @@ from rendering.galaxy_renderer import GalaxyViewRenderer
 def test_draw_sector_view_draws_lines_for_all_turn_player_units():
     # 1. Setup mock game, players, and renderer
     game = MagicMock()
+    game.sector_zoom = 1.0
     game.display_config = DisplayConfig()
     player1 = Player("Player 1", BLUE, controller=PlayerController.HUMAN)
     player2 = Player("Player 2", (255, 0, 0), controller=PlayerController.HUMAN)
@@ -300,6 +301,7 @@ def test_draw_sector_view_draws_four_corner_selection_brackets(zoom, logical_rad
 def test_draw_sector_view_draws_turn_notches():
     # Setup mock game, player, and renderer
     game = MagicMock()
+    game.sector_zoom = 1.0
     game.display_config = DisplayConfig()
     player1 = Player("Player 1", BLUE, controller=PlayerController.HUMAN)
     game.players = [player1]
@@ -562,6 +564,7 @@ def test_sector_view_movement_with_sub_orders_draws_sequential_lines():
     """Verify that a movement order with sub-orders (e.g. avoidance waypoints)
     draws a single sequential path unit -> W1 -> W2 -> D without extra lines to D."""
     game = MagicMock()
+    game.sector_zoom = 1.0
     game.display_config = DisplayConfig()
     player1 = Player("Player 1", BLUE, controller=PlayerController.HUMAN)
     game.players = [player1]
@@ -741,6 +744,7 @@ def test_sector_view_attack_with_move_sub_order_sequential():
 def test_sector_view_queued_orders_without_sub_orders_sequential():
     """Verify that current order and queued order without sub-orders chain sequentially."""
     game = MagicMock()
+    game.sector_zoom = 1.0
     game.display_config = DisplayConfig()
     player1 = Player("Player 1", BLUE, controller=PlayerController.HUMAN)
     game.players = [player1]

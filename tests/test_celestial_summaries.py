@@ -56,6 +56,8 @@ def test_nebula_summaries_keep_effect_and_concealment_distinctions(kind, expecte
     assert rows['Hidden from long-range sensors; short-range detection still works'] == 'benefit'
     if kind == NebulaType.HYDROGEN:
         assert rows['AM harvesting: 0.4× base rate (Harvester required)'] == 'neutral'
+    if kind == NebulaType.DUST:
+        assert rows['AM drain: 5% of current fuel / owner turn'] == 'hazard'
 
 
 @pytest.mark.parametrize('kind,expected', [
@@ -83,7 +85,8 @@ def test_star_summaries_keep_harvesting_neutral_and_hazard_geometry_separate(kin
     if kind == StarType.BLACK_HOLE:
         assert rows['15 base hull damage / owner turn (ships & deployables); radius 750'] == 'hazard'
     if kind == StarType.PULSAR:
-        assert rows['AM drain: 5% of current fuel / owner turn; whole sector'] == 'hazard'
+        assert rows['4 base hull damage / owner turn (ships & deployables); whole sector'] == 'hazard'
+        assert rows['Short-range sensor radius: 33%'] == 'restriction'
 
 
 @pytest.mark.parametrize('kind', list(PlanetType))

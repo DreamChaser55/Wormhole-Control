@@ -5,6 +5,7 @@ import json
 import pytest
 
 from antimatter_logistics import automatic_recipient, delivery_budget
+from game_ai.command_spec import CONTRACT_VERSION
 from game_ai.contracts import Command, ContractError
 from game_ai.order_view import order_layers
 from save_manager import serialize_game_state, deserialize_game_state
@@ -371,7 +372,7 @@ def test_command_discovery_exposes_sources_and_allows_no_demand(harvesting):
     assert options[command['type']]['automatic_when_target_null']
     assert options[command['type']]['automatic_recipient_scope'] == 'owned_galaxy_wide'
     assert observation['schema_version'] == OBSERVATION_SCHEMA_VERSION
-    assert observation['command_catalog']['version'] == 25
+    assert observation['command_catalog']['version'] == CONTRACT_VERSION
 
 
 @pytest.mark.parametrize('invalid_last', [False, True])
