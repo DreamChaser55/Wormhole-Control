@@ -665,12 +665,14 @@ class CustomUnitTemplate:
     @property
     def build_cost(self) -> int:
         """Calculated credit cost: base hull cost + component hull-point cost."""
-        return HULL_BASE_COST[self.hull_size] + int(round(self.total_hull_cost * COMPONENT_COST_PER_HULL_POINT))
+        from resource_costs import refinery_credit_premium
+        return (HULL_BASE_COST[self.hull_size] + int(round(self.total_hull_cost * COMPONENT_COST_PER_HULL_POINT))
+                + refinery_credit_premium(self.components))
 
     @property
     def resource_cost(self):
-        from resource_costs import construction_cost
-        return construction_cost(self.hull_size, self.total_hull_cost, self.build_cost)
+        from resource_costs import design_resources
+        return design_resources(self.hull_size, self.total_hull_cost, self.build_cost, self.components)
 
     @property
     def build_time(self) -> int:

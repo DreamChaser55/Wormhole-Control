@@ -16,6 +16,9 @@ EQUIPMENT_CRYSTAL_FACTOR = 0.5
 FORTIFICATION_METAL_PER_LEVEL = 25
 FORTIFICATION_CRYSTAL_PER_LEVEL = 5
 SALVAGE_FACTOR = 0.5
+REFINERY_CREDIT_PREMIUM = 600
+REFINERY_MINERAL_COST = 5
+REFINERY_COMPONENTS = {'MetalRefineryComponent': 'metal', 'CrystalRefineryComponent': 'crystal'}
 
 
 @dataclass(frozen=True)
@@ -87,8 +90,33 @@ def construction_cost(hull_size, used_hull, credits) -> ResourceCost:
                         math.ceil(used_hull * EQUIPMENT_CRYSTAL_FACTOR))
 
 
-def installation_cost(used_hull, credits=0) -> ResourceCost:
+def refinery_credit_premium(components) -> int:
+    return REFINERY_CREDIT_PREMIUM * (int(components.has_metal_refinery_component)
+                                      + int(components.has_crystal_refinery_component))
+
+
+def design_resources(hull_size, used_hull, credits, components) -> ResourceCost:
+    """Use matching starter minerals for dedicated refineries."""
     _validate_hull_usage(used_hull)
+    refineries = {'metal': components.metal_refinery_hull_cost} if components.has_metal_refinery_component else {}
+    if components.has_crystal_refinery_component:
+        refineries['crystal'] = components.crystal_refinery_hull_cost
+    if not refineries:
+        return construction_cost(hull_size, used_hull, credits)
+    support = {'has_antimatter_storage', 'has_defenses', 'has_sensors',
+               'has_metal_refinery_component', 'has_crystal_refinery_component'}
+    standalone = len(refineries) == 1 and all(
+        flag in support for flag, enabled in vars(components).items() if flag.startswith('has_') and enabled
+    )
+    base = (ResourceCost(credits) if standalone
+            else construction_cost(hull_size, max(0, used_hull - sum(refineries.values())), credits))
+    return base + ResourceCost(**dict.fromkeys(refineries, REFINERY_MINERAL_COST))
+
+
+def installation_cost(used_hull, credits=0, *, component_name=None) -> ResourceCost:
+    _validate_hull_usage(used_hull)
+    if component_name in REFINERY_COMPONENTS:
+        return ResourceCost(credits, **{REFINERY_COMPONENTS[component_name]: REFINERY_MINERAL_COST})
     return ResourceCost(credits, math.ceil(used_hull * EQUIPMENT_METAL_FACTOR),
                         math.ceil(used_hull * EQUIPMENT_CRYSTAL_FACTOR))
 
@@ -105,8 +133,8 @@ def template_cost(template) -> ResourceCost:
     if hasattr(raw.get('hull_size'), 'name'):
         raw['hull_size'] = raw['hull_size'].name
     design = template_from_dict(raw.get('name', 'Construction'), raw)
-    return construction_cost(design.hull_size, design.total_hull_cost,
-                             template.get('build_cost', design.build_cost))
+    return design_resources(design.hull_size, design.total_hull_cost,
+                            template.get('build_cost', design.build_cost), design.components)
 
 
 def fortification_cost(level) -> ResourceCost:

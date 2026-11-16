@@ -489,8 +489,8 @@ Construction and wing catalogue entries expose `resource_cost` and
 `resource_shortfall` alongside their credit price. Construction shortfalls use
 the available budget after reservations; wing shortfalls use the current treasury
 because configuring production is free. Planetary upgrade options include
-`resource_shortfall` against the available budget. Mineral prices derive uniformly
-from hull capacity and equipment usage, including custom human designs; turret/defense overrides preserve them.
+`resource_shortfall` against the available budget. Mineral prices derive from hull capacity, installed equipment and refinery
+recipes, including custom human designs. Turret and defense overrides preserve them.
 Use mining, matching refinery deliveries and passive-yield colonies to replenish
 materials. Planners use the habitat design's income bonus and build habitats in
 sectors with their own populated colonies and spare support capacity. Raw cargo cannot be spent and credits cannot substitute for minerals.

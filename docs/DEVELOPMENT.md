@@ -135,8 +135,8 @@ follow the [observation disclosure policy](AGENTIC_AI.md#information-boundary).
 
 `resource_costs.py` owns immutable `ResourceCost` bundles, uniform material formulas,
 atomic affordability/payment/refund operations, and treasury reads. Quotes use
-canonical hull usage; material prices are derived rather than editable template
-inputs. Existing credit prices and production durations remain independent.
+canonical hull usage and the refinery recipes in `resource_costs.py`.
+Template material prices are derived from the design. Existing credit prices and production durations remain independent.
 
 Construction, refits, wing production and fortifications charge through the shared
 helpers. Orders retain original payer and paid amounts in all three resources;

@@ -44,8 +44,8 @@ def fund(player, cost):
 
 
 @pytest.mark.parametrize('name,expected', [
-    ('Small Mining Ship', (946, 36, 12)), ('Metal Refinery Station', (1460, 57, 16)),
-    ('Crystal Refinery Station', (1460, 57, 16)), ('Kinetic Frigate', (1865, 71, 23)),
+    ('Small Mining Ship', (1000, 38, 13)), ('Metal Refinery Station', (2060, 5, 0)),
+    ('Crystal Refinery Station', (2060, 0, 5)), ('Kinetic Frigate', (1865, 71, 23)),
     ('Battleship', (7518, 284, 92)), ('Fighter Wing', (260, 11, 4)),
 ])
 def test_catalogue_prices(name, expected):

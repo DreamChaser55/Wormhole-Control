@@ -231,7 +231,12 @@ are independent of material prices. For hull capacity `H` and installed hull usa
 | Dismantle a unit | Recover 50% of its build valuation × remaining hull-HP fraction | Same | Successful completion |
 
 Salvage retains fractional amounts and also returns the existing credit salvage.
-Identical hull usage costs the same materials regardless of weapon/defense type.
+A dedicated stationary refinery with supporting fuel storage, sensors or defenses
+costs 5 units of its own mineral and zero of the other. On a mixed-purpose design,
+each refinery contributes 5 matching minerals in place of its normal equipment
+materials. Installing a refinery consumes the same 5 matching minerals. Each
+refinery adds 600 credits to the usual hull-based price. Identical hull usage
+costs the same materials regardless of weapon or defense type.
 Repairs, wing replenishment, upkeep, recruitment and abilities have no mineral charge.
 There is no credit substitution for missing minerals.
 
@@ -626,13 +631,13 @@ report mandatory returns and endurance losses.
 | Mining Drone | Economy | TINY ship | 9.90/10 | 397 | 15 | 5 | 6 | 0.10 | Designed for transportable mining. Local-sector operations; Tiny craft can travel aboard a hangar transport. Mine metal asteroids or comets and unload at the matching refinery. |
 | Civilian Habitat | Economy | SMALL station | 24.00/25 | 970 | 37 | 12 | 12 | 0.24 | Adds 12 credits per owner turn when supported by a populated colony you own in the same sector. An active habitat is also a trade destination. |
 | Small Mining Ship | Economy | SMALL ship | 25.00/25 | 1000 | 38 | 13 | 12 | 0.25 | Designed for local mining. Intra-system travel only. Mine metal asteroids or comets and unload at the matching refinery. |
-| Crystal Refinery Station | Economy | MEDIUM station | 32.00/50 | 1460 | 57 | 16 | 16 | 0.32 | Designed for crystal refining. Stationary installation. |
-| Metal Refinery Station | Economy | MEDIUM station | 32.00/50 | 1460 | 57 | 16 | 16 | 0.32 | Designed for metal refining. Stationary installation. |
 | Trade Freighter | Economy | MEDIUM ship | 37.00/50 | 1610 | 62 | 19 | 17 | 0.37 | Designed for local trade. Intra-system travel only. Needs active habitats in different sectors. |
 | Colonizer | Economy | MEDIUM ship | 43.00/50 | 1790 | 68 | 22 | 19 | 0.43 | Designed for colonization. Inter-system travel. |
 | Blockade Runner | Economy | MEDIUM ship | 49.00/50 | 1970 | 74 | 25 | 20 | 0.49 | Designed for covert inter-system trade. Inter-system travel. Needs active habitats in different sectors. |
 | Expedition Miner | Economy | MEDIUM ship | 49.50/50 | 1985 | 75 | 25 | 20 | 0.49 | Designed for expedition mining. Inter-system travel. Mine metal asteroids or comets and unload at the matching refinery. |
-| Industrial Hub | Economy | LARGE station | 92.99/100 | 3790 | 143 | 47 | 29 | 0.93 | Designed for industrial support. Stationary installation. |
+| Crystal Refinery Station | Economy | MEDIUM station | 32.00/50 | 2060 | 0 | 5 | 16 | 0.32 | Designed for crystal refining. Stationary installation. |
+| Metal Refinery Station | Economy | MEDIUM station | 32.00/50 | 2060 | 5 | 0 | 16 | 0.32 | Designed for metal refining. Stationary installation. |
+| Industrial Hub | Economy | LARGE station | 92.99/100 | 4990 | 108 | 32 | 29 | 0.93 | Designed for industrial support. Stationary installation. |
 | Shipyard | Logistics | SMALL station | 20.00/25 | 850 | 33 | 10 | 11 | 0.20 | Designed for stationary construction. Stationary installation. |
 | Small Repair Ship | Logistics | SMALL ship | 24.19/25 | 976 | 37 | 13 | 12 | 0.24 | Designed for local repair. Intra-system travel only. |
 | Local Constructor | Logistics | SMALL ship | 24.88/25 | 996 | 38 | 13 | 12 | 0.25 | Low-cost mobile constructor for outposts and refits. Basic Hyperdrive permits travel within one system. |

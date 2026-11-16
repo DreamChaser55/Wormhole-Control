@@ -107,12 +107,14 @@ class RefitEvaluation:
     @property
     def resource_cost(self):
         from resource_costs import installation_cost, ResourceCost
-        return installation_cost(self.hull_cost, self.cost_credits) if self.configuration else ResourceCost()
+        return (installation_cost(self.hull_cost, self.cost_credits, component_name=self.component_name)
+                if self.configuration else ResourceCost())
 
     @property
     def resource_salvage(self):
         from resource_costs import installation_cost, ResourceCost, SALVAGE_FACTOR
-        materials = installation_cost(self.hull_cost).scaled(SALVAGE_FACTOR) if not self.configuration else ResourceCost()
+        materials = (installation_cost(self.hull_cost, component_name=self.component_name).scaled(SALVAGE_FACTOR)
+                     if not self.configuration else ResourceCost())
         return ResourceCost(self.salvage, materials.metal, materials.crystal)
 
 
@@ -224,12 +226,16 @@ def evaluate_refit(unit, action, component_name, configuration=None):
             result.configuration['hull_cost'] = result.hull_cost
             # As before, installing equipment never pays credits to the builder.
             # Numeric persistence invariants were checked before cost arithmetic.
-            result.cost_credits = max(0, int(round(result.hull_cost * COMPONENT_COST_PER_HULL_POINT)))
+            from resource_costs import refinery_credit_premium
+            result.cost_credits = (max(0, int(round(result.hull_cost * COMPONENT_COST_PER_HULL_POINT)))
+                                   + refinery_credit_premium(single))
             result.duration = max(1, int(round(result.hull_cost / 5)))
             actual = unit.current_hull_usage + result.hull_cost
         else:
             result.hull_cost = existing.hull_cost
-            result.salvage = max(0, int(round(existing.hull_cost * COMPONENT_COST_PER_HULL_POINT * .5)))
+            from resource_costs import REFINERY_COMPONENTS, REFINERY_CREDIT_PREMIUM
+            premium = REFINERY_CREDIT_PREMIUM if name in REFINERY_COMPONENTS else 0
+            result.salvage = max(0, int(round((existing.hull_cost * COMPONENT_COST_PER_HULL_POINT + premium) * .5)))
             actual = unit.current_hull_usage - existing.hull_cost
         if not result.errors and (not math.isfinite(actual) or actual > unit.hull_capacity):
             excess = f' Over by {actual - unit.hull_capacity:g} hull.' if math.isfinite(actual) else ''
