@@ -491,3 +491,31 @@ def test_attack_overlays_keep_target_and_attack_style(battle, deployable_target)
             patch('rendering.system_renderer.pygame.draw.circle'):
         renderer._draw_system_view_order_lines(game.galaxy.systems['Sol'])
     assert any(call.args[1] == RED and call.args[3] == (0, 10) for call in line.call_args_list)
+
+
+@pytest.mark.parametrize('kind,distance', [('attack', 245), ('attack_long_range', 545)])
+def test_pursuit_moves_and_fires_when_target_retreats(battle, kind, distance):
+    from unit_components.antimatter import AntimatterStorage
+
+    game, player, attacker, target = battle
+    for unit in (attacker, target):
+        unit.add_component(AntimatterStorage(unit, max_capacity=300))
+    for turret in attacker.weapons_component.turrets:
+        turret.cooldown = 1
+    target.position = Position(distance, 0)
+    assert issue(game, player, Command(kind, (attacker.id,), target_id=target.id)).accepted
+    order = attacker.commander_component.current_order
+    assert not order.sub_orders
+    assert issue(game, target.owner, Command(
+        'move', (target.id,), system_name='Sol', hex_coord=(0, 0), position=(1200, 0),
+    )).accepted
+
+    processor = TurnProcessor(game)
+    for step in (100, 200):
+        hp = target.current_hit_points
+        processor.process_player_turn(target.owner)
+        assert target.position == Position(distance + step, 0)
+        processor.process_player_turn(player)
+        assert attacker.position == Position(step - 50, 0)
+        assert target.current_hit_points < hp
+        assert attacker.commander_component.current_order is order

@@ -21,4 +21,3 @@ FEEDBACK FROM PLAYTESTING:
 - Include the unit owner in turn summary whenever a unit is mentioned in the combat or loss section.
 - Add new order, valid for any ship with antimatter storage component: automatically resupply all friendly units in range.
 - Reorganize and clean the strikecraft bay component sidebar GUI.
-- Design and implement a way for ships to fire turrets and move at the same time, so pursuing ships won’t have to choose between moving or firing each turn, thus inevitably falling behind the escaping target. Perhaps the Attack order should calculate a fresh optimal move for pursuit each turn, make the move, then fire the turrets in the same turn (if the target is in range).

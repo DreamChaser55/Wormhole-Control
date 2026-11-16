@@ -584,16 +584,19 @@ class Commander(UnitComponent):
             target_id = self.current_order.parameters.get("target_unit_id")
             target = combat_target(galaxy_ref, target_id) if target_id is not None else None
             from domain.players import are_enemies
-            weapons = self.unit.weapons_component
             if (
                 target is None
                 or target.current_hit_points <= 0
                 or not are_enemies(self.unit.owner, target.owner)
             ):
                 self.cancel_order(self.current_order.local_order_id)
-            elif not weapons or self.current_order.approach_range(target) is None:
-                # Let the order fail and release its approach before movement.
-                self.current_order.update(galaxy_ref)
+
+        # The target may have moved during its owner's turn. Bind the current
+        # approach waypoint now, before TurnProcessor snapshots movement.
+        if galaxy_ref and not self.unit.is_disabled and not offline(self.unit):
+            attack = self.attack_for_visibility_check()
+            if attack is not None:
+                attack.update(galaxy_ref)
 
         # A Do Nothing standing policy must not leave a stale weapon lock from
         # an order that was removed by an external integration.

@@ -164,7 +164,8 @@ Only units with installed turrets support set_stance, even when their weapons ar
 cooling down. Unarmed units advertise no stance choices and reject set_stance, including
 do_nothing; their standing_order is an internal passive policy. Use cancel_orders to Stop them.
 Internal suborders and stance engagements cannot be edited individually.
-attack closes until all target-eligible turrets are in range.
+attack closes until all target-eligible turrets are in range. It tracks moving
+targets before movement and can fire ready turrets from its new position the same turn.
 Use that actor's command_options.attack/attack_long_range.target_ids, not another unit's
 target list. Check each turret's eligible_target_classes before assigning wing targets:
 an equipped standard ship turret does not automatically qualify to attack strikecraft.

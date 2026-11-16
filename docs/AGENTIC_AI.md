@@ -640,7 +640,9 @@ for saved payer and salvage ownership.
 unit and deployable targets. The long-range command requires functional Weapons and
 an eligible Long Range turret; losing that capability fails the order rather than
 changing it to normal Attack. See [attack rules](REFERENCE.md#queues-and-stances)
-for approach/firing behavior and the 50% subsystem range modifier. Observation
+for approach/firing behavior and the 50% subsystem range modifier. Pursuit
+refreshes before movement, and ready turrets can fire from the resulting position
+in the same owner turn. Observation
 turret `range` values remain hull ranges; command guidance explains the modifier.
 
 Both attack commands require continuing detailed visibility to the attacking owner's

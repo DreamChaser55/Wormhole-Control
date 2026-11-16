@@ -822,8 +822,11 @@ Stationary platforms use their longest eligible range and can fire without closi
 for a shorter turret. Targets outside usable range or requiring unavailable sector
 travel are rejected before orders are replaced; later changed conditions can still
 cause an execution failure.
-Neither order retreats to regain distance. Pursuit resumes if the target moves out
-of the required range; losing all eligible long-range turrets fails the long-range order.
+Both orders refresh pursuit before each owner's movement phase. If the target
+moves beyond the required range, the attacker can close the gap and fire any
+ready turrets that have range from its new position on the same turn. Both
+orders hold position once the required turrets have range. Losing all eligible
+Long Range turrets fails the long-range order.
 
 Selecting a specific component halves each turret's hull-attack range for both
 approach and firing, including Long Range turrets after their variant scaling.
