@@ -332,7 +332,7 @@ def test_endurance_loss_cleans_selection_orders_and_reports_without_salvage():
     assert wing.strikecraft_wing_component.mother_carrier is None
     process(game, wing.owner)
     finish_window(game, wing.owner)
-    losses = [e for e in summary_view(wing.owner)['entries'] if e['category'] == 'loss' and e['subject_id'] == wing.id]
+    losses = [e for e in summary_view(wing.owner)['entries'] if e['category'] == 'friendly_and_allied_losses' and e['subject_id'] == wing.id]
     assert len(losses) == 1 and losses[0]['count'] == 1
     assert any(e['reason'] == 'wing_endurance_expired' for e in wing.owner.order_history)
 

@@ -130,7 +130,8 @@ in its observation JSON. It contains `from_turn`,
 Turn zero as `from_turn` means campaign setup. Each entry has an event ID, round,
 category, historical subject ID/name/sector where authorized, detail, occurrence
 count and total amount. Anonymous radar entries have no subject ID, name or unit
-count. An empty entries list means no important events.
+count. Loss entries use `friendly_and_allied_losses` or `enemy_losses` according to
+the viewer's relationship at the time. An empty entries list means no important events.
 
 The engine collects committed events from just before the player's previous End
 Turn resolution through the next owner-turn opening effects. It freezes the report

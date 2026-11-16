@@ -12,9 +12,9 @@ import math
 
 MAX_ENTRIES = 128
 MAX_CHARACTERS = 32_000
-PRIORITY = {"loss": 0, "capture": 0, "problem": 1, "combat": 2,
-            "hazard": 2, "intelligence": 3, "development": 4,
-            "discovery": 5, "communications": 6}
+PRIORITY = {"friendly_and_allied_losses": 0, "enemy_losses": 1, "loss": 0,
+            "capture": 1, "problem": 2, "combat": 3, "hazard": 3,
+            "intelligence": 4, "development": 5, "discovery": 6, "communications": 7}
 METRICS = ("credits", "metal", "crystal", "population")
 FUEL_PROBLEMS = frozenset(f'{action} blocked: {reason}'
     for action in ('Movement', 'Jump')
@@ -180,7 +180,10 @@ def unit_event(unit, category, detail, *, amount=0, private=False, component_typ
                 public_detail = "Captured; ownership gained"
         if actor is not None:
             public_detail += f" by {actor.name}" if _visible(snapshot, actor) else " by an unknown attacker"
-        record(game, player, category, public_detail, subject=unit, amount=amount, once=once)
+        public_category = category
+        if category == "loss":
+            public_category = "enemy_losses" if player.is_enemy_of(unit.owner) else "friendly_and_allied_losses"
+        record(game, player, public_category, public_detail, subject=unit, amount=amount, once=once)
 
 
 def order_outcome(order, outcome, reason):

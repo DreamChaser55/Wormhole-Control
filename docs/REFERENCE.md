@@ -164,7 +164,8 @@ and ends after the next turn's opening effects. Your actions while issuing order
 are excluded. On a player's first turn, it covers events since campaign setup;
 starting ships and colonies are not announcements.
 
-The briefing groups combat and hazards, losses and captures, your completed
+The briefing groups combat and hazards, **Friendly and allied losses**,
+**Enemy losses**, captures, your completed
 construction/refits/colonies, failed or involuntarily cancelled orders, fuel and
 upkeep problems, new contacts and explored sectors, revealed mines, authorized
 intelligence outcomes, and incoming-message counts by sender. Combat and sensor

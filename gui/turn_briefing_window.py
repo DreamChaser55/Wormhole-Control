@@ -51,7 +51,8 @@ def summary_html(summary):
     last_category = None
     for entry in summary.entries:
         if entry.category != last_category:
-            lines.append(f"<b>{escape(entry.category.title())}</b>")
+            heading = entry.category.replace("_", " ").capitalize()
+            lines.append(f"<b>{escape(heading)}</b>")
             last_category = entry.category
         lines.append(escape(entry_text(entry)))
     if not summary.entries:

@@ -150,7 +150,7 @@ def test_loss_survives_destruction_and_order_cancellation_is_not_duplicated():
     unit.destroy()
     unit.destroy()
     finish_window(game, unit.owner)
-    assert [(e.category, e.name) for e in unit.owner.briefing.current.entries] == [("loss", "Lost ship")]
+    assert [(e.category, e.name) for e in unit.owner.briefing.current.entries] == [("friendly_and_allied_losses", "Lost ship")]
 
 
 def test_capture_and_carrier_cargo_losses_and_temporary_expiry():
@@ -178,7 +178,7 @@ def test_capture_and_carrier_cargo_losses_and_temporary_expiry():
     finish_window(game, game.players[0])
     events = game.players[0].briefing.current.entries
     assert any(e.category == "capture" and e.subject_id == target.id for e in events)
-    losses = {e.subject_id for e in events if e.category == "loss"}
+    losses = {e.subject_id for e in events if e.category == "friendly_and_allied_losses"}
     assert losses == {carrier.id, wing.id}
 
 
@@ -228,7 +228,7 @@ def test_anonymous_presence_has_no_identity_and_vanishing_is_not_a_loss():
     assert presence.subject_id is None and presence.name == "" and presence.count == 1
     enemy.is_hidden_in_gas_giant = True
     refresh_discoveries(game)
-    assert not any(e.category == "loss" for e in observer.owner.briefing.pending)
+    assert not any(e.category == "enemy_losses" for e in observer.owner.briefing.pending)
     assert "Secret" not in json.dumps(summary_view(observer.owner))
 
 
@@ -413,7 +413,7 @@ def test_deployable_damage_and_destruction_are_visible_but_cleanup_is_not_a_loss
     cache.take_damage(999, cause="plasma")
     recovered.destroy(reason="cleanup")
     assert any(e.category == "hazard" and e.subject_id == cache.id for e in owner.briefing.pending)
-    assert [e.subject_id for e in owner.briefing.pending if e.category == "loss"] == [cache.id]
+    assert [e.subject_id for e in owner.briefing.pending if e.category == "friendly_and_allied_losses"] == [cache.id]
 
 
 @pytest.mark.parametrize("field,value", [("event_id", 900), ("category", []), ("hex_coord", [True, 0]), ("amount", -1), ("turn", 999)])
@@ -460,3 +460,16 @@ def test_population_growth_and_economy_snapshot():
     # Terran growth rate is 0.02, so 50.0 grows by 1.0 to 51.0
     assert report["economy"]["population"] == 1.0
 
+
+
+def test_loss_section_follows_each_viewers_relationship():
+    from turn_briefing import begin_window, unit_event
+
+    game = campaign()
+    victim = ship(game, 'Lost vessel')
+    enemy = ship(game, 'Observer', owner=1)
+    for player in game.players:
+        begin_window(game, player)
+    unit_event(victim, 'loss', 'Destroyed')
+    assert victim.owner.briefing.pending[-1].category == 'friendly_and_allied_losses'
+    assert enemy.owner.briefing.pending[-1].category == 'enemy_losses'

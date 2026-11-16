@@ -5,7 +5,6 @@ FEEDBACK FROM PLAYTESTING:
 - Rename “Transfer Antimatter” context menu button to “Give Antimatter”. Rename corresponding function in the AI interface.
 - Add current construction progress to turn summary.
 - When a player no longer has any units or colonized bodies, a “Player has been defeated.” screen should appear. From that time, defeated player's turn should simply be skipped.
-- Split the loss section in human and AI turn summary into "Friendly and allied losses" and "Enemy losses".
 - Include the unit owner in turn summary whenever a unit is mentioned in the combat or loss section.
 - Add new order, valid for any ship with antimatter storage component: automatically resupply all friendly units in range.
 - Reorganize and clean the strikecraft bay component sidebar GUI.
