@@ -5,6 +5,7 @@ EMPTY_PATCH = {
     "objectives": None,
     "commitments": None,
     "beliefs": None,
+    "important_events": None,
     "lessons": None,
     "misc": None,
 }

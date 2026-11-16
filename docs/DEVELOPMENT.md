@@ -89,8 +89,8 @@ changing the others. The table is generated from their runtime constants.
 | Campaign save | 4.22 | [CURRENT_SAVE_VERSION](../save_manager.py) |
 | Observation | 41 | [OBSERVATION_SCHEMA_VERSION](../game_ai/observation.py) |
 | Command contract | 25 | [CONTRACT_VERSION](../game_ai/command_spec.py) |
-| Response schema | wormhole_control_turn_v16 | [TURN_PLAN_SCHEMA_NAME](../game_ai/schema.py) |
-| Prompt cache | wormhole-control-turn-v38 | [PROMPT_CACHE_KEY](../game_ai/adapters/openai_responses.py) |
+| Response schema | wormhole_control_turn_v17 | [TURN_PLAN_SCHEMA_NAME](../game_ai/schema.py) |
+| Prompt cache | wormhole-control-turn-v39 | [PROMPT_CACHE_KEY](../game_ai/adapters/openai_responses.py) |
 | Local socket protocol | 4 | [PROTOCOL_VERSION](../game_control_protocol.py) |
 | Constructor component | 5 | [Constructor.SCHEMA_VERSION](../unit_components/constructor.py) |
 | Commander component | 2 | [Commander.SCHEMA_VERSION](../unit_components/commander.py) |

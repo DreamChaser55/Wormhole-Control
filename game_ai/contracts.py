@@ -122,7 +122,7 @@ class TurnPlan:
             raise ContractError("plan exceeds its limits.")
         if not isinstance(patch, dict):
             raise ContractError("memory_patch must be an object.")
-        limits = {"strategy": 3000, "objectives": 12, "commitments": 12, "beliefs": 16, "lessons": 16, "misc": 16}
+        limits = {"strategy": 3000, "objectives": 12, "commitments": 12, "beliefs": 16, "important_events": 16, "lessons": 16, "misc": 16}
         if set(patch) - limits.keys():
             raise ContractError("Unknown memory field.")
         for key, value in patch.items():

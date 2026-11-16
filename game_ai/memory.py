@@ -10,7 +10,7 @@ from typing import Any, Mapping
 from persistence_paths import validate_identity, sidecar_paths
 
 
-MEMORY_VERSION = 1
+MEMORY_VERSION = 2
 MAX_RECEIPTS_TOTAL_CHARS = 8_000
 
 
@@ -22,6 +22,7 @@ class AgentMemory:
     objectives: list[str] = field(default_factory=list)
     commitments: list[str] = field(default_factory=list)
     beliefs: list[str] = field(default_factory=list)
+    important_events: list[str] = field(default_factory=list)
     lessons: list[str] = field(default_factory=list)
     misc: list[str] = field(default_factory=list)
     receipts: list[str] = field(default_factory=list)
@@ -36,6 +37,7 @@ class AgentMemory:
             objectives=_text_list(raw.get("objectives"), 12),
             commitments=_text_list(raw.get("commitments"), 12),
             beliefs=_text_list(raw.get("beliefs"), 16),
+            important_events=_text_list(raw.get("important_events"), 16),
             lessons=_merge_lessons(_text_list(raw.get("lessons"), 16)),
             misc=_text_list(raw.get("misc"), 16),
             receipts=_bound_receipts(raw.get("receipts")),
@@ -51,6 +53,7 @@ class AgentMemory:
             ("objectives", 12),
             ("commitments", 12),
             ("beliefs", 16),
+            ("important_events", 16),
             ("misc", 16),
         ):
             if patch.get(field_name) is not None:
@@ -75,6 +78,7 @@ class AgentMemory:
             "objectives": list(self.objectives),
             "commitments": list(self.commitments),
             "beliefs": list(self.beliefs),
+            "important_events": list(self.important_events),
             "lessons": list(self.lessons),
             "misc": list(self.misc),
             "receipts": list(self.receipts),
@@ -100,6 +104,7 @@ class AgentMemory:
             ("Objectives", self.objectives),
             ("Commitments", self.commitments),
             ("Beliefs", self.beliefs),
+            ("Important events in previous turns", self.important_events),
             ("Lessons", self.lessons),
             ("Misc", self.misc),
         ):

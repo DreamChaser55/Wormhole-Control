@@ -3,7 +3,7 @@
 from .command_spec import COMMAND_PROPERTIES
 
 
-TURN_PLAN_SCHEMA_NAME = "wormhole_control_turn_v16"
+TURN_PLAN_SCHEMA_NAME = "wormhole_control_turn_v17"
 
 TURN_PLAN_SCHEMA = {
     "type": "object",
@@ -44,6 +44,11 @@ TURN_PLAN_SCHEMA = {
                     "items": {"type": "string", "maxLength": 500},
                     "maxItems": 16,
                 },
+                "important_events": {
+                    "type": ["array", "null"],
+                    "items": {"type": "string", "maxLength": 500},
+                    "maxItems": 16,
+                },
                 "lessons": {
                     "type": ["array", "null"],
                     "items": {"type": "string", "maxLength": 500},
@@ -60,6 +65,7 @@ TURN_PLAN_SCHEMA = {
                 "objectives",
                 "commitments",
                 "beliefs",
+                "important_events",
                 "lessons",
                 "misc",
             ],

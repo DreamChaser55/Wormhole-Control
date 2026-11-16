@@ -163,9 +163,15 @@ class TestMemory(unittest.TestCase):
         )
         self.assertIn("## Misc\n\n- None recorded.", markdown)
 
-        memory.apply_patch({"misc": ["Important reminder.", "Enemy spotted."]}, turn=2)
+        memory.apply_patch({"misc": ["Important reminder.", "Enemy spotted."],
+                            "important_events": ["Round 1: Home colony captured."]}, turn=2)
         self.assertEqual(memory.misc, ["Important reminder.", "Enemy spotted."])
         serialized = memory.to_dict()
+        assert AgentMemory.from_dict(serialized).important_events == ["Round 1: Home colony captured."]
+        assert AgentMemory.from_dict({}).important_events == []
+        assert "Important events in previous turns" in memory.to_markdown(
+            player_name="One", campaign_id="test", agent_id="agent",
+        )
         self.assertEqual(serialized["misc"], ["Important reminder.", "Enemy spotted."])
 
         restored = AgentMemory.from_dict(serialized)

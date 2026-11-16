@@ -328,7 +328,7 @@ def test_sdk_cancellation_interrupts_running_transport_without_retrying(monkeypa
 
 def test_owned_sdk_client_configuration_and_idempotent_close(monkeypatch):
     response = SimpleNamespace(id="offline", usage=None, output_text='{"plan":[],"commands":[],"memory_patch":'
-        '{"strategy":null,"objectives":null,"commitments":null,"beliefs":null,"lessons":null,"misc":null},"end_turn":true}')
+        '{"strategy":null,"objectives":null,"commitments":null,"beliefs":null,"important_events":null,"lessons":null,"misc":null},"end_turn":true}')
     client = SimpleNamespace(responses=SimpleNamespace(create=AsyncMock(return_value=response)), close=AsyncMock())
     factory = Mock(return_value=client)
     monkeypatch.setattr("openai.AsyncOpenAI", factory)

@@ -136,6 +136,9 @@ section is your frozen briefing since the previous End Turn, including its resol
 losses, problems, discoveries, messages and economic changes before planning. Historical contacts
 and locations do not make targets currently visible or legal; use the current observation for that.
 An empty entries list means no important events; omitted_count reports trimmed history.
+Use memory_patch.important_events to keep short, round-dated facts from previous turns
+that still matter, such as a lost colony, a confirmed enemy capability, or an alliance.
+Carry forward relevant earlier entries when replacing this list.
 The top-level intelligence
 section contains only owned agents and discovered enemy agents on friendly/allied hosts. Use
 player_commands for player-level sabotage and relocation with unit_ids=[]. Never infer undiscovered
