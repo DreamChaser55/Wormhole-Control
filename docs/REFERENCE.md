@@ -640,7 +640,7 @@ report mandatory returns and endurance losses.
 | Fleet Repair Ship | Logistics | LARGE ship | 87.99/100 | 3640 | 138 | 44 | 28 | 0.88 | Designed for fleet repair. Inter-system travel. |
 | Heavy Shipyard | Logistics | LARGE station | 88.79/100 | 3664 | 139 | 45 | 28 | 0.89 | Designed for construction and repair base. Stationary installation. Hangar accepts Tiny vessels, not strikecraft wings. Support facilities do not accelerate construction. |
 | Antimatter Storage Station | Logistics | LARGE station | 90.00/100 | 3700 | 140 | 45 | 29 | 0.90 | Stationary bulk antimatter reservoir. Accept deliveries and supply friendly ships through Transfer Antimatter or receiver-issued Take Antimatter. |
-| Fleet Tanker | Logistics | LARGE ship | 91.25/100 | 3738 | 142 | 46 | 29 | 0.91 | Designed for fleet resupply. Inter-system travel. Harvest near stars or inside hydrogen nebulae. |
+| Fleet Tanker | Logistics | LARGE ship | 100.00/100 | 4000 | 150 | 50 | 30 | 1.00 | Fleet resupply ship with 775 AM storage. Inter-system travel. Harvest near stars or inside hydrogen nebulae. |
 | Scout | Reconnaissance | SMALL ship | 24.40/25 | 982 | 37 | 13 | 12 | 0.24 | Designed for exploration. Inter-system travel. |
 | Radiation Surveyor | Reconnaissance | MEDIUM ship | 42.25/50 | 1768 | 68 | 22 | 18 | 0.42 | Reduces radiation hazards by 75% for this unit while enabled. Costs 1 AM each owner turn, including safe space. Requires functional Abilities and Antimatter Storage. Protection does not change terrain access, sensors or movement. Inter-system travel. Protection starts disabled. |
 | Sensor Station | Reconnaissance | MEDIUM station | 46.00/50 | 1880 | 71 | 23 | 19 | 0.46 | Designed for long-range reconnaissance. Stationary installation. |
