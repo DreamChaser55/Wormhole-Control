@@ -376,7 +376,9 @@ the tankless-wing exception used by payment and journey previews.
 `StarSystem.spawn_celestial_bodies` in `galaxy.py` places the central star, draws
 independent radius-based planet and secondary-body budgets, places planets by
 radial ring, then secondary bodies and deferred moons, and finally refreshes
-static inhibition zones. Unplaceable moons become weighted nonmoon bodies to
+static inhibition zones. Planet rolls guarantee one
+colonizable world, and two secondary slots guarantee the mining bodies.
+Unplaceable moons become weighted nonmoon bodies to
 preserve the secondary budget. Galaxy generation adds wormhole pairs afterward.
 
 The generation constants in `galaxy.py` own the count ranges and the planet-type

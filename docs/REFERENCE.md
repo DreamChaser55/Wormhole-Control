@@ -215,7 +215,7 @@ combat before advancing to the next player.
 Credits, metal and crystal are empire-wide stockpiles. Raw mined cargo becomes
 spendable only after unloading at the corresponding refinery. Default starts give
 20,000 credits, 1,000 metal and 500 crystal; custom setup values take precedence.
-Starter units are free. Home systems do not guarantee accessible mineral sources.
+Starter units are free. Every system contains both mineral sources. Ships still need suitable routes to access them.
 
 All three resources are mandatory and paid together. Credit prices and build times
 are independent of material prices. For hull capacity `H` and installed hull usage `U`:
@@ -1367,8 +1367,9 @@ Every type can occur in every zone, and star type does not change these chances.
 Each system also generates `2R`–`3R` secondary bodies: moons, colonizable and metal
 asteroids, comets, asteroid/ice/debris fields, nebulae and storms. The central star
 and wormholes are outside both budgets. Each generated body occupies its own hex.
-Counts do not guarantee a colonizable planet or either mining resource. Campaign
-setup can add Terran homeworlds beyond the planet budget when needed; see
+Every system has a colonizable planet and reserves secondary-body slots for
+a comet and a metal asteroid. Campaign setup can add Terran homeworlds when
+several players share a system; see
 [spawn profiles](#spawn-profiles).
 
 Comets have an 85% preference for available outskirts hexes at least

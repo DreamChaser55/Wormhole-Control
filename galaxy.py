@@ -202,7 +202,10 @@ class StarSystem:
             self.radius * SECONDARY_BODIES_PER_RADIUS_MAX,
         )
         self._spawn_planets(available_hexes, num_planets)
-        self._spawn_secondary_bodies(available_hexes, num_secondary)
+        guaranteed = (Comet, MetalAsteroid)[:min(num_secondary, len(available_hexes))]
+        for body_class in guaranteed:
+            self._spawn_secondary_body(body_class, available_hexes)
+        self._spawn_secondary_bodies(available_hexes, num_secondary - len(guaranteed))
 
         for hex_obj in self.hexes.values():
             hex_obj.update_static_inhibition_zones()
@@ -215,7 +218,8 @@ class StarSystem:
             selected_rings.extend(random.sample(rings, count - self.radius))
 
         planet_hexes: list[HexCoord] = []
-        for ring in selected_rings:
+        has_colonizable_planet = False
+        for index, ring in enumerate(selected_rings):
             candidates = [h for h in available_hexes if hex_distance(h.coordinates(), (0, 0)) == ring]
             if planet_hexes:
                 separations = [
@@ -241,6 +245,12 @@ class StarSystem:
                 weights=[weights[zone] for weights in PLANET_ZONE_WEIGHTS.values()],
                 k=1,
             )[0]
+            if index == len(selected_rings) - 1 and not has_colonizable_planet and planet_type == PlanetType.GAS_GIANT:
+                land_types = [kind for kind in PLANET_ZONE_WEIGHTS if kind != PlanetType.GAS_GIANT]
+                planet_type = random.choices(
+                    land_types, weights=[PLANET_ZONE_WEIGHTS[kind][zone] for kind in land_types], k=1,
+                )[0]
+            has_colonizable_planet |= planet_type != PlanetType.GAS_GIANT
             self.add_celestial_body(Planet(in_hex=coord, in_system=self.name, planet_type=planet_type))
 
     def _spawn_secondary_body(self, body_class, available_hexes: list[Hex]):

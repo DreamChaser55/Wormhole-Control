@@ -152,6 +152,9 @@ def test_seeded_system_budgets_rings_and_integrity(radius):
         system = StarSystem(f'Seed {seed}', Vector(0, 0), radius=radius)
         bodies = list(system.celestial_bodies_by_id.values())
         planets = [body for body in bodies if isinstance(body, Planet)]
+        assert any(planet.is_colonizable for planet in planets)
+        assert any(isinstance(body, Comet) for body in bodies)
+        assert any(isinstance(body, MetalAsteroid) for body in bodies)
         assert math.ceil(0.7 * radius) <= len(planets) <= math.floor(1.3 * radius)
         assert 2 * radius <= len(bodies) - len(planets) - 1 <= 3 * radius
         rings = Counter(hex_distance(planet.in_hex, (0, 0)) for planet in planets)
