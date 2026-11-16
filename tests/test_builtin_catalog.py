@@ -29,7 +29,7 @@ def create(game, key, owner=0):
 def test_catalog_coverage_and_canonical_values():
     from scripts.generate_reference import component_rows
     from unit_components.enums import AbilityType
-    assert len(BUILTINS) == 78
+    assert len(BUILTINS) == 80
     assert validate_builtin_catalog(BUILTINS) == {}
     assert {a.value for a in AbilityType} == {a for t in BUILTINS.values() for a in t['abilities']}
     assert all(any(t[row['key']] for t in BUILTINS.values()) for row in component_rows())
@@ -84,8 +84,8 @@ def test_revised_specialists():
     ('INTERDICTION_FRIGATE', 600, 12, 50, 2000, 20, 6, 33),
     ('INTERDICTION_STATION', 900, 18, 50, 2000, 20, 9, 33),
     ('INTERDICTOR', 1500, 30, 100, 4000, 30, 15, 33),
-    ('INTERDICTION_FORTRESS', 2000, 40, 190.8, 7724, 39, 20, 70),
-    ('TITAN_CITADEL', 1500, 30, 685.8006163584874, 40574, 111, 15, 133),
+    ('INTERDICTION_FORTRESS', 2000, 40, 194.4, 7832, 39, 20, 70),
+    ('TITAN_CITADEL', 1500, 30, 700.4006163584874, 41012, 113, 15, 133),
     ('SPAWN_STATION_MEDIUM', 300, 6, 26, 500, 7, 3, 66),
 ])
 def test_inhibitor_catalog_budget_field_fuel_and_persistence(

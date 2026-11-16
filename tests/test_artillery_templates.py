@@ -95,7 +95,7 @@ def test_instantiate_and_long_range_capabilities():
         lr_turrets = [t for t in unit.weapons_component.turrets if t.variant == TurretVariant.LONG_RANGE]
         assert len(lr_turrets) >= 1
         for t in lr_turrets:
-            # Effective range of long-range turrets is 3x base range (base 400 -> 1200)
-            assert t.range == 1200.0
+            # The fixed battery starts with a higher base range than the mobile designs.
+            assert t.range == (1560.0 if key == 'ARTILLERY_BATTERY' else 1200.0)
             # Effective cooldown is 3x base cooldown (base 3 -> 9)
             assert t.cooldown == 9

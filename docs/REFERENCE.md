@@ -596,37 +596,39 @@ report mandatory returns and endurance losses.
 | Recon Wing | Carriers | STRIKECRAFT_WING wing | 6.97/7 | 259 | 11 | 4 | 2 | 0.00 | High-speed reconnaissance fighter wing with extended tactical sensors for scouting sectors and screening friendly carriers. Built and replenished in a strikecraft bay; requires a carrier for transport between sectors. |
 | Fighter Wing | Carriers | STRIKECRAFT_WING wing | 7.00/7 | 260 | 11 | 4 | 2 | 0.00 | Balanced fighter wing for intercepting enemy strikecraft. Built and replenished in a strikecraft bay; requires a carrier for transport between sectors. |
 | Long Range Bomber Wing | Carriers | STRIKECRAFT_WING wing | 7.00/7 | 260 | 11 | 4 | 2 | 0.00 | Lightly protected bomber wing with 292.5 effective weapon range and a nine-turn cooldown; eligible for carrier Attack Run. Built and replenished in a strikecraft bay; requires a carrier for transport between sectors. |
-| Light Strikecraft Station | Carriers | MEDIUM station | 26.80/50 | 1304 | 52 | 14 | 15 | 0.27 | Low-cost stationary two-wing base. Builds and replenishes strikecraft wings; select production separately for each slot. |
-| Medium Strikecraft Station | Carriers | MEDIUM station | 46.80/50 | 1904 | 72 | 24 | 19 | 0.47 | Economical stationary four-wing base for local-sector defense. Builds and replenishes strikecraft wings; select production separately for each slot. |
+| Light Strikecraft Station | Carriers | MEDIUM station | 27.70/50 | 1331 | 53 | 14 | 16 | 0.28 | Low-cost stationary two-wing base. Builds and replenishes strikecraft wings; select production separately for each slot. |
+| Medium Strikecraft Station | Carriers | MEDIUM station | 47.70/50 | 1931 | 73 | 24 | 20 | 0.48 | Economical stationary four-wing base for local-sector defense. Builds and replenishes strikecraft wings; select production separately for each slot. |
 | Escort Carrier | Carriers | MEDIUM ship | 49.30/50 | 1979 | 75 | 25 | 20 | 0.49 | Designed for light carrier. Inter-system travel. Select a built-in strikecraft wing design using the production picker. |
-| Large Strikecraft Station | Carriers | LARGE station | 86.30/100 | 3589 | 137 | 44 | 28 | 0.86 | Large stationary eight-wing base for local-sector defense. Builds and replenishes strikecraft wings; select production separately for each slot. |
+| Large Strikecraft Station | Carriers | LARGE station | 87.20/100 | 3616 | 138 | 44 | 28 | 0.87 | Large stationary eight-wing base for local-sector defense. Builds and replenishes strikecraft wings; select production separately for each slot. |
 | Fleet Carrier | Carriers | HUGE ship | 166.60/200 | 6998 | 267 | 84 | 37 | 1.67 | Designed for carrier command. Inter-system travel. Select a built-in strikecraft wing design using the production picker. |
 | Missile Platform | Combat | TINY station | 10.00/10 | 400 | 15 | 5 | 6 | 0.10 | Designed for local missile defense. Stationary installation. |
 | Patrol Cutter | Combat | TINY ship | 10.00/10 | 400 | 15 | 5 | 6 | 0.10 | Designed for local patrol. Local-sector operations; Tiny craft can travel aboard a hangar transport. |
+| Kinetic Emplacement | Combat | SMALL station | 19.93/25 | 848 | 33 | 10 | 11 | 0.20 | Compact armored defense station with an extended-range mass driver. |
 | System Patrol Craft | Combat | SMALL ship | 23.20/25 | 946 | 36 | 12 | 12 | 0.23 | Affordable armed patrol craft for single-system policing and convoy protection. Basic Hyperdrive allows intra-system travel only. |
 | Interceptor | Combat | SMALL ship | 24.20/25 | 976 | 37 | 13 | 12 | 0.24 | Designed for strikecraft interception. Inter-system travel. |
 | Patrol Escort | Combat | MEDIUM ship | 33.00/50 | 1490 | 58 | 17 | 17 | 0.33 | Economical armed escort for patrol and convoy protection. Inter-system travel. |
+| Beam Redoubt | Combat | MEDIUM station | 40.82/50 | 1725 | 66 | 21 | 18 | 0.41 | Shielded defensive station with a beam battery and a long-range lance. |
 | Beam Frigate | Combat | MEDIUM ship | 45.50/50 | 1865 | 71 | 23 | 19 | 0.46 | Designed for beam combat. Inter-system travel. |
 | Kinetic Frigate | Combat | MEDIUM ship | 45.50/50 | 1865 | 71 | 23 | 19 | 0.46 | Designed for kinetic combat. Inter-system travel. |
 | Missile Frigate | Combat | MEDIUM ship | 45.50/50 | 1865 | 71 | 23 | 19 | 0.46 | Designed for missile combat. Inter-system travel. |
-| Artillery Battery | Combat | MEDIUM station | 46.02/50 | 1881 | 72 | 24 | 19 | 0.46 | Fortified stationary long-range artillery platform for perimeter and chokepoint defense. Stationary installation. |
 | Hazard Escort | Combat | MEDIUM ship | 48.00/50 | 1940 | 73 | 24 | 20 | 0.48 | Reduces plasma, black hole, debris hazards by 75% for this unit while enabled. Costs 2 AM each owner turn, including safe space. Requires functional Abilities and Antimatter Storage. Protection does not change terrain access, sensors or movement. Inter-system travel. Protection starts disabled. |
 | Siege Frigate | Combat | MEDIUM ship | 48.00/50 | 1940 | 73 | 24 | 20 | 0.48 | Dedicated planetary bombardment ship. Inter-system travel. |
 | Troop Transport | Combat | MEDIUM ship | 48.00/50 | 1940 | 73 | 24 | 20 | 0.48 | Dedicated planetary invasion ship. Inter-system travel. |
 | Artillery Frigate | Combat | MEDIUM ship | 49.02/50 | 1971 | 75 | 25 | 20 | 0.49 | Dedicated missile artillery frigate for mobile fire support. Inter-system travel. |
-| Flak Battery | Combat | MEDIUM station | 49.10/50 | 1973 | 75 | 25 | 20 | 0.49 | Designed for stationary air defense. Stationary installation. |
 | Flak Escort | Combat | MEDIUM ship | 49.80/50 | 1994 | 75 | 25 | 20 | 0.50 | Designed for fleet air defense. Inter-system travel. |
+| Artillery Battery | Combat | MEDIUM station | 49.92/50 | 1998 | 75 | 25 | 20 | 0.50 | Fortified stationary long-range artillery platform for perimeter and chokepoint defense. Stationary installation. |
+| Flak Battery | Combat | MEDIUM station | 50.00/50 | 2000 | 75 | 25 | 20 | 0.50 | Designed for stationary air defense. Stationary installation. |
 | Interdiction Station | Combat | MEDIUM station | 50.00/50 | 2000 | 75 | 25 | 20 | 0.50 | Lightly armed hyperspace interdiction specialist with a 900-radius field for 9 AM per owner turn. Stationary installation. Activate clear of natural or artificial inhibition zones and sector boundaries. Use escorts and fuel deliveries for sustained interdiction; the field also blocks friendly ships. |
 | Artillery Cruiser | Combat | LARGE ship | 90.24/100 | 3707 | 141 | 46 | 29 | 0.90 | Designed for ranged fire support. Inter-system travel. |
 | Lance Cruiser | Combat | LARGE ship | 90.24/100 | 3707 | 141 | 46 | 29 | 0.90 | Dedicated beam sniper cruiser with long-range energy lances. Inter-system travel. |
 | Railgun Cruiser | Combat | LARGE ship | 90.24/100 | 3707 | 141 | 46 | 29 | 0.90 | Dedicated kinetic sniper cruiser with long-range railguns. Inter-system travel. |
 | Assault Cruiser | Combat | LARGE ship | 90.67/100 | 3720 | 141 | 46 | 29 | 0.91 | Designed for direct assault. Inter-system travel. |
-| Orbital Bastion | Combat | LARGE station | 92.80/100 | 3784 | 143 | 47 | 29 | 0.93 | Designed for colony defense. Stationary installation. Requires a friendly or allied colony and an available colony support slot. |
+| Orbital Bastion | Combat | LARGE station | 95.50/100 | 3865 | 146 | 48 | 29 | 0.96 | Designed for colony defense. Stationary installation. Requires a friendly or allied colony and an available colony support slot. |
 | Battleship | Combat | HUGE ship | 183.93/200 | 7518 | 284 | 92 | 38 | 1.84 | Designed for fleet anchor. Inter-system travel. |
 | Siege Dreadnought | Combat | HUGE ship | 185.49/200 | 7565 | 286 | 93 | 39 | 1.85 | Dedicated planetary bombardment with a Siege Battery and long-range fleet weapons. Inter-system travel. |
-| Interdiction Fortress | Combat | HUGE station | 190.80/200 | 7724 | 291 | 96 | 39 | 1.91 | Fortified stationary jump denial with a 2000-radius field for 20 AM per owner turn. Deploy in clear sectors away from natural inhibition zones and sector boundaries. Support with escorts and fuel deliveries; the field also blocks friendly ships. |
+| Interdiction Fortress | Combat | HUGE station | 194.40/200 | 7832 | 295 | 98 | 39 | 1.94 | Fortified stationary jump denial with a 2000-radius field for 20 AM per owner turn. Deploy in clear sectors away from natural inhibition zones and sector boundaries. Support with escorts and fuel deliveries; the field also blocks friendly ships. |
 | Artillery Dreadnought | Combat | HUGE ship | 194.93/200 | 7848 | 295 | 98 | 39 | 1.95 | Dedicated long-range fleet bombardment dreadnought featuring tri-weapon artillery batteries. Inter-system travel. |
-| Titan Citadel | Combat | TITAN station | 685.80/800 | 40574 | 1086 | 343 | 111 | 118.58 | Unique strategic station with a Titan Core, heavy battery, repair base, and 1500-radius inhibition field for 15 AM per owner turn. Deploy clear of natural inhibition zones and sector boundaries. Support with escorts and fuel deliveries for its field and abilities; inhibition also blocks friendly ships. |
+| Titan Citadel | Combat | TITAN station | 700.40/800 | 41012 | 1101 | 351 | 113 | 120.04 | Unique strategic station with a Titan Core, heavy battery, repair base, and 1500-radius inhibition field for 15 AM per owner turn. Deploy clear of natural inhibition zones and sector boundaries. Support with escorts and fuel deliveries for its field and abilities; inhibition also blocks friendly ships. |
 | Titan Flagship | Combat | TITAN ship | 744.80/800 | 42344 | 1145 | 373 | 116 | 124.48 | Unique strategic flagship with a Titan Core, heavy battery, extended sensors, and fleet support. |
 | Mining Drone | Economy | TINY ship | 9.90/10 | 397 | 15 | 5 | 6 | 0.10 | Designed for transportable mining. Local-sector operations; Tiny craft can travel aboard a hangar transport. Mine metal asteroids or comets and unload at the matching refinery. |
 | Civilian Habitat | Economy | SMALL station | 24.00/25 | 970 | 37 | 12 | 12 | 0.24 | Adds 12 credits per owner turn when supported by a populated colony you own in the same sector. An active habitat is also a trade destination. |
@@ -651,9 +653,9 @@ report mandatory returns and endurance losses.
 | Antimatter Transporter | Logistics | MEDIUM ship | 49.00/50 | 1970 | 74 | 25 | 20 | 0.49 | Dedicated antimatter transport. Inter-system travel. Take Antimatter loads from friendly units; Continuous Antimatter Transport repeats deliveries with an automatic return reserve. |
 | Pulsar Harvester | Logistics | LARGE ship | 70.25/100 | 3108 | 121 | 36 | 26 | 0.70 | Pulsar harvesting specialist. Hazard Shielding reduces hull damage from pulsars, plasma storms, black holes and debris by 75% for 2 AM per owner turn while enabled. Inter-system travel. |
 | Utility Transport | Logistics | LARGE ship | 76.50/100 | 3295 | 127 | 39 | 26 | 0.77 | Designed for Tiny vessel transport. Inter-system travel. Hangar accepts Tiny vessels, not strikecraft wings. |
-| Nebula Tender | Logistics | LARGE ship | 84.25/100 | 3528 | 135 | 43 | 28 | 0.84 | Designed for nebula and fuel support. Inter-system travel. Harvest near stars or inside hydrogen nebulae. |
 | Fleet Repair Ship | Logistics | LARGE ship | 87.99/100 | 3640 | 138 | 44 | 28 | 0.88 | Designed for fleet repair. Inter-system travel. |
-| Heavy Shipyard | Logistics | LARGE station | 88.79/100 | 3664 | 139 | 45 | 28 | 0.89 | Designed for construction and repair base. Stationary installation. Hangar accepts Tiny vessels, not strikecraft wings. Support facilities do not accelerate construction. |
+| Nebula Tender | Logistics | LARGE ship | 89.25/100 | 3678 | 140 | 45 | 28 | 0.89 | Fuel and nebula support ship with Nebula Catalyst. Antimatter Containment reduces magnetic-storm and dust-nebula fuel drain. |
+| Heavy Shipyard | Logistics | LARGE station | 89.69/100 | 3691 | 140 | 45 | 28 | 0.90 | Designed for construction and repair base. Stationary installation. Hangar accepts Tiny vessels, not strikecraft wings. Support facilities do not accelerate construction. |
 | Antimatter Storage Station | Logistics | LARGE station | 90.00/100 | 3700 | 140 | 45 | 29 | 0.90 | Stationary bulk antimatter reservoir. Accept deliveries and supply friendly ships through Transfer Antimatter or receiver-issued Take Antimatter. |
 | Fleet Tanker | Logistics | LARGE ship | 100.00/100 | 4000 | 150 | 50 | 30 | 1.00 | Fleet resupply ship with 775 AM storage. Inter-system travel. Harvest near stars or inside hydrogen nebulae. |
 | Scout | Reconnaissance | SMALL ship | 24.40/25 | 982 | 37 | 13 | 12 | 0.24 | Designed for exploration. Inter-system travel. |
@@ -1020,6 +1022,10 @@ and Advanced Hyperdrive, and a stationary **Wormhole Stabilizer Station** with
 | Beam | Instant directed-energy fire | Shields |
 | Missile | Guided explosive ordnance | Point Defense |
 
+Built-in defensive stations mount longer-range turrets than similar mobile
+warships. The Kinetic Emplacement offers compact local defense, and the Beam
+Redoubt anchors positions with shielded beam batteries.
+
 **Standard** turrets balance range, damage and cooldown. **Anti-Strikecraft**
 turrets specialize in wings with faster tracking and fire. **Long Range** turrets
 trade slower firing for reach. Combat XP improves weapon damage, defenses,
@@ -1196,7 +1202,7 @@ before another overlapping source resolves.
 These abilities do not affect weapons, mines, wormhole instability, sabotage,
 oxygen splash amplification, movement penalties, sensors or entry restrictions.
 They protect only the equipped unit. **Hazard Escort**, **Radiation Surveyor**
-and **Pulsar Harvester** are buildable specialist variants with one resistance each.
+**Pulsar Harvester**, and **Nebula Tender** are buildable specialist variants with one resistance each.
 
 ### Combat and support abilities
 
