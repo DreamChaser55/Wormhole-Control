@@ -29,7 +29,7 @@ def create(game, key, owner=0):
 def test_catalog_coverage_and_canonical_values():
     from scripts.generate_reference import component_rows
     from unit_components.enums import AbilityType
-    assert len(BUILTINS) == 80
+    assert len(BUILTINS) == 83
     assert validate_builtin_catalog(BUILTINS) == {}
     assert {a.value for a in AbilityType} == {a for t in BUILTINS.values() for a in t['abilities']}
     assert all(any(t[row['key']] for t in BUILTINS.values()) for row in component_rows())
