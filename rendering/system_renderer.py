@@ -4,6 +4,8 @@ import random
 import math
 from constants import DARK_GRAY, NEBULA_COLORS, STORM_COLORS, YELLOW, CYAN, PURPLE, RED, WHITE, SELECTION_HIGHLIGHT_COLOR, HOVER_HIGHLIGHT_COLOR, GRAY, HEX_JUMP_ORDER_LINE_COLOR, HYPERDRIVE_RANGE_HEX_FILL_COLOR, SENSOR_RANGE_HEX_FILL_COLOR, XP_JUMP_RANGE_BONUS, PlanetType, STORM_LIGHTNING_COLOR, SQRT3, WORMHOLE_LINE_COLOR, STAR_COLORS, DARK_RED, SYSTEM_FOG_OF_WAR_COLOR, HEX_GRID_COLOR
 
+from constants import HULL_BASE_ICON_SCALES
+
 from hexgrid_utils import get_hex_vertices, hex_to_pixel, hex_distance
 from domain.celestials import Star, Planet, Wormhole, CelestialBody, Moon, ColonizableAsteroid, MetalAsteroid, AsteroidField, IceField, Nebula, Storm, Comet, DebrisField
 from domain.units import Unit
@@ -294,9 +296,9 @@ class SystemViewRenderer:
                         shape_type = 'strikecraft_wing'
                     else:
                         shape_type = 'triangle' if unit.engines_component else 'square'
-                    current_icon_base_size = new_system_view_icon_base_size 
-                    if shape_type == 'strikecraft_wing':
-                        current_icon_base_size *= 1.2
+                    # Compress the sector-view size range to keep system slots readable.
+                    hull_scale = HULL_BASE_ICON_SCALES[unit.hull_size]
+                    current_icon_base_size = new_system_view_icon_base_size * (0.7 + 0.3 * hull_scale)
 
                     if shape_type in ('triangle', 'strikecraft_wing'):
                         unit_screen_y = icon_center_y + current_icon_base_size * 0.2 

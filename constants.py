@@ -531,12 +531,12 @@ HIT_POINTS = {
 
 HULL_BASE_ICON_SCALES = {
     HullSize.STRIKECRAFT_WING: 1.2,
-    HullSize.TINY: 0.6,
-    HullSize.SMALL: 0.8,
+    HullSize.TINY: 0.55,
+    HullSize.SMALL: 0.76,
     HullSize.MEDIUM: 1.0, # Medium is the baseline
-    HullSize.LARGE: 1.3,
-    HullSize.HUGE: 1.7,
-    HullSize.TITAN: 2.3,
+    HullSize.LARGE: 1.36,
+    HullSize.HUGE: 1.82,
+    HullSize.TITAN: 2.5,
 }
 
 HULL_DOT_COUNTS = {
