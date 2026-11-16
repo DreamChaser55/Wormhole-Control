@@ -1286,7 +1286,7 @@ Unobserved worlds show **Owner: Unknown**, regardless of whether they are actual
 uninhabited or occupied. After contact is lost, the last observed owner (or
 uninhabited status) remains with **Last observed: turn N** and a muted dashed
 faction ring. This saved intelligence does not update when an unseen colony
-changes hands. Population, defenses and colony activity require current knowledge;
+changes hands. Population, base growth rate, defenses and colony activity require current knowledge;
 physical traits and population capacity remain available.
 
 Colonization, colonist loading, troop recruitment, bombardment, invasion and colony

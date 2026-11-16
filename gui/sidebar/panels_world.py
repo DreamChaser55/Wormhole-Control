@@ -272,6 +272,9 @@ def build_celestial_body_panel(game, body: CelestialBody, *, show_rules: bool = 
                             if amount:
                                 data.append({'type': 'label', 'text': f'Missing: {amount:g} {name}', 'height': 25})
         data.append({'type': 'label', 'text': f"Population: {body.population:.2f} / {body.max_population:.2f}", 'object_id': '#sidebar_info_label', 'height': 25})
+        if body.owner:
+            data.append({'type': 'label', 'text': f'Population growth: {body.population_growth_rate:.2%} per round',
+                         'object_id': '#sidebar_info_label', 'height': 25})
         if body.owner and body.population > 0:
             cap = body.get_supported_habitat_capacity() if hasattr(body, 'get_supported_habitat_capacity') else 0
             od_cap = body.get_supported_orbital_defense_capacity() if hasattr(body, 'get_supported_orbital_defense_capacity') else 0

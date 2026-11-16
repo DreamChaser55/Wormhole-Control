@@ -79,7 +79,8 @@ and nullable `ownership_observed_turn`. `owner_id` and `owner_relation` describe
 only that disclosed intelligence: unknown uses null and `unknown`, while confirmed
 uninhabited uses null and `neutral`. Last-known ownership is dated history, not
 current control, even if last observed earlier in the same round. Population and
-`planetary_defenses` are omitted without current knowledge. Physical traits and
+`planetary_defenses` are omitted without current knowledge. Current owned worlds
+include their base `population_growth_rate` as a fraction per round. Physical traits and
 capacity remain available. Remote `body_summary.colonizable_count` and
 `colonizable_capacity` describe geography, not unclaimed worlds.
 

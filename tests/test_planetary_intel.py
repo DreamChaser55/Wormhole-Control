@@ -322,14 +322,18 @@ def test_last_known_sidebar_and_ring_use_observed_owner():
     game = campaign()
     body = world(game)
     unit = scout(game, body)
+    from game_ai.observation import _body_view
     view(game, body)
+    assert _body_view(body, game.players[0], game=game)['population_growth_rate'] == body.population_growth_rate
+    assert any(r.get('text', '').startswith('Population growth:') for r in build_celestial_body_panel(game, body))
     unit.position.x += 1
     body.owner = None
+    assert 'population_growth_rate' not in _body_view(body, game.players[0], game=game)
     rows = build_celestial_body_panel(game, body)
     texts = [r.get('text', '') for r in rows]
     assert 'Owner: Two' in texts
     assert 'Last observed: turn 7' in texts
-    assert not any(t.startswith(('Population:', 'Readiness:', 'Planetary defense:')) for t in texts)
+    assert not any(t.startswith(('Population:', 'Population growth:', 'Readiness:', 'Planetary defense:')) for t in texts)
     surface = pygame.Surface((80, 80))
     draw_ownership_ring(surface, game, body, (40, 40), 20)
     muted = tuple(round(c * .55) for c in game.players[1].color)
