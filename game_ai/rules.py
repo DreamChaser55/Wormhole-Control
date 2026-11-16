@@ -176,7 +176,7 @@ def supported_commands(unit: Any) -> list[str]:
     if getattr(unit, "mining_component", None):
         commands.extend(["mine", "continuous_mine", "unload_resources"])
     if getattr(unit, "antimatter_component", None):
-        commands.extend(["give_antimatter", "take_antimatter"])
+        commands.extend(["give_antimatter", "take_antimatter", "resupply_nearby"])
         if has_operational_engines(unit):
             commands.append("continuous_antimatter_transport")
     if getattr(unit, "harvester_component", None) and getattr(
@@ -277,6 +277,13 @@ def command_guidance(
         legal.update({"move", "patrol"})
     if "defend" in supported:
         legal.add("defend")
+    if "resupply_nearby" in supported:
+        from antimatter_logistics import endpoint_ready, nearby_recipients
+        if endpoint_ready(unit, game.galaxy) and not unit.is_disabled:
+            legal.add("resupply_nearby")
+            options["resupply_nearby"] = {
+                "recipient_ids": [other.id for other in nearby_recipients(unit, game.galaxy)],
+            }
 
     friendly_units = [
         candidate

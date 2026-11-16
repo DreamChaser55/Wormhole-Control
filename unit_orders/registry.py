@@ -3,7 +3,7 @@ from .wormhole_stabilizer import StabilizeWormholeOrder
 from .planetary import RecruitTroopsOrder, BombardPlanetOrder, InvadePlanetOrder
 from .abilities import UseAbilityOrder
 from .strikecraft import AttackRunOrder, EmergencyRecoveryOrder, ReturnForServiceOrder
-from .fuel_transport import TakeAntimatterOrder, ContinuousAntimatterTransportOrder
+from .fuel_transport import TakeAntimatterOrder, ContinuousAntimatterTransportOrder, ResupplyNearbyOrder
 from .antimatter import ContinuousResupplyOrder, TransferAntimatterOrder
 from .base import Order, OrderStatus, OrderType
 from .colony import ColonizeOrder, LoadColonistsOrder
@@ -62,6 +62,7 @@ ORDER_CLASS_REGISTRY = {
     OrderType.USE_ABILITY: UseAbilityOrder,
     OrderType.CONTINUOUS_MINE: ContinuousMineOrder,
     OrderType.TRANSFER_ANTIMATTER: TransferAntimatterOrder,
+    OrderType.RESUPPLY_NEARBY: ResupplyNearbyOrder,
     OrderType.CONTINUOUS_RESUPPLY: ContinuousResupplyOrder,
     OrderType.LAY_MINEFIELD: LayMinefieldOrder,
     OrderType.REFIT_UNIT: RefitOrder,

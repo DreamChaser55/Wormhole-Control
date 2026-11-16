@@ -1047,3 +1047,25 @@ def test_ai_advertises_queued_pickup_delivery_dependencies(amount, kind, prior):
     assert prior in legal and kind not in legal
     assert target.id in options[kind]['queued_target_ids']
     assert {'type': kind, 'requires_prior_command': prior, 'same_unit': True, 'queue': True} in conditional
+
+
+def test_nearby_resupply_distributes_fuel_without_moving_and_survives_loading():
+    game = campaign()
+    depot = vessel(game, amount=45, position=(0, 0))
+    owned = vessel(game, amount=0, position=(200, 0))
+    ally_player = type(depot.owner)('Ally', (100, 100, 100), team_id=depot.owner.team_id)
+    game.players.append(ally_player)
+    allied = vessel(game, amount=0, position=(160, 0), owner=2)
+    enemy = vessel(game, amount=0, position=(0, 30), owner=1)
+    distant = vessel(game, amount=0, position=(201, 0))
+    assert issue(game, dict(type='resupply_nearby', unit_ids=(depot.id,))).accepted
+    assert depot.antimatter_component.current_amount == 45
+    depot.commander_component.update()
+    assert owned.antimatter_component.current_amount == 22.5
+    assert allied.antimatter_component.current_amount == 22.5
+    assert all(unit.antimatter_component.current_amount == 0 for unit in (depot, enemy, distant))
+    assert depot.position == Position(0, 0)
+    data = serialize_game_state(game)
+    assert deserialize_game_state(game, data)
+    restored = game.galaxy.get_unit_by_id(depot.id)
+    assert restored.commander_component.current_order.order_type.name == 'RESUPPLY_NEARBY'

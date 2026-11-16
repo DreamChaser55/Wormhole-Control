@@ -229,6 +229,8 @@ multiplied by (1+0.5*fortification_level) and readiness. Empty colonies have zer
 10 percentage points on quiet global rounds; capture lowers fortifications one level and sets readiness
 to 25%. Read colony defenses and command_options for current previews, costs and blockers.
 Use give_antimatter to donate and take_antimatter to approach a friendly source and load fuel.
+Use resupply_nearby to set up a local depot that shares available fuel with all nearby
+owned and allied units each owner turn. This order holds position and runs until cancelled.
 continuous_resupply uses source_id for a star or hydrogen nebula; continuous_antimatter_transport uses source_id for a loading unit.
 Both use optional target_id for a fixed owned/allied recipient. Null target_id automatically supplies nearest reachable owned units galaxy-wide, visiting several per load.
 For critical fuel-consuming services, recipient_priority=service_urgency serves the fewest

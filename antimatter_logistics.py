@@ -87,13 +87,14 @@ def in_transfer_range(actor, target):
     )
 
 
-def exchange(source, receiver, reserve=0.0):
+def exchange(source, receiver, reserve=0.0, *, limit=ANTIMATTER_TRANSFER_RATE):
     """Debit before credit, with one conserved, capacity-limited transfer."""
     if source is receiver or not storage_ready(source) or not storage_ready(receiver):
         return 0.0
     donor, tank = source.antimatter_component, receiver.antimatter_component
     amount = min(
         ANTIMATTER_TRANSFER_RATE,
+        limit,
         max(0.0, donor.current_amount - reserve),
         max(0.0, tank.max_capacity - tank.current_amount),
     )
@@ -103,6 +104,19 @@ def exchange(source, receiver, reserve=0.0):
     if added < amount:
         donor.add(amount - added)
     return added
+
+
+def nearby_recipients(unit, galaxy):
+    """Valid friendly tanks with local demand, sorted by smallest deficit first."""
+    if galaxy is None or not endpoint_ready(unit, galaxy) or unit.is_disabled:
+        return []
+    sector = galaxy.systems[unit.in_system].hexes[unit.in_hex]
+    targets = [other for other in sector.units if in_transfer_range(unit, other)
+               and exchange_blocker(unit, other, galaxy) is None
+               and other.antimatter_component.current_amount < other.antimatter_component.max_capacity]
+    return sorted(targets, key=lambda other: (
+        other.antimatter_component.max_capacity - other.antimatter_component.current_amount, other.id,
+    ))
 
 
 def equipment_upkeep(unit):

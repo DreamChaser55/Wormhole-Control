@@ -86,6 +86,7 @@ class OrderType(Enum):
     TAKE_ANTIMATTER = auto()
     CONTINUOUS_ANTIMATTER_TRANSPORT = auto()
     STABILIZE_WORMHOLE = auto()
+    RESUPPLY_NEARBY = auto()
 
 
 class Order:

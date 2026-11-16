@@ -255,6 +255,11 @@ construction/refit refunds return all recorded resources once to the original pa
 
 Every unit with functional Antimatter Storage can donate or receive fuel. **Give Antimatter** moves the donor toward the recipient; **Take Antimatter** moves the recipient toward the donor without changing the donor's orders or stance. Both work with owned/allied ships and stations, within 200 units in the same sector, at up to 25 AM per acting unit's owner turn. They conserve fuel and finish when the recipient fills or the donor empties. Shift queues either order. Manual transfers may empty harvesters; Continuous Resupply alone retains its 60 AM reserve. Harvesters remain necessary for stellar and hydrogen-nebula collection.
 
+Select a ship or station with a functional tank and choose **Resupply Nearby**
+from its context menu or an empty sector position. It stays in place and shares
+fuel among all owned and allied units within 200 units, up to 25 AM per recipient
+each owner turn. It waits for fuel or demand and continues until cancelled.
+
 For unattended deliveries, harvesters and transports both offer **Automatic** and
 **Manual** destinations. Sources always remain explicitly selected:
 
@@ -869,7 +874,7 @@ can block queued work until cancelled or replaced.
 ### Order types
 
 <!-- BEGIN GENERATED: order-count -->
-The `OrderType` enum defines **45 order types**, including the persistent `STANCE` root.
+The `OrderType` enum defines **46 order types**, including the persistent `STANCE` root.
 <!-- END GENERATED: order-count -->
 
 | Order type | Action |
@@ -901,6 +906,7 @@ The `OrderType` enum defines **45 order types**, including the persistent `STANC
 | `USE_ABILITY` | Activate an equipped ability. |
 | `CONTINUOUS_MINE` | Repeat mining and refinery deliveries. |
 | `TRANSFER_ANTIMATTER` | Approach and donate fuel to a friendly/allied unit. |
+| `RESUPPLY_NEARBY` | Share fuel each turn with all nearby owned and allied units. |
 | `TAKE_ANTIMATTER` | Approach and take fuel from a friendly/allied unit. |
 | `CONTINUOUS_ANTIMATTER_TRANSPORT` | Repeatedly load at one depot and deliver to another, reserving return fuel. |
 | `CONTINUOUS_RESUPPLY` | Alternate star harvesting and fleet refueling. |

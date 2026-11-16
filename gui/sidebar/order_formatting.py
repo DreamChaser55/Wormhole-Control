@@ -207,6 +207,9 @@ def format_order_state_data(state_data: dict, galaxy: typing.Any = None) -> list
         target_styled = f"<font color='{INFO_COLOR}'><i>Target ID: {target_unit_id}</i></font>"
         return [f"{unload_type_styled} {target_styled}"]
 
+    elif order_type == "RESUPPLY_NEARBY":
+        phase = state_data.get('phase', '').replace('_', ' ').capitalize()
+        return [f"<font color='{TRANSFER_ANTIMATTER_COLOR}'><b>Resupply Nearby</b></font> · {phase}"]
     elif order_type in ("TRANSFER_ANTIMATTER", "TAKE_ANTIMATTER"):
         label = "Take Antimatter" if order_type == "TAKE_ANTIMATTER" else "Give Antimatter"
         return [f"<font color='{TRANSFER_ANTIMATTER_COLOR}'><b>{label}:</b></font> {_target_name_html(state_data)}"]

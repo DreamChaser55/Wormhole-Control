@@ -851,7 +851,11 @@ travel never finances an immediate cast.
 endpoints, and normal approach capability. Queued pickup/delivery may depend on
 preceding resource changes.
 
-Both continuous fuel commands require `source_id` and accept optional `target_id`
+`resupply_nearby` takes only selected unit IDs and optional queue. It waits
+in place and distributes fuel to eligible owned and allied tanks each owner turn.
+Its options and progress list currently eligible recipient IDs.
+
+Both continuous fuel route commands require `source_id` and accept optional `target_id`
 and `queue`. For `continuous_resupply`, the source is a star or hydrogen nebula;
 for `continuous_antimatter_transport`, it is a loading unit and exactly one actor
 is allowed. A unit `target_id` selects a fixed owned/allied recipient. Null or

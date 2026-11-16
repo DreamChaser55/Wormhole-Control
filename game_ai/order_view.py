@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from order_history import public_reason
 
-CONTINUOUS = {"stabilize_wormhole", "patrol", "protect", "defend", "continuous_mine", "continuous_resupply", "continuous_trade", "continuous_antimatter_transport"}
+CONTINUOUS = {"resupply_nearby", "stabilize_wormhole", "patrol", "protect", "defend", "continuous_mine", "continuous_resupply", "continuous_trade", "continuous_antimatter_transport"}
 
 
 def enum_name(value):
@@ -275,6 +275,8 @@ def order_layers(unit, relation, visible_ids, body_ids):
         if kind == "stabilize_wormhole" and not hidden:
             from wormhole_stabilization import state_view
             progress = state_view(unit, order=order)
+        if kind == 'resupply_nearby' and active:
+            progress = order.progress_view(unit.in_galaxy)
         if kind == 'continuous_mine' and not hidden:
             progress = order.progress_view(unit.game.galaxy, visible_ids)
         if fuel_order and not hidden:

@@ -3,7 +3,7 @@
 from .command_spec import COMMAND_PROPERTIES
 
 
-TURN_PLAN_SCHEMA_NAME = "wormhole_control_turn_v18"
+TURN_PLAN_SCHEMA_NAME = "wormhole_control_turn_v19"
 
 TURN_PLAN_SCHEMA = {
     "type": "object",

@@ -10,6 +10,8 @@ from antimatter_logistics import (
     estimate_approach,
     buffered_fuel,
     equipment_upkeep,
+    nearby_recipients,
+    storage_ready,
 )
 
 
@@ -98,6 +100,41 @@ class TransferAntimatterOrder(Order):
 class TakeAntimatterOrder(TransferAntimatterOrder):
     TYPE = "TAKE_ANTIMATTER"
     TAKE = True
+
+
+
+class ResupplyNearbyOrder(Order):
+    """Distribute fuel to owned and allied units in transfer range each owner turn."""
+    update_on_start = False
+
+    def __init__(self, unit, parameters=None, parent_order=None):
+        super().__init__(unit, OrderType.RESUPPLY_NEARBY, parameters, parent_order)
+
+    def update(self, galaxy_ref):
+        if self.status != OrderStatus.IN_PROGRESS:
+            return
+        if self.unit.antimatter_component is None:
+            self.fail('capability_unavailable')
+            return
+        recipients = nearby_recipients(self.unit, galaxy_ref)
+        for index, recipient in enumerate(recipients):
+            share = self.unit.antimatter_component.current_amount / (len(recipients) - index)
+            exchange(self.unit, recipient, limit=share)
+
+    def progress_view(self, galaxy):
+        recipients = nearby_recipients(self.unit, galaxy)
+        if not storage_ready(self.unit) or self.unit.is_disabled:
+            phase = 'paused'
+        elif self.unit.antimatter_component.current_amount <= 0:
+            phase = 'waiting_for_antimatter'
+        else:
+            phase = 'resupplying' if recipients else 'waiting_for_demand'
+        return {'phase': phase, 'recipient_ids': [unit.id for unit in recipients]}
+
+    def get_state_data(self):
+        data = super().get_state_data()
+        data.update(self.progress_view(self.unit.in_galaxy))
+        return data
 
 
 class ContinuousFuelDeliveryOrder(Order):

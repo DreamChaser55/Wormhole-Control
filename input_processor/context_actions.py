@@ -77,6 +77,12 @@ def handle_context_menu_action(game, action_id: str, target: typing.Any, *, loca
         else:
             from gui.planetary_window import PlanetaryWindow
             game.gui.planetary_window = PlanetaryWindow(game.gui, selected_units[0], target, extracted_action_id, shift_pressed)
+    elif extracted_action_id == 'resupply_nearby':
+        from antimatter_logistics import endpoint_ready
+        from tactical_ui import issue
+        units = [unit.id for unit in selected_units if not unit.is_disabled and endpoint_ready(unit, game.galaxy)]
+        if units:
+            issue(game, {'type': 'resupply_nearby', 'unit_ids': units, 'queue': shift_pressed})
     elif extracted_action_id == 'tactical_attack':
         from tactical_ui import issue
         for unit in selected_units:

@@ -1559,6 +1559,9 @@ class CommandGateway:
             )
         if command.type == "deploy_all_wings":
             return (lambda unit: DeployAllWingsOrder(unit), "Deploy all wings")
+        if command.type == 'resupply_nearby':
+            from unit_orders.fuel_transport import ResupplyNearbyOrder
+            return ResupplyNearbyOrder, "Resupply nearby allies"
         if command.type in {"give_antimatter", "take_antimatter"}:
             self._require_friendly(player, target_unit)
             from unit_orders.fuel_transport import TakeAntimatterOrder

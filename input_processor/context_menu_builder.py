@@ -209,6 +209,11 @@ def build_sector_context_menu_options(game, clicked_object, clicked_sector_coord
                 options.append(('Attack (long-range only)', 'attack_long_range'))
         return options, target
     if any(actors):
+        if target_coords is not None or target_object in actors:
+            from antimatter_logistics import endpoint_ready
+            if any(a.owner == current_player and not a.is_disabled and endpoint_ready(a, game.galaxy)
+                   for a in actors):
+                options.append(("Resupply Nearby", "resupply_nearby"))
         if target_coords is not None:
             if any(a.engines_component and a.engines_component.is_operational for a in actors):
                 options.append(("Move Here", "issue_move_order"))
