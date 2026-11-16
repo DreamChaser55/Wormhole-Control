@@ -473,9 +473,14 @@ class Nebula(CelestialBody):
     is_solid: bool = False
     def __init__(self, in_hex: HexCoord, in_system: str, nebula_type: NebulaType):
         super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=0.0)
-        self.name = f"Nebula {self.id}"
         self.nebula_type = nebula_type
-        self.radius = NEBULA_RADIUS
+        if nebula_type == NebulaType.DENSE:
+            self.name = f"Dense Nebula {self.id}"
+            from constants import SECTOR_CIRCLE_RADIUS_LOGICAL
+            self.radius = SECTOR_CIRCLE_RADIUS_LOGICAL
+        else:
+            self.name = f"Nebula {self.id}"
+            self.radius = NEBULA_RADIUS
 
     @property
     def harvest_multiplier(self) -> float:

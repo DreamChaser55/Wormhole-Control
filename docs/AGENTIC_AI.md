@@ -952,6 +952,11 @@ concise colored summaries. The built-in AI continues to receive the complete
 explanations in its observation; repository documentation is not implicitly
 included in its request.
 
+Systems expose `system_type` as `stellar` or `nebula`. Dense Nebula fills each
+sector of a nebula system, covers one third of ordinary sensor ranges, and
+conceals enemy units from long-range detection. Colonies report their current
+`effective_sensor_radius` after terrain penalties.
+
 Friendly/allied `capability_details.engines.effective_speed` includes current
 terrain drag; `sensors.effective_long_range_hexes` includes magnetic suppression.
 Base speed and sensor ranges remain available separately. Unit

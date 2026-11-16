@@ -10,7 +10,6 @@ FEEDBACK FROM PLAYTESTING:
 - Expand recon unit templates: add sensor ship unit template with advanced hyperdrive, so we have both basic and advanced hyperdrive sensor ship. We should also have at least 2 sensor ship template sizes (smaller and larger), and also smaller and larger sensor station. Reduce sensor ranges of other units (or perhaps remove sensors entirely from some units), to make dedicated sensor ships/stations more useful.
 - Add current construction progress to turn summary.
 - When a player no longer has any units or colonized bodies, a “Player has been defeated.” screen should appear. From that time, defeated player's turn should simply be skipped.
-- Add a special "Nebula system" type, where all hexes will be of a new, special "Dense nebula" celestial body type. Dense nebula would feature limited short range and long range sensors (set all sensor ranges to 1/3 of normal values, round down to nearest integer for long-range sensors).
 - Split the loss section in human and AI turn summary into "Friendly and allied losses" and "Enemy losses".
 - Include the unit owner in turn summary whenever a unit is mentioned in the combat or loss section.
 - Add new order, valid for any ship with antimatter storage component: automatically resupply all friendly units in range.

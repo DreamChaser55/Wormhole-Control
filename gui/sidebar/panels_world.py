@@ -274,7 +274,9 @@ def build_celestial_body_panel(game, body: CelestialBody, *, show_rules: bool = 
         data.append({'type': 'label', 'text': f"Population: {body.population:.2f} / {body.max_population:.2f}", 'object_id': '#sidebar_info_label', 'height': 25})
         if body.owner:
             from constants import COLONY_SENSOR_RADIUS
-            data.append({'type': 'label', 'text': f'Short-range sensors: {COLONY_SENSOR_RADIUS:g} units',
+            from environmental_effects import local_short_range_multiplier
+            scale = local_short_range_multiplier(game.galaxy, body.in_system, body.in_hex, body.position)
+            data.append({'type': 'label', 'text': f'Short-range sensors: {COLONY_SENSOR_RADIUS * scale:g} units',
                          'object_id': '#sidebar_info_label', 'height': 25})
             data.append({'type': 'label', 'text': f'Population growth: {body.population_growth_rate:.2%} per round',
                          'object_id': '#sidebar_info_label', 'height': 25})

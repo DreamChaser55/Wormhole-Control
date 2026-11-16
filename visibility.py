@@ -67,7 +67,9 @@ class VisibilityService:
         # nebulae_by_hex: (system_name, hex_coord) -> list of (position, radius)
         nebulae_by_hex: Dict[Tuple[str, HexCoord], List[Tuple[typing.Any, float]]] = {}
 
-        from constants import COLONY_SENSOR_RADIUS
+        from constants import COLONY_SENSOR_RADIUS, NebulaType
+        from domain.celestials import Nebula
+        from environmental_effects import local_short_range_multiplier
         from planetary_intel import is_colony_body
 
         all_units: List['Unit'] = []
@@ -138,10 +140,14 @@ class VisibilityService:
 
                     key = (system_name, hex_coord)
                     if is_colony_body(body) and are_allies(getattr(body, 'owner', None), viewer):
-                        short_range_by_hex.setdefault(key, []).append((body.position, COLONY_SENSOR_RADIUS))
+                        scale = local_short_range_multiplier(galaxy, system_name, hex_coord, body.position)
+                        short_range_by_hex.setdefault(key, []).append((body.position, COLONY_SENSOR_RADIUS * scale))
                     if is_infiltrated_body:
-                        short_range_by_hex.setdefault(key, []).append((body.position, 500.0))
-                        long_range_covered.add(key)
+                        scale = local_short_range_multiplier(galaxy, system_name, hex_coord, body.position)
+                        short_range_by_hex.setdefault(key, []).append((body.position, 500.0 * scale))
+                        if not any(isinstance(cloud, Nebula) and cloud.nebula_type == NebulaType.DENSE
+                                   for cloud in hex_obj.celestial_bodies):
+                            long_range_covered.add(key)
 
         from titan_abilities import coverage
         for system_name, hex_coord in coverage(galaxy, viewer):

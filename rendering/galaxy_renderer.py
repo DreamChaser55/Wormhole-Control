@@ -136,7 +136,8 @@ class GalaxyViewRenderer:
                 pygame.font.init()
             font_size = max(1, int(12 * display_config_for(self.game).text_scale))
             font = pygame.font.Font(None, font_size)
-            text_surface = font.render(system.name, True, label_color)
+            label = f"{system.name} (Nebula)" if getattr(system, "is_nebula_system", False) else system.name
+            text_surface = font.render(label, True, label_color)
             text_rect = text_surface.get_rect()
             label_radius = max_radius
             if is_selected:

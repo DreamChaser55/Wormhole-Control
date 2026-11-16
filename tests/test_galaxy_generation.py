@@ -4,8 +4,8 @@ import math
 import random
 
 import pytest
-from constants import PlanetType, StarType, SQRT3
-from domain.celestials import Comet, MetalAsteroid, Moon, Planet, Star
+from constants import NebulaType, PlanetType, StarType, SQRT3
+from domain.celestials import Comet, MetalAsteroid, Moon, Nebula, Planet, Star
 from galaxy import Galaxy
 from types import SimpleNamespace
 from galaxy import StarSystem
@@ -414,7 +414,9 @@ def test_maximum_galaxy_remains_connected_with_outlying_paired_endpoints(radius,
         assert partner.in_system == wormhole.exit_system_name
         assert partner.exit_system_name == wormhole.in_system
         assert hex_distance(wormhole.in_hex, (0, 0)) >= radius - 1
-        assert galaxy.systems[wormhole.in_system].hexes[wormhole.in_hex].celestial_bodies == [wormhole]
+        sector = galaxy.systems[wormhole.in_system].hexes[wormhole.in_hex]
+        assert [b for b in sector.celestial_bodies
+                if not isinstance(b, Nebula) or b.nebula_type != NebulaType.DENSE] == [wormhole]
 
 
 @pytest.mark.parametrize('extra_planets', [0, 20])
@@ -506,3 +508,14 @@ def test_transfer_validation_preserves_membership(origin, destination, coord, su
         assert (unit.in_system, unit.in_hex) == before
         assert unit in galaxy.systems['Sol'].get_units_in_hex(before[1])
         assert unit not in galaxy.systems['Other'].get_units_in_hex((0, 0))
+
+
+def test_nebula_system_covers_every_sector_and_keeps_wormholes(monkeypatch):
+    monkeypatch.setattr('galaxy.NEBULA_SYSTEM_CHANCE', 1)
+    galaxy = Galaxy(num_systems=2)
+    sol, cloud = galaxy.systems.values()
+    assert not sol.is_nebula_system
+    assert cloud.is_nebula_system
+    assert galaxy.system_graph[cloud.name][sol.name]
+    assert all(sum(isinstance(b, Nebula) and b.nebula_type == NebulaType.DENSE
+                   for b in sector.celestial_bodies) == 1 for sector in cloud.hexes.values())

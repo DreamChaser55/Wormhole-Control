@@ -48,6 +48,7 @@ def _load_spawn_rates():
     return body_types, weights
 
 BODY_TYPES_TO_SPAWN, SPAWN_WEIGHTS = _load_spawn_rates()
+NEBULA_SYSTEM_CHANCE = 0.12
 
 def _load_star_names():
     file_path = os.path.join(os.path.dirname(__file__), "data", "star_names.json")
@@ -155,9 +156,12 @@ class Hex:
         if minefield in self.minefields:
             self.minefields.remove(minefield)
 
-    def is_empty(self) -> bool:
+    def is_empty(self, *, ignore_dense_nebula=False) -> bool:
         """Check if the hex contains any celestial bodies, units, or minefields."""
-        return not self.celestial_bodies and not self.units and not self.minefields
+        return not any(
+            not ignore_dense_nebula or not isinstance(body, Nebula) or body.nebula_type != NebulaType.DENSE
+            for body in self.celestial_bodies
+        ) and not self.units and not self.minefields
 
 # --- Star System Class ---
 class StarSystem:
@@ -177,6 +181,12 @@ class StarSystem:
         self.celestial_bodies_by_id: typing.Dict[int, 'CelestialBody'] = {}
         self.generate_grid()
         self.spawn_celestial_bodies()
+
+    @property
+    def is_nebula_system(self) -> bool:
+        core = self.hexes.get((0, 0))
+        return core is not None and any(isinstance(body, Nebula) and body.nebula_type == NebulaType.DENSE
+                                        for body in core.celestial_bodies)
 
     def generate_grid(self):
         """Generates the hexagonal grid coordinates for the system."""
@@ -270,7 +280,8 @@ class StarSystem:
         coord = hex_to_spawn_in.coordinates()
 
         if body_class == Nebula:
-            body = Nebula(in_hex=coord, in_system=self.name, nebula_type=random.choice(list(NebulaType)))
+            kinds = [kind for kind in NebulaType if kind != NebulaType.DENSE]
+            body = Nebula(in_hex=coord, in_system=self.name, nebula_type=random.choice(kinds))
         elif body_class == Storm:
             body = Storm(in_hex=coord, in_system=self.name, storm_type=random.choice(list(StormType)))
         elif body_class in (AsteroidField, DebrisField, IceField):
@@ -642,6 +653,11 @@ class Galaxy:
                                  f"inside x={self.generation_x_min}–{self.generation_x_max}, y={self.generation_y_min}–{self.generation_y_max}. "
                                  "Regenerate the map or relax its distance constraints.")
 
+        for system in self.systems.values():
+            if system.name != first_sys_name and random.random() < NEBULA_SYSTEM_CHANCE:
+                for coord in system.hexes:
+                    system.add_celestial_body(Nebula(coord, system.name, NebulaType.DENSE))
+
         logger.debug("Finished galaxy generation.")
         logger.debug(f"Generated {len(self.systems)} systems.")
         # The number of wormhole connections is half the number of wormhole objects
@@ -679,7 +695,7 @@ class Galaxy:
 
     def find_wormhole_hex(self, system: StarSystem, target_system: StarSystem) -> typing.Optional[HexCoord]:
         """Finds an empty hex in the system outskirts and in the direction of the target system."""
-        empty_hexes = [h for h in system.hexes if system.hexes[h].is_empty()]
+        empty_hexes = [h for h in system.hexes if system.hexes[h].is_empty(ignore_dense_nebula=True)]
         if not empty_hexes:
             return None
 

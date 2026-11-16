@@ -105,6 +105,10 @@ def describe_body(body) -> BodyDescription:
             hazards.append(EnvironmentalHazard('dust_nebula', balance.DUST_NEBULA_AM_DRAIN_FRACTION,
                 'antimatter', 'radius', radius, amount_basis='fraction_of_current_antimatter'))
             rules.append(f'Short-range sensor radius: {balance.DUST_NEBULA_SENSOR_MOD:.0%} of normal for observers inside. Overlapping clouds do not stack.')
+        elif body.nebula_type == NebulaType.DENSE:
+            effects.update(sensor_multiplier=balance.DENSE_NEBULA_SENSOR_MOD,
+                           long_range_sensor_multiplier=balance.DENSE_NEBULA_SENSOR_MOD)
+            rules.append('Short-range and long-range sensor ranges are one third of normal. Round down long-range hex coverage.')
         elif body.nebula_type == NebulaType.NITROGEN:
             effects['cooldown_reduction'] = balance.NITROGEN_NEBULA_COOLDOWN_REDUCTION
         elif body.nebula_type == NebulaType.OXYGEN:

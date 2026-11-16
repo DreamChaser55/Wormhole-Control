@@ -17,6 +17,7 @@ class EnvironmentalModifiers:
     splash_damage_multiplier: float = 1.0
     fuel_multiplier: float = 1.0
     sensor_multiplier: float = 1.0
+    long_range_sensor_multiplier: float = 1.0
     speed_multiplier: float = 1.0
     beam_cover: float = 0.0
     kinetic_missile_cover: float = 0.0
@@ -51,7 +52,7 @@ def modifiers_for_unit(unit):
             continue
         for key in ('cooldown_reduction', 'splash_damage_multiplier', 'beam_cover', 'kinetic_missile_cover'):
             values[key] = max(values[key], effects.get(key, values[key]))
-        for key in ('fuel_multiplier', 'sensor_multiplier', 'speed_multiplier'):
+        for key in ('fuel_multiplier', 'sensor_multiplier', 'long_range_sensor_multiplier', 'speed_multiplier'):
             if key != 'speed_multiplier' or not wing:
                 values[key] = min(values[key], effects.get(key, values[key]))
         values['blocks_long_range_sensors'] |= effects.get('blocks_long_range_sensors', False)
@@ -90,9 +91,12 @@ def long_range_sensor_hexes(unit):
     if offline(unit):
         return 0
     sensors = getattr(unit, 'sensors_component', None)
-    if sensors is None or sensors.is_destroyed or modifiers_for_unit(unit).blocks_long_range_sensors:
+    if sensors is None or sensors.is_destroyed:
         return 0
-    return sensors.effective_long_range_hexes
+    terrain = modifiers_for_unit(unit)
+    if terrain.blocks_long_range_sensors:
+        return 0
+    return int(sensors.effective_long_range_hexes * terrain.long_range_sensor_multiplier)
 
 
 def splash_damage(amount, unit):
@@ -101,6 +105,20 @@ def splash_damage(amount, unit):
         return amount
     multiplier = modifiers_for_unit(unit).splash_damage_multiplier
     return int(Decimal(amount) * Decimal(str(multiplier)))
+
+
+def local_short_range_multiplier(galaxy, system_name, hex_coord, position):
+    system = galaxy.systems.get(system_name) if galaxy is not None else None
+    sector = system.hexes.get(hex_coord) if system is not None else None
+    multiplier = 1.0
+    for body in getattr(sector, 'celestial_bodies', ()):
+        description = describe_body(body)
+        effects = dict(description.effects)
+        if effects.get('affects_entire_sector') or (
+            description.effect_radius is not None and distance(position, body.position) <= description.effect_radius
+        ):
+            multiplier = min(multiplier, float(effects.get('sensor_multiplier', 1)))
+    return multiplier
 
 
 def sensor_radius(unit):

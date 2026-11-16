@@ -445,3 +445,18 @@ def test_colony_sensors_detect_nearby_enemies_without_a_scout():
     assert enemy.id in VisibilityService.compute(game.galaxy, body.owner).visible_enemy_unit_ids
     enemy.position.x += 1
     assert enemy.id not in VisibilityService.compute(game.galaxy, body.owner).visible_enemy_unit_ids
+
+
+def test_dense_nebula_scales_short_range_and_rounds_long_range_down():
+    from constants import NebulaType
+    from domain.celestials import Nebula
+    from environmental_effects import long_range_sensor_hexes, sensor_radius
+
+    game = campaign()
+    scout = ship(game)
+    scout.position = Position(5000, 0)
+    scout.sensors_component.short_range_radius = 600
+    scout.sensors_component.long_range_hexes = 5
+    game.galaxy.systems['Sol'].add_celestial_body(Nebula((0, 0), 'Sol', NebulaType.DENSE))
+    assert sensor_radius(scout) == pytest.approx(200)
+    assert long_range_sensor_hexes(scout) == 1

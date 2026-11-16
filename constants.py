@@ -300,6 +300,7 @@ class NebulaType(Enum):
     NITROGEN = auto()
     OXYGEN = auto()
     DUST = auto()
+    DENSE = auto()
 
 class StormType(Enum):
     PLASMA = auto()
@@ -311,6 +312,7 @@ NEBULA_COLORS = {
     NebulaType.NITROGEN: (138, 43, 226, 30),
     NebulaType.OXYGEN: (0, 191, 255, 30),
     NebulaType.DUST: (160, 82, 45, 30),
+    NebulaType.DENSE: (115, 76, 174, 55),
 }
 
 STORM_COLORS = {
@@ -489,6 +491,7 @@ DEBRIS_FIELD_DENSITY_HAZARD_DAMAGE: Dict[FieldDensity, float] = {
 HYDROGEN_NEBULA_HARVEST_MULTIPLIER = 0.4
 HYDROGEN_NEBULA_AM_BURN_MOD = 0.5
 DUST_NEBULA_SENSOR_MOD = 0.70
+DENSE_NEBULA_SENSOR_MOD = 1 / 3
 DUST_NEBULA_AM_DRAIN_FRACTION = 0.05
 NITROGEN_NEBULA_COOLDOWN_REDUCTION = 1
 OXYGEN_NEBULA_SPLASH_DAMAGE_MOD = 1.15

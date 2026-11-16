@@ -31,7 +31,7 @@ from component_visibility import public_components
 from order_history import history_view
 from turn_briefing import summary_view
 
-OBSERVATION_SCHEMA_VERSION = 43
+OBSERVATION_SCHEMA_VERSION = 44
 COMMAND_HELP = {name: spec.description for name, spec in COMMAND_SPECS.items()}
 
 
@@ -95,6 +95,7 @@ def build_observation(game: Any, player: Any) -> dict[str, Any]:
         exact_bodies.extend(exact_for_system)
         system_data = {
             "name": system_name,
+            "system_type": "nebula" if getattr(system, "is_nebula_system", False) else "stellar",
             "position": _position(getattr(system, "position", None)),
             "radius": int(getattr(system, "radius", 0)),
             "connections": [
@@ -400,6 +401,10 @@ def _body_view(
                 from constants import COLONY_SENSOR_RADIUS
                 data["population_growth_rate"] = body.population_growth_rate
                 data["base_sensor_radius"] = COLONY_SENSOR_RADIUS
+                from environmental_effects import local_short_range_multiplier
+                data["effective_sensor_radius"] = COLONY_SENSOR_RADIUS * local_short_range_multiplier(
+                    context.galaxy, body.in_system, body.in_hex, body.position,
+                )
     if include_system:
         data["system_name"] = str(body.in_system)
     for name in (

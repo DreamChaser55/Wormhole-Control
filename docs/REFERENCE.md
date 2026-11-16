@@ -1379,6 +1379,12 @@ without that preference. Wormholes occupy the outermost available layers and
 face their destination systems on the galaxy map. Wormhole pairs generate with
 a 70% chance of 100% stability and a 30% chance of 40–95% stability.
 
+After the first system, each system has a 12% chance of generating as a Nebula system.
+Dense Nebula fills every sector, including sectors with stars, worlds,
+mining bodies and wormholes. Dense Nebula reduces ordinary short-range and
+long-range sensors to one third. Long-range coverage is rounded down.
+The galaxy map labels these systems with **(Nebula)**.
+
 ### Stars
 
 Every system has a central star. Its type multiplies the base antimatter harvest rate.
@@ -1448,12 +1454,13 @@ overlapping penalty applies. Displayed effective speed includes current terrain.
 | Debris Field | Medium | Medium | 2000 | 75% | 0% | 10% | 0 | 2 |
 | Debris Field | High | Small | 2000 | 65% | 0% | 15% | 0 | 3 |
 
-| Nebula | AM harvest | Propulsion AM | Short-range radius | Turret cooling (turns) | Cluster Warhead splash taken |
-| --- | --- | --- | --- | --- | --- |
-| Hydrogen | 0.4x | 50% | 100% | 0 | 1x |
-| Nitrogen | 0x | 100% | 100% | 1 | 1x |
-| Oxygen | 0x | 100% | 100% | 0 | 1.15x |
-| Dust | 0x | 100% | 70% | 0 | 1x |
+| Nebula | AM harvest | Propulsion AM | Short-range radius | Long-range hexes | Turret cooling (turns) | Cluster Warhead splash taken |
+| --- | --- | --- | --- | --- | --- | --- |
+| Hydrogen | 0.4x | 50% | 100% | 100% | 0 | 1x |
+| Nitrogen | 0x | 100% | 100% | 100% | 1 | 1x |
+| Oxygen | 0x | 100% | 100% | 100% | 0 | 1.15x |
+| Dust | 0x | 100% | 70% | 100% | 0 | 1x |
+| Dense | 0x | 100% | 33% | 33% | 0 | 1x |
 
 | Hazard | Base amount per owner turn | Target | Area (inclusive) |
 | --- | --- | --- | --- |

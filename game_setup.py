@@ -59,7 +59,7 @@ def _homeworld(system, player, population):
         world = random.choice(planets)
     else:
         available = [coord for coord, sector in system.hexes.items()
-                     if coord != (0, 0) and not sector.celestial_bodies and not sector.units]
+                     if coord != (0, 0) and sector.is_empty(ignore_dense_nebula=True)]
         if not available:
             raise ValueError(f"No valid homeworld placement is available in {system.name}.")
         world = Planet(random.choice(available), system.name, PlanetType.TERRAN)

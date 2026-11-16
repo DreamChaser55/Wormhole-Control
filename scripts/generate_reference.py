@@ -152,9 +152,10 @@ def environmental_tables():
         effects = dict(describe_body(Nebula((0, 0), 'Reference', kind)).effects)
         rows.append((kind.name.title(), f'{effects.get("harvest_multiplier", 0):g}x',
             f'{effects.get("fuel_multiplier", 1):.0%}', f'{effects.get("sensor_multiplier", 1):.0%}',
+            f'{effects.get("long_range_sensor_multiplier", 1):.0%}',
             effects.get('cooldown_reduction', 0), f'{effects.get("splash_damage_multiplier", 1):g}x'))
     nebulae = table(['Nebula', 'AM harvest', 'Propulsion AM', 'Short-range radius',
-                     'Turret cooling (turns)', 'Cluster Warhead splash taken'], rows)
+                     'Long-range hexes', 'Turret cooling (turns)', 'Cluster Warhead splash taken'], rows)
     bodies = [Storm((0, 0), 'Reference', kind) for kind in StormType]
     bodies.extend(Nebula((0, 0), 'Reference', kind) for kind in NebulaType)
     bodies.extend(Star('Reference', kind) for kind in (StarType.BLACK_HOLE, StarType.PULSAR))
