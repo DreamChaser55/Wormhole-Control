@@ -1,5 +1,4 @@
 FEEDBACK FROM PLAYTESTING:
-- Make colony ships, antimatter harvesters, and mining ships faster.
 - Add population growth rate to colonized body info (in GUI and for AI).
 - Make the number of taken colonists in the load colonists function configurable. Always reserve some minimal number of colonists on the source world, so that future population growth is not extremely slow.
 - Make construction and repair consume antimatter.

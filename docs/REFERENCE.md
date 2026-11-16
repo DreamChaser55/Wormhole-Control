@@ -312,6 +312,10 @@ separate from a wait. Loading/harvesting and any remaining wait appear after arr
 
 The transporter has speed 100 and Advanced Hyperdrive range 5. Both stations are stationary. These designs have storage, sensors and defenses, with no harvester or special ability, and start with full tanks under the normal construction rules.
 
+The built-in Colonizer has a base speed of 200, the Antimatter Harvester 180,
+and the Small Mining Ship 145. Faster engines use more antimatter per movement
+turn.
+
 **Continuous Mine** fills cargo, unloads at a compatible refinery and repeats.
 Its root progress and sidebar identify approaching the mine, mining, delivering,
 or unloading; show raw cargo and capacity; and name the selected or next compatible
@@ -610,15 +614,15 @@ report mandatory returns and endurance losses.
 | Artillery Dreadnought | Combat | HUGE ship | 194.93/200 | 7848 | 295 | 98 | 39 | 1.95 | Dedicated long-range fleet bombardment dreadnought featuring tri-weapon artillery batteries. Inter-system travel. |
 | Titan Citadel | Combat | TITAN station | 685.80/800 | 40574 | 1086 | 343 | 111 | 118.58 | Unique strategic station with a Titan Core, heavy battery, repair base, and 1500-radius inhibition field for 15 AM per owner turn. Deploy clear of natural inhibition zones and sector boundaries. Support with escorts and fuel deliveries for its field and abilities; inhibition also blocks friendly ships. |
 | Titan Flagship | Combat | TITAN ship | 744.80/800 | 42344 | 1145 | 373 | 116 | 124.48 | Unique strategic flagship with a Titan Core, heavy battery, extended sensors, and fleet support. |
-| Mining Drone | Economy | TINY ship | 9.00/10 | 370 | 14 | 5 | 6 | 0.09 | Designed for transportable mining. Local-sector operations; Tiny craft can travel aboard a hangar transport. Mine metal asteroids or comets and unload at the matching refinery. |
-| Small Mining Ship | Economy | SMALL ship | 23.20/25 | 946 | 36 | 12 | 12 | 0.23 | Designed for local mining. Intra-system travel only. Mine metal asteroids or comets and unload at the matching refinery. |
+| Mining Drone | Economy | TINY ship | 9.90/10 | 397 | 15 | 5 | 6 | 0.10 | Designed for transportable mining. Local-sector operations; Tiny craft can travel aboard a hangar transport. Mine metal asteroids or comets and unload at the matching refinery. |
 | Civilian Habitat | Economy | SMALL station | 24.00/25 | 970 | 37 | 12 | 12 | 0.24 | Designed for income and trade destination. Stationary installation. Requires a friendly or allied colony and an available colony support slot. |
+| Small Mining Ship | Economy | SMALL ship | 25.00/25 | 1000 | 38 | 13 | 12 | 0.25 | Designed for local mining. Intra-system travel only. Mine metal asteroids or comets and unload at the matching refinery. |
 | Crystal Refinery Station | Economy | MEDIUM station | 32.00/50 | 1460 | 57 | 16 | 16 | 0.32 | Designed for crystal refining. Stationary installation. |
 | Metal Refinery Station | Economy | MEDIUM station | 32.00/50 | 1460 | 57 | 16 | 16 | 0.32 | Designed for metal refining. Stationary installation. |
 | Trade Freighter | Economy | MEDIUM ship | 37.00/50 | 1610 | 62 | 19 | 17 | 0.37 | Designed for local trade. Intra-system travel only. Needs active habitats in different sectors. |
-| Colonizer | Economy | MEDIUM ship | 38.00/50 | 1640 | 63 | 19 | 18 | 0.38 | Designed for colonization. Inter-system travel. |
-| Expedition Miner | Economy | MEDIUM ship | 46.50/50 | 1895 | 72 | 24 | 19 | 0.47 | Designed for expedition mining. Inter-system travel. Mine metal asteroids or comets and unload at the matching refinery. |
+| Colonizer | Economy | MEDIUM ship | 43.00/50 | 1790 | 68 | 22 | 19 | 0.43 | Designed for colonization. Inter-system travel. |
 | Blockade Runner | Economy | MEDIUM ship | 49.00/50 | 1970 | 74 | 25 | 20 | 0.49 | Designed for covert inter-system trade. Inter-system travel. Needs active habitats in different sectors. |
+| Expedition Miner | Economy | MEDIUM ship | 49.50/50 | 1985 | 75 | 25 | 20 | 0.49 | Designed for expedition mining. Inter-system travel. Mine metal asteroids or comets and unload at the matching refinery. |
 | Industrial Hub | Economy | LARGE station | 92.99/100 | 3790 | 143 | 47 | 29 | 0.93 | Designed for industrial support. Stationary installation. |
 | Shipyard | Logistics | SMALL station | 20.00/25 | 850 | 33 | 10 | 11 | 0.20 | Designed for stationary construction. Stationary installation. |
 | Small Repair Ship | Logistics | SMALL ship | 24.19/25 | 976 | 37 | 13 | 12 | 0.24 | Designed for local repair. Intra-system travel only. |
@@ -628,15 +632,15 @@ report mandatory returns and endurance losses.
 | Wormhole Stabilizer Station | Logistics | MEDIUM station | 42.50/50 | 1775 | 68 | 22 | 18 | 0.42 | Maintain one wormhole within 500 units for 5 AM per owner turn. Both directions become safe for all ships, including enemies. Fuel shortages wait for resupply; support ends when cancelled. |
 | Fuel Depot | Logistics | MEDIUM station | 43.00/50 | 1790 | 68 | 22 | 19 | 0.43 | Designed for stationary fuel collection. Stationary installation. Harvest near stars or inside hydrogen nebulae. |
 | Wormhole Stabilizer Tender | Logistics | MEDIUM ship | 43.00/50 | 1790 | 68 | 22 | 19 | 0.43 | Maintain one wormhole within 500 units for 5 AM per owner turn. Both directions become safe for all ships, including enemies. Fuel shortages wait for resupply; support ends when cancelled. |
-| Antimatter Harvester | Logistics | MEDIUM ship | 45.00/50 | 1850 | 70 | 23 | 19 | 0.45 | Designed for fuel collection. Inter-system travel. Harvest near stars or inside hydrogen nebulae. |
+| Antimatter Harvester | Logistics | MEDIUM ship | 49.00/50 | 1970 | 74 | 25 | 20 | 0.49 | Designed for fuel collection. Inter-system travel. Harvest near stars or inside hydrogen nebulae. |
 | Antimatter Transporter | Logistics | MEDIUM ship | 49.00/50 | 1970 | 74 | 25 | 20 | 0.49 | Dedicated antimatter transport. Inter-system travel. Take Antimatter loads from friendly units; Continuous Antimatter Transport repeats deliveries with an automatic return reserve. |
-| Pulsar Harvester | Logistics | LARGE ship | 66.50/100 | 2995 | 117 | 34 | 25 | 0.67 | Reduces magnetic, pulsar hazards by 75% for this unit while enabled. Costs 1 AM each owner turn, including safe space. Requires functional Abilities and Antimatter Storage. Protection does not change terrain access, sensors or movement. Inter-system travel. Protection starts disabled. |
+| Pulsar Harvester | Logistics | LARGE ship | 70.25/100 | 3108 | 121 | 36 | 26 | 0.70 | Reduces magnetic, pulsar hazards by 75% for this unit while enabled. Costs 1 AM each owner turn, including safe space. Requires functional Abilities and Antimatter Storage. Protection does not change terrain access, sensors or movement. Inter-system travel. Protection starts disabled. |
 | Utility Transport | Logistics | LARGE ship | 76.50/100 | 3295 | 127 | 39 | 26 | 0.77 | Designed for Tiny vessel transport. Inter-system travel. Hangar accepts Tiny vessels, not strikecraft wings. |
-| Nebula Tender | Logistics | LARGE ship | 80.50/100 | 3415 | 131 | 41 | 27 | 0.81 | Designed for nebula and fuel support. Inter-system travel. Harvest near stars or inside hydrogen nebulae. |
-| Fleet Tanker | Logistics | LARGE ship | 87.50/100 | 3625 | 138 | 44 | 28 | 0.88 | Designed for fleet resupply. Inter-system travel. Harvest near stars or inside hydrogen nebulae. |
+| Nebula Tender | Logistics | LARGE ship | 84.25/100 | 3528 | 135 | 43 | 28 | 0.84 | Designed for nebula and fuel support. Inter-system travel. Harvest near stars or inside hydrogen nebulae. |
 | Fleet Repair Ship | Logistics | LARGE ship | 87.99/100 | 3640 | 138 | 44 | 28 | 0.88 | Designed for fleet repair. Inter-system travel. |
 | Heavy Shipyard | Logistics | LARGE station | 88.79/100 | 3664 | 139 | 45 | 28 | 0.89 | Designed for construction and repair base. Stationary installation. Hangar accepts Tiny vessels, not strikecraft wings. Support facilities do not accelerate construction. |
 | Antimatter Storage Station | Logistics | LARGE station | 90.00/100 | 3700 | 140 | 45 | 29 | 0.90 | Stationary bulk antimatter reservoir. Accept deliveries and supply friendly ships through Transfer Antimatter or receiver-issued Take Antimatter. |
+| Fleet Tanker | Logistics | LARGE ship | 91.25/100 | 3738 | 142 | 46 | 29 | 0.91 | Designed for fleet resupply. Inter-system travel. Harvest near stars or inside hydrogen nebulae. |
 | Scout | Reconnaissance | SMALL ship | 24.40/25 | 982 | 37 | 13 | 12 | 0.24 | Designed for exploration. Inter-system travel. |
 | Radiation Surveyor | Reconnaissance | MEDIUM ship | 42.25/50 | 1768 | 68 | 22 | 18 | 0.42 | Reduces radiation hazards by 75% for this unit while enabled. Costs 1 AM each owner turn, including safe space. Requires functional Abilities and Antimatter Storage. Protection does not change terrain access, sensors or movement. Inter-system travel. Protection starts disabled. |
 | Sensor Station | Reconnaissance | MEDIUM station | 46.00/50 | 1880 | 71 | 23 | 19 | 0.46 | Designed for long-range reconnaissance. Stationary installation. |
