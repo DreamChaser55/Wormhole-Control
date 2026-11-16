@@ -40,7 +40,8 @@ persistent writes; load reconciliation and selected tactical/deployable checks u
 that mode. Other target checks retain the recording default, as described in the
 [preflight guarantees](#commit-guarantees-and-lifecycle-feedback). The observation includes:
 
-- the active player's economy and total population across owned colonies.
+- the active player's economy and total population across owned colonies. Public
+  player records include a `defeated` flag.
   `resources.income_breakdown` itemizes owned colonies and active habitats,
   with aggregate siphoned credits. `resources.upkeep_breakdown` lists each
   owned unit owing upkeep; these are the rates used by turn settlement.

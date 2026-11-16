@@ -46,18 +46,23 @@ class TurnProcessor:
         turn_num = getattr(self.game, 'turn_number', 1)
         current_player = self.game.players[self.game.current_player_index]
         from turn_briefing import begin_window, finish_window
-        begin_window(self.game, current_player)
-        logger.debug(f"--- Turn {turn_num} - End of {current_player.name}'s Turn ---")
-        self.process_player_turn(current_player)
+        if not current_player.defeated:
+            begin_window(self.game, current_player)
+            logger.debug(f"--- Turn {turn_num} - End of {current_player.name}'s Turn ---")
+            self.process_player_turn(current_player)
+        self._mark_defeated_players()
+        if all(player.defeated for player in self.game.players):
+            return
 
-        is_last_player = (self.game.current_player_index == len(self.game.players) - 1)
-        if is_last_player:
-            self.process_global_end_of_round()
-            if hasattr(self.game, 'turn_number'):
-                self.game.turn_number += 1
-            self.game.current_player_index = 0
-        else:
-            self.game.current_player_index += 1
+        while True:
+            index = (self.game.current_player_index + 1) % len(self.game.players)
+            if index == 0:
+                self.process_global_end_of_round()
+                if hasattr(self.game, 'turn_number'):
+                    self.game.turn_number += 1
+            self.game.current_player_index = index
+            if not self.game.players[index].defeated:
+                break
 
         new_turn_num = getattr(self.game, 'turn_number', 1)
         next_player = self.game.players[self.game.current_player_index]
@@ -69,6 +74,24 @@ class TurnProcessor:
         self.presentation.refresh_player_turn(next_player)
 
         self.check_and_schedule_ai_turn()
+
+    def _mark_defeated_players(self):
+        if not self.game.galaxy or not self.game.galaxy.systems:
+            return
+        from campaign_graph import iter_objects
+        from planetary_intel import is_colony_body
+
+        owners = {
+            item.owner.id for item, _ in iter_objects(self.game.galaxy)
+            if getattr(item, 'owner', None) is not None
+            and (is_colony_body(item) or isinstance(item, Unit) and item.current_hit_points > 0)
+        }
+        defeated = [player for player in self.game.players if not player.defeated and player.id not in owners]
+        for player in defeated:
+            player.defeated = True
+        notice = getattr(self.presentation, 'show_defeated_players', None)
+        if defeated and notice:
+            notice(defeated)
 
     def check_and_schedule_ai_turn(self):
         """Delegate presentation delay; domain-only processors do not schedule AI."""

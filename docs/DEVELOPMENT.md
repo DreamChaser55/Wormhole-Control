@@ -87,7 +87,7 @@ changing the others. The table is generated from their runtime constants.
 | Contract | Current version / identifier | Source |
 | --- | --- | --- |
 | Campaign save | 4.22 | [CURRENT_SAVE_VERSION](../save_manager.py) |
-| Observation | 51 | [OBSERVATION_SCHEMA_VERSION](../game_ai/observation.py) |
+| Observation | 52 | [OBSERVATION_SCHEMA_VERSION](../game_ai/observation.py) |
 | Command contract | 27 | [CONTRACT_VERSION](../game_ai/command_spec.py) |
 | Response schema | wormhole_control_turn_v19 | [TURN_PLAN_SCHEMA_NAME](../game_ai/schema.py) |
 | Prompt cache | wormhole-control-turn-v46 | [PROMPT_CACHE_KEY](../game_ai/adapters/openai_responses.py) |
@@ -161,7 +161,8 @@ specified in the [commit guarantees](AGENTIC_AI.md#commit-guarantees-and-lifecyc
 
 `end_turn()` owns the complete transition: resolve the departing player, run any
 global phase, advance the player/round, refresh the next owner's tactical deadlines,
-freeze the briefing and invoke presentation/AI scheduling. Services with round
+freeze the briefing and invoke presentation/AI scheduling. Defeated factions are
+skipped across the same round boundary, so the global phase still runs once. Services with round
 markers guard individual effects, not the whole turn: wing endurance increments
 once per owner per round before movement, while later reconciliation can enforce
 returns without incrementing it. Repeating the entire resolution is not safe.

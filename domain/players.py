@@ -48,6 +48,7 @@ class Player:
         )
         self.ai_memory: Dict[str, Any] = dict(ai_memory or {})
         self.homeworld_id: Optional[int] = homeworld_id
+        self.defeated: bool = False
         self.order_history = []
         self.order_event_sequence = 0
         from turn_briefing import BriefingState

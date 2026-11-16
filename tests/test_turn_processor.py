@@ -12,6 +12,7 @@ from tests.support.units import ComponentUnit, ComponentPlayer
 
 def test_end_turn_advances_player():
     game = MagicMock()
+    game.galaxy.systems = {}
     game.display_config = DisplayConfig()
     player1 = ComponentPlayer("Player 1")
     player2 = ComponentPlayer("Player 2")
@@ -426,6 +427,7 @@ def test_game_get_player_upkeep():
 def test_turn_number_increment():
     from app_preferences import AppPreferences
     game = MagicMock()
+    game.galaxy.systems = {}
     game.gui.game_instance.preferences = AppPreferences()
     game.display_config = DisplayConfig()
     game.turn_number = 1
@@ -452,6 +454,7 @@ def test_turn_number_increment():
 def test_global_round_execution_order_and_population_growth():
     from app_preferences import AppPreferences
     game = MagicMock()
+    game.galaxy.systems = {}
     game.gui.game_instance.preferences = AppPreferences()
     game.display_config = DisplayConfig()
     game.turn_number = 1
@@ -543,3 +546,32 @@ def test_ai_in_player_slot_zero_scheduled_on_start_new_game():
     with patch('pygame.time.get_ticks', return_value=2000):
         assert start_new_game(game, settings=settings)
         assert game.pending_ai_turn_end_time == 2500
+
+
+def test_defeat_skips_the_empty_faction_and_preserves_global_rounds():
+    from unittest.mock import Mock
+    from constants import PlanetType
+    from domain.celestials import Planet
+    from domain.players import Player
+    from tests.support.campaigns import campaign, ship
+    from turn_processor import TurnProcessor
+
+    game = campaign()
+    one, two = game.players
+    three = Player("Three", (20, 50, 40))
+    game.players.append(three)
+    owned_world = Planet((0, 0), 'Sol', PlanetType.TERRAN)
+    owned_world.owner, owned_world.population = one, 30
+    game.galaxy.systems['Sol'].add_celestial_body(owned_world)
+    ship(game, owner=2)
+    presentation = Mock()
+    processor = TurnProcessor(game, presentation=presentation)
+    round_number = game.turn_number
+
+    processor.end_turn()
+    assert two.defeated and not one.defeated and not three.defeated
+    assert game.current_player_index == 2 and game.turn_number == round_number
+    presentation.show_defeated_players.assert_called_once_with([two])
+    processor.end_turn()
+    assert game.current_player_index == 0 and game.turn_number == round_number + 1
+    presentation.show_defeated_players.assert_called_once()

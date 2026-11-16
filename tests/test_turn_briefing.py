@@ -72,6 +72,8 @@ def test_unchanged_fuel_wait_is_quiet_across_turns_and_save_load_then_reports_re
 @pytest.mark.parametrize("count", [2, 6])
 def test_window_starts_before_resolution_and_wraps_round(count, monkeypatch):
     game = setup(count)
+    for index in range(count):
+        ship(game, owner=index)
     initialize_campaign(game)
     owner = game.players[0]
     record(game, owner, "problem", "already seen while planning")

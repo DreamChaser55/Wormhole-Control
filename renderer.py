@@ -1,6 +1,7 @@
 import pygame
 
 from constants import BLACK
+from game_actions.turn_presentation import defeat_notice
 from player_controller import PlayerController, automated_turn_active
 
 from rendering.galaxy_renderer import GalaxyViewRenderer
@@ -25,6 +26,9 @@ class Renderer:
         center_x, center_y = self.screen.get_rect().center
         for text, size, offset in ((title, 42, -18), (detail, 25, 25)):
             font = pygame.font.Font(None, size)
+            text_width = font.size(text)[0]
+            if text_width > self.screen.get_width() - 32:
+                font = pygame.font.Font(None, max(12, int(size * (self.screen.get_width() - 32) / text_width)))
             image = font.render(text, True, (205, 219, 234))
             self.screen.blit(image, image.get_rect(center=(center_x, center_y + offset)))
         pygame.display.flip()
@@ -36,6 +40,17 @@ class Renderer:
 
         # Always clear the overlay surface at the start of a draw call
         self.overlay_surface.fill((0, 0, 0, 0))
+
+        defeated = defeat_notice(self.game)
+        if defeated:
+            title = f"{defeated[0]} has been defeated." if len(defeated) == 1 else "Players have been defeated."
+            detail = "Press Enter to continue" if len(defeated) == 1 else ", ".join(defeated)
+            self._draw_status(title, detail)
+            return
+        players = getattr(self.game, 'players', ())
+        if self.game.game_started and players and all(player.defeated for player in players):
+            self._draw_status("Campaign ended", "All players have been defeated.")
+            return
 
         if automated_turn_active(self.game):
             if self.game.current_player.controller == PlayerController.CODEX:

@@ -210,7 +210,10 @@ bonuses, and individual unit upkeep for the next income phase.
 
 Press **E** or **End Turn** when finished issuing orders. The hot-seat sequence
 resolves the active player's movement, mine contacts, income, upkeep, growth and
-combat before advancing to the next player.
+combat before advancing to the next player. A faction is defeated once it has
+neither surviving units nor owned colonies. A defeat screen appears at the turn
+handoff, and the faction's later turns are skipped. Docked and submerged ships
+still count as surviving units.
 
 | Resource | Source and use |
 |---|---|

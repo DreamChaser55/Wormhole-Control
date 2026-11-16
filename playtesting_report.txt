@@ -1,2 +1,1 @@
 FEEDBACK FROM PLAYTESTING:
-- When a player no longer has any units or colonized bodies, a “Player has been defeated.” screen should appear. From that time, defeated player's turn should simply be skipped.

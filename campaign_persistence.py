@@ -634,6 +634,7 @@ def commit_campaign(game, prepared):
     fields.update(selected_objects=[], hovered_object=None, sector_view_mouse_hover_object=None,
                   galaxy_view_mouse_hover_system_name=None, system_view_mouse_hover_hex=None,
                   selected_component_name=None, selected_unit_tab="basic_info", pending_ai_turn_end_time=0,
+                  defeat_notice=(0, ()),
                   is_dragging_selection_box=False, selection_box_start_pos=None,
                   galaxy_zoom=1.0, galaxy_target_zoom=1.0, galaxy_pan_offset=Position(0, 0),
                   galaxy_zoom_anchor_pixel=None, galaxy_zoom_anchor_logical=None,

@@ -34,6 +34,7 @@ class TestSaveLoad(unittest.TestCase):
     def test_player_round_trip(self):
         player = Player("Test Player", (0, 128, 255), controller=PlayerController.HUMAN)
         player.ai_repair_retries = 5
+        player.defeated = True
         player.credits = 15000.0
         player.metal = 5000.0
         player.crystal = 2500.0
@@ -49,6 +50,7 @@ class TestSaveLoad(unittest.TestCase):
         self.assertEqual(deserialized.metal, 5000.0)
         self.assertEqual(deserialized.crystal, 2500.0)
         self.assertEqual(deserialized.ai_repair_retries, 5)
+        self.assertTrue(deserialized.defeated)
 
     def test_game_object_ids_start_at_one(self):
         original_counter = GameObject.object_counter

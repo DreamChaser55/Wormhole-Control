@@ -140,6 +140,7 @@ class Game:
         self.gui.show_main_menu()
         self.sidebar_needs_update: bool = True
         self.pending_ai_turn_end_time: int = 0
+        self.defeat_notice: tuple[int, tuple[str, ...]] = (0, ())
         self.selected_component_name: typing.Optional[str] = None
         self.selected_unit_tab: str = 'basic_info'
 

@@ -5,6 +5,7 @@ from typing import Any, Protocol
 class TurnPresentation(Protocol):
     def refresh_player_turn(self, player: Any) -> None: ...
     def schedule_ai_turn(self) -> None: ...
+    def show_defeated_players(self, players: Any) -> None: ...
     def warn_human(self, player: Any, message: str, *, title: str) -> None: ...
 
 
@@ -15,6 +16,9 @@ class NullTurnPresentation:
         pass
 
     def schedule_ai_turn(self) -> None:
+        pass
+
+    def show_defeated_players(self, players: Any) -> None:
         pass
 
     def warn_human(self, player: Any, message: str, *, title: str) -> None:

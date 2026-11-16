@@ -4,6 +4,17 @@ from typing import Any
 from player_controller import PlayerController
 
 
+def defeat_notice(game):
+    """Return the public names in the current handoff notice."""
+    import pygame
+
+    notice = getattr(game, 'defeat_notice', None)
+    if not isinstance(notice, tuple) or getattr(game, 'game_started', False) is not True:
+        return ()
+    deadline, names = notice
+    return names if pygame.time.get_ticks() < deadline else ()
+
+
 class ApplicationTurnPresentation:
     def __init__(self, game: Any) -> None:
         self.game = game
@@ -42,6 +53,12 @@ class ApplicationTurnPresentation:
                 gui.ingame_menu_panel.hide()
             show_briefing(gui, player)
 
+    def show_defeated_players(self, players: Any) -> None:
+        import pygame
+
+        names = defeat_notice(self.game) + tuple(player.name for player in players)
+        self.game.defeat_notice = (pygame.time.get_ticks() + 4000, names)
+
     def schedule_ai_turn(self) -> None:
         import pygame
 
@@ -55,7 +72,8 @@ class ApplicationTurnPresentation:
             from gui.turn_briefing_window import show_briefing
             show_briefing(gui, player)
         self.game.pending_ai_turn_end_time = (
-            pygame.time.get_ticks() + 500 if player.controller == PlayerController.OPENAI else 0
+            pygame.time.get_ticks() + 500
+            if player.controller == PlayerController.OPENAI and not getattr(player, 'defeated', False) else 0
         )
 
     def warn_human(self, player: Any, message: str, *, title: str) -> None:

@@ -49,6 +49,8 @@ def validate_saved_player_values(data, path='player'):
         raise ValueError(f'{path}.{field}: {message}')
     for field in ('persistent_id', 'agent_id'):
         validate_identity(data.get(field), f'{path}.{field}')
+    if type(data.get('defeated', False)) is not bool:
+        raise ValueError(f"{path}.defeated: expected a boolean")
     for field in ('id', 'homeworld_id'):
         value = data.get(field)
         if field == 'homeworld_id' and value is None:

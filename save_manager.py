@@ -94,6 +94,7 @@ def serialize_player(player: Player) -> dict:
         "sector_intel": sector_intel_data,
         "planetary_intel": encode_records(player),
         "homeworld_id": getattr(player, "homeworld_id", None),
+        "defeated": getattr(player, "defeated", False),
     }
 
 
@@ -393,6 +394,7 @@ def deserialize_player(data: dict) -> Player:
         ai_memory=data['ai_memory'],
         homeworld_id=data['homeworld_id'],
     )
+    player.defeated = data.get('defeated', False)
     player.order_history = bounded_history(data['order_history'])
     player.order_event_sequence = max(int(data['order_event_sequence']), max((e["event_id"] for e in player.order_history), default=0))
     player.id = data['id']
