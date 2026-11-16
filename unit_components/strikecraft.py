@@ -295,107 +295,68 @@ class StrikecraftBayComponent(UnitComponent):
         return float(slots * STRIKECRAFT_BAY_HULL_COST_PER_SLOT)
 
     def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
-        data = super().get_sidebar_data(game_state)
-        used_slots = self.get_used_slots()
-        data.append({'type': 'label', 'text': f"Capacity: {used_slots} / {self.max_slots} wings", 'object_id': '#sidebar_info_label', 'height': 20})
-        is_owner = self.unit.owner == game_state.players[game_state.current_player_index]
-        from dismantling import offline, evaluate
+        from dismantling import evaluate, offline
+        from domain.celestials import is_position_in_magnetic_storm
+        from strikecraft_service import required, sidebar_labels
         from unit_templates import UNIT_TEMPLATES
+
+        data = super().get_sidebar_data(game_state)
+        is_owner = self.unit.owner == game_state.players[game_state.current_player_index]
+        galaxy = getattr(getattr(self.unit, 'game', None), 'galaxy', None)
+        wings = {wing.id: wing for wing in self.docked_units + self.launched_units}
+
+        def label(text, object_id='#sidebar_info_label'):
+            data.append({'type': 'label', 'text': text, 'object_id': object_id, 'height': 20})
+
+        def button(text, action_id, target_data):
+            data.append({'type': 'button', 'text': text, 'object_id': '#sidebar_expand_button',
+                         'action_id': action_id, 'target_data': target_data, 'height': 25})
+
+        label(f"{self.get_used_slots()}/{self.max_slots} slots · "
+              f"{len(self.docked_units)} docked · {len(self.launched_units)} launched")
+        label("New wing production enabled" if self.production_enabled else "New wing production paused")
+        if self.replenishing_unit:
+            label(f"Replenishing {self.replenishing_unit.name}", '#sidebar_status_active_label')
+        if is_position_in_magnetic_storm(galaxy, self.unit.in_system, self.unit.in_hex, self.unit.position):
+            label("Magnetic storm blocks launches", '#sidebar_status_charging_label')
+        if is_owner and not self.is_destroyed and not offline(self.unit):
+            if any(self.can_deploy(wing, galaxy) for wing in self.docked_units):
+                button("Launch All Wings", 'launch_all_wings', self.unit.id)
+            button("Pause new wings" if self.production_enabled else "Resume new wings",
+                   'set_wing_production_enabled', (self.unit.id, not self.production_enabled))
+
         for slot in self.slot_views():
             index = slot['slot_index']
-            name = slot['production_template']
-            label = UNIT_TEMPLATES[name]['name'] if name else 'None'
-            data.append({'type': 'label', 'text': f"Slot {index + 1} — Future production: {label}",
-                         'object_id': '#sidebar_info_label', 'height': 20})
-            occupant = slot['wing_name'] or 'No wing'
-            data.append({'type': 'label', 'text': f"  {slot['status'].capitalize()}: {occupant}",
-                         'object_id': '#sidebar_info_label', 'height': 20})
-            for title, key in (("Turrets", 'turret_type_override'), ("Defenses", 'defense_type_override')):
-                if slot[key] is not None:
-                    data.append({'type': 'label', 'text': f"  {title}: {slot[key].replace('_', ' ').title()}",
-                                 'object_id': '#sidebar_info_label', 'height': 20})
-            if slot['status'] == 'building':
-                data.append({'type': 'label', 'text': f"  Constructing {label} ({self.construction_progress + 1}/{slot['production_turns']} turns)",
-                             'object_id': '#sidebar_info_label', 'height': 20})
+            status = slot['status']
+            label(f"Slot {index + 1} · {status.capitalize()}", '#sidebar_section_header_label')
+            key = slot['production_template']
+            if key:
+                label(f"Production · {UNIT_TEMPLATES[key]['name']}")
+                overrides = [slot[field].replace('_', ' ').title()
+                             for field in ('turret_type_override', 'defense_type_override') if slot[field]]
+                if overrides:
+                    label(" / ".join(overrides))
+            if status == 'building':
+                label(f"{self.construction_progress}/{slot['production_turns']} owner turns complete")
+
+            wing = wings.get(slot['wing_id'])
+            if wing is not None:
+                component = wing.strikecraft_wing_component
+                role = component.wing_type.value.capitalize() if component else "Fighter"
+                label(f"{wing.name} · {role} · {wing.current_hit_points}/{wing.max_hit_points} HP")
+                if component:
+                    for line in sidebar_labels(wing, galaxy):
+                        label(line)
+                actions = (self.unit.id, wing.id)
+                if is_owner and status == 'docked':
+                    if self.can_deploy(wing, galaxy):
+                        button("Launch wing", 'deploy_ship', actions)
+                    if evaluate(self.unit, wing, galaxy).blocker is None:
+                        button("Dismantle wing…", 'dismantle_wing', actions)
+                if is_owner and status == 'launched' and not required(wing):
+                    button("Recall wing", 'recall_ship', actions)
             if is_owner and slot['edit_blocker'] is None:
-                data.append({'type': 'button', 'text': f"Slot {index + 1}: Select Production…",
-                             'object_id': '#sidebar_expand_button', 'action_id': 'select_wing_production',
-                             'target_data': (self.unit.id, index), 'height': 25})
-        if self.replenishing_unit:
-            data.append({'type': 'label', 'text': f"Replenishing Wing: {self.replenishing_unit.name}",
-                         'object_id': '#sidebar_info_label', 'height': 20})
-        if is_owner and not self.is_destroyed and not offline(self.unit):
-            data.append({'type': 'button', 'text': 'Pause new wings' if self.production_enabled else 'Resume new wings',
-                         'object_id': '#sidebar_expand_button', 'action_id': 'set_wing_production_enabled',
-                         'target_data': (self.unit.id, not self.production_enabled), 'height': 25})
-
-        # Docked Wings
-        data.append({'type': 'label', 'text': "Docked Strikecraft Wings:", 'object_id': '#sidebar_section_header_label', 'height': 24})
-
-        from domain.celestials import is_position_in_magnetic_storm
-        galaxy_ref = getattr(self.unit.game, 'galaxy', None) if getattr(self.unit, 'game', None) else None
-        in_magnetic_storm = is_position_in_magnetic_storm(galaxy_ref, self.unit.in_system, self.unit.in_hex, self.unit.position)
-        if in_magnetic_storm:
-            data.append({'type': 'label', 'text': "  ⚠ Magnetic Storm: Wings cannot launch", 'object_id': '#sidebar_status_charging_label', 'height': 20})
-
-        if self.docked_units and is_owner and any(self.can_deploy(w, galaxy_ref) for w in self.docked_units):
-            data.append({
-                'type': 'button',
-                'text': "Launch All Wings",
-                'object_id': '#sidebar_expand_button',
-                'action_id': 'launch_all_wings',
-                'target_data': self.unit.id,
-                'height': 25
-            })
-        if not self.docked_units:
-            data.append({'type': 'label', 'text': "  None", 'object_id': '#sidebar_info_label', 'height': 20})
-        else:
-            for docked_ship in self.docked_units:
-                f_comp = docked_ship.strikecraft_wing_component
-                role_str = f_comp.wing_type.value.capitalize() if f_comp else "Fighter"
-                wing_label = f"  - {docked_ship.name} ({role_str}, HP: {docked_ship.current_hit_points}/{docked_ship.max_hit_points})"
-                data.append({'type': 'label', 'text': wing_label, 'object_id': '#sidebar_info_label', 'height': 20})
-                if f_comp:
-                    from strikecraft_service import sidebar_labels
-                    data.extend({'type': 'label', 'text': label, 'object_id': '#sidebar_info_label', 'height': 20}
-                                for label in sidebar_labels(docked_ship, galaxy_ref))
-                if is_owner and evaluate(self.unit, docked_ship, galaxy_ref).blocker is None:
-                    data.append({'type': 'button', 'text': f'Dismantle {docked_ship.name}…',
-                                 'object_id': '#sidebar_expand_button', 'action_id': 'dismantle_wing',
-                                 'target_data': (self.unit.id, docked_ship.id), 'height': 25})
-                if is_owner and not in_magnetic_storm and self.can_deploy(docked_ship, galaxy_ref):
-                    data.append({
-                        'type': 'button',
-                        'text': f"Deploy {docked_ship.name}",
-                        'object_id': '#sidebar_expand_button',
-                        'action_id': 'deploy_ship',
-                        'target_data': (self.unit.id, docked_ship.id),
-                        'height': 25
-                    })
-
-        # Launched Wings
-        data.append({'type': 'label', 'text': "Launched Strikecraft Wings:", 'object_id': '#sidebar_section_header_label', 'height': 24})
-        if not self.launched_units:
-            data.append({'type': 'label', 'text': "  None", 'object_id': '#sidebar_info_label', 'height': 20})
-        else:
-            for launched_ship in self.launched_units:
-                f_comp = launched_ship.strikecraft_wing_component
-                role_str = f_comp.wing_type.value.capitalize() if f_comp else "Fighter"
-                wing_label = f"  - {launched_ship.name} ({role_str}, HP: {launched_ship.current_hit_points}/{launched_ship.max_hit_points})"
-                data.append({'type': 'label', 'text': wing_label, 'object_id': '#sidebar_info_label', 'height': 20})
-                from strikecraft_service import sidebar_labels, required
-                if f_comp:
-                    data.extend({'type': 'label', 'text': label, 'object_id': '#sidebar_info_label', 'height': 20}
-                                for label in sidebar_labels(launched_ship, galaxy_ref))
-                if is_owner and not required(launched_ship):
-                    data.append({
-                        'type': 'button',
-                        'text': f"Recall {launched_ship.name}",
-                        'object_id': '#sidebar_expand_button',
-                        'action_id': 'recall_ship',
-                        'target_data': (self.unit.id, launched_ship.id),
-                        'height': 25
-                    })
+                button(f"Slot {index + 1}: Select Production…", 'select_wing_production', (self.unit.id, index))
         return data
 
     def get_basic_sidebar_data(self, game_state: 'Game') -> list[dict]:

@@ -534,6 +534,10 @@ own future wing design and optional
 whether it is empty, building, docked or launched, alongside the current wing and
 its separately configured future production.
 
+The bay sidebar groups each wing, its condition, production and available
+actions under its slot. Bay-wide launch and production controls sit above
+the slots.
+
 The picker shows combat role, speed, effective weapons, fractional defenses, hull
 use, price and duration. Turret choices are Mass Driver, Beam or Missile; defense
 choices are Armor, Shields or Point Defense. **Template Default** restores that

@@ -65,7 +65,7 @@ def test_new_bay_waits_for_explicit_selection_even_after_resume(key):
         assert not bay.docked_units and carrier.owner.credits == 10000
         assert bay.slots[0]['production_template_name'] is None
     labels = [item.get('text') for item in bay.get_sidebar_data(game)]
-    assert all(f'Slot {i + 1} — Future production: None' in labels for i in range(bay.max_slots))
+    assert all(f'Slot {i + 1} · Empty' in labels for i in range(bay.max_slots))
     assert issue(game, carrier.owner, command(carrier, 'BOMBER_WING')).accepted
     assert carrier.owner.credits == 10000 and not bay.constructing
     wing = produce(game, bay)

@@ -90,14 +90,14 @@ def test_strikecraft_bay_gui_data_generation(docked_hp, launched_hp):
         game.gui.update_side_bar_content.assert_called_once()
         data_list = game.gui.update_side_bar_content.call_args[0][0]
         
-        # Check that "Docked Strikecraft Wings:" and "Launched Strikecraft Wings:" are present
+        # Both wings appear in their assigned slots with status and condition.
         labels = [d.get("text") for d in data_list if d.get("type") == "label"]
         buttons = [d for d in data_list if d.get("type") == "button"]
         
-        assert "Docked Strikecraft Wings:" in labels
-        assert "Launched Strikecraft Wings:" in labels
-        assert f"  - Docked Wing (Fighter, HP: {docked_hp}/30)" in labels
-        assert f"  - Launched Wing (Bomber, HP: {launched_hp}/30)" in labels
+        assert "Slot 1 · Docked" in labels
+        assert "Slot 2 · Launched" in labels
+        assert f"Docked Wing · Fighter · {docked_hp}/30 HP" in labels
+        assert f"Launched Wing · Bomber · {launched_hp}/30 HP" in labels
         
         # Find Deploy button
         deploy_btn = next((b for b in buttons if b["action_id"] == "deploy_ship"), None)
