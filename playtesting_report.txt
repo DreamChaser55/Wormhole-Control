@@ -7,7 +7,6 @@ FEEDBACK FROM PLAYTESTING:
 - AI should receive info about Civilian habitat income boost, and that it is good to build them around owned worlds to increase income.
 - Metal refinery should cost only a small amount of metal. Crystal refinery should cost only a small amount of crystal. The refinery components themselves should cost more credits.
 - Unstable wormhole should cause the passing units to lose some antimatter.
-- Add some constant low metal income from a specific colonizable planet type, just like Ice planet provides constant low crystal income.
 - Owned planet should have some non-zero sensor range.
 - Remove pulsar antimatter drain, since it makes the star completely useless for antimatter harvesting. Instead, add antimatter drain to some nebula or storm type.
 - Black hole star type should double hyperdrive recharge time of units in its hex.
