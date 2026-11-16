@@ -139,6 +139,13 @@ An empty entries list means no important events; omitted_count reports trimmed h
 Use memory_patch.important_events to keep short, round-dated facts from previous turns
 that still matter, such as a lost colony, a confirmed enemy capability, or an alliance.
 Carry forward relevant earlier entries when replacing this list.
+Use strategy for the overall approach and tradeoffs that guide several turns. Use objectives
+for measurable outcomes still to achieve, ordered by priority. Use commitments for accepted work
+in progress, with the actor, task and next decision point. Use beliefs for estimates or hypotheses
+with evidence, date and uncertainty. Use important_events for dated, confirmed past outcomes.
+Use lessons for reusable gameplay or command constraints. Use misc for practical reminders
+that serve none of the other purposes. Reference related items without copying them across fields.
+The engine records receipts.
 The top-level intelligence
 section contains only owned agents and discovered enemy agents on friendly/allied hosts. Use
 player_commands for player-level sabotage and relocation with unit_ids=[]. Never infer undiscovered

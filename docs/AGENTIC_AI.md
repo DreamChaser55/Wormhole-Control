@@ -222,7 +222,11 @@ repair errors produce lessons keyed by command/error/actor (and ability where
 applicable), including the carrier's disclosed slot indices. They persist only
 after a repaired plan commits successfully; rejected model memory patches never
 apply. An empty lesson list does not erase learned constraints. Other patched
-sections replace their previous contents. Planning instructions require objectives
+sections replace their previous contents. Strategy describes the multi-turn approach.
+Objectives state measurable outcomes. Commitments track accepted work. Beliefs capture
+estimates with evidence and uncertainty. Event memory records confirmed history.
+Lessons retain reusable constraints, and misc holds reminders that fit nowhere else.
+Receipts come from the engine. Planners place each fact in its most useful section. Planning instructions require objectives
 and commitments to match accepted orders, compare mission value with remaining
 travel before replacement, and consult terminal history before repeating failures.
 Zero-command plans are valid when useful work should continue.

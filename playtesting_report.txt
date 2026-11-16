@@ -13,7 +13,6 @@ FEEDBACK FROM PLAYTESTING:
 - Increase turret ranges of stationary defensive unit templates. Add more varied stationary defensive unit templates. Stationary units in general should have greater turret ranges than mobile units.
 - Expand recon unit templates: add sensor ship unit template with advanced hyperdrive, so we have both basic and advanced hyperdrive sensor ship. We should also have at least 2 sensor ship template sizes (smaller and larger), and also smaller and larger sensor station. Reduce sensor ranges of other units (or perhaps remove sensors entirely from some units), to make dedicated sensor ships/stations more useful.
 - Add current construction progress to turn summary.
-- Improve AI guidance for usage of different memory sections (strategy, objectives, commitments, beliefs…), and improve the differentiation of the sections, so the same content is not simply duplicated in different sections.
 - Instruct AI to periodically trim outdated content of its memory.
 - When a player no longer has any units or colonized bodies, a “Player has been defeated.” screen should appear. From that time, defeated player's turn should simply be skipped.
 - Ensure that every generated system has at least one comet, one metal asteroid, and at least one colonizable body.
