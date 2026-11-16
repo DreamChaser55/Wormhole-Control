@@ -472,4 +472,7 @@ def test_loss_section_follows_each_viewers_relationship():
         begin_window(game, player)
     unit_event(victim, 'loss', 'Destroyed')
     assert victim.owner.briefing.pending[-1].category == 'friendly_and_allied_losses'
-    assert enemy.owner.briefing.pending[-1].category == 'enemy_losses'
+    entry = enemy.owner.briefing.pending[-1]
+    assert entry.category == 'enemy_losses'
+    assert entry.owner_name == victim.owner.name
+    assert entry.to_dict()['owner_id'] == victim.owner.id

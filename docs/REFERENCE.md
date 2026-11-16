@@ -185,8 +185,8 @@ acknowledgement alone does not mark messages read. Comms no longer opens automat
 at turn start. **Esc → Turn Summary** reopens the current report in every mode,
 even on quiet turns.
 
-Reports retain what you could know when an event happened, including historical
-names and sectors. They do not expose hidden attackers, covert equipment or
+Reports retain what you could know when an event happened, including names,
+sectors and the owners of units mentioned in combat or losses. They do not expose hidden attackers, covert equipment or
 undiscovered agents. Anonymous radar presence has no identity or count, and a
 vanished contact is not a confirmed loss. Historical contacts are not necessarily
 currently visible or valid targets.

@@ -129,7 +129,9 @@ in its observation JSON. It contains `from_turn`,
 `to_turn`, priority-ordered `entries`, net `economy` changes, and `omitted_count`.
 Turn zero as `from_turn` means campaign setup. Each entry has an event ID, round,
 category, historical subject ID/name/sector where authorized, detail, occurrence
-count and total amount. Anonymous radar entries have no subject ID, name or unit
+count and total amount. Unit combat and loss entries include the subject's
+historical `owner_id` and `owner_name`. A named attacker includes their
+disclosed faction. Anonymous radar entries have no subject ID, name or unit
 count. Loss entries use `friendly_and_allied_losses` or `enemy_losses` according to
 the viewer's relationship at the time. An empty entries list means no important events.
 

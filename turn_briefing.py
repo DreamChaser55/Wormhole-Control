@@ -33,6 +33,8 @@ class BriefingEntry:
     detail: str
     count: int = 1
     amount: float = 0
+    owner_id: int | None = None
+    owner_name: str = ''
 
     def to_dict(self):
         return {**asdict(self), "hex_coord": list(self.hex_coord) if self.hex_coord is not None else None}
@@ -128,7 +130,7 @@ def _bound(state):
 
 
 def record(game, player, category, detail, *, subject=None, subject_id=None,
-           name="", system_name="", hex_coord=None, amount=0, once=False):
+           name="", system_name="", hex_coord=None, amount=0, once=False, unit_owner=None):
     state = _state(player)
     if not _live(game) or state is None or not state.collecting:
         return
@@ -139,10 +141,12 @@ def record(game, player, category, detail, *, subject=None, subject_id=None,
     entry = BriefingEntry(state.sequence + 1, int(game.turn_number), category,
                           subject_id, name[:200], system_name[:200],
                           tuple(hex_coord) if hex_coord is not None else None,
-                          detail[:500], amount=float(amount))
+                          detail[:500], amount=float(amount),
+                          owner_id=unit_owner.id if unit_owner else None,
+                          owner_name=str(unit_owner.name)[:200] if unit_owner else '')
     # Outcome history reports ownership/destruction interruptions separately.
     # Those are omitted by order_outcome so a loss has just one primary notice.
-    key = lambda e: (e.category, e.subject_id, e.name, e.system_name, e.hex_coord, e.detail)
+    key = lambda e: (e.category, e.subject_id, e.name, e.system_name, e.hex_coord, e.detail, e.owner_id, e.owner_name)
     for index, old in enumerate(state.pending):
         if key(old) == key(entry):
             if not once:
@@ -179,11 +183,18 @@ def unit_event(unit, category, detail, *, amount=0, private=False, component_typ
             elif player is new_owner:
                 public_detail = "Captured; ownership gained"
         if actor is not None:
-            public_detail += f" by {actor.name}" if _visible(snapshot, actor) else " by an unknown attacker"
+            if _visible(snapshot, actor):
+                actor_owner = getattr(actor, "owner", None)
+                actor_label = f"{actor.name} ({actor_owner.name})" if actor_owner else actor.name
+                public_detail += f" by {actor_label}"
+            else:
+                public_detail += " by an unknown attacker"
         public_category = category
         if category == "loss":
             public_category = "enemy_losses" if player.is_enemy_of(unit.owner) else "friendly_and_allied_losses"
-        record(game, player, public_category, public_detail, subject=unit, amount=amount, once=once)
+        owner = unit.owner if category in {'combat', 'hazard', 'loss', 'capture'} else None
+        record(game, player, public_category, public_detail, subject=unit, amount=amount, once=once,
+               unit_owner=owner)
 
 
 def order_outcome(order, outcome, reason):
@@ -302,7 +313,7 @@ def summary_view(player):
 
 
 def entry_text(entry):
-    prefix = entry.name
+    prefix = f"{entry.name} ({entry.owner_name})" if entry.owner_name else entry.name
     if entry.system_name:
         prefix += f" [{entry.system_name}"
         if entry.hex_coord is not None:
@@ -345,6 +356,8 @@ def state_from_dict(raw):
         result = []
         ids = set()
         for value in values:
+            if isinstance(value, dict):
+                value = {"owner_id": None, "owner_name": "", **value}
             fields(value, BriefingEntry.__dataclass_fields__)
             for key in ("event_id", "turn", "count"):
                 if integer(value[key]) == 0:
@@ -354,13 +367,14 @@ def state_from_dict(raw):
             ids.add(value["event_id"])
             if not isinstance(value["category"], str) or value["category"] not in PRIORITY:
                 raise ValueError("Invalid briefing category")
-            for key, limit in (("name", 200), ("system_name", 200), ("detail", 500)):
+            for key, limit in (("name", 200), ("owner_name", 200), ("system_name", 200), ("detail", 500)):
                 if not isinstance(value[key], str) or len(value[key]) > limit:
                     raise ValueError("Invalid briefing text")
             if real(value["amount"]) < 0:
                 raise ValueError("Invalid briefing event amount")
-            if value["subject_id"] is not None:
-                integer(value["subject_id"])
+            for key in ("subject_id", "owner_id"):
+                if value[key] is not None:
+                    integer(value[key])
             coord = value["hex_coord"]
             if coord is not None and (not isinstance(coord, (list, tuple)) or len(coord) != 2 or any(type(n) is not int for n in coord)):
                 raise ValueError("Invalid briefing location")
