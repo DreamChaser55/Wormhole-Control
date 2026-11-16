@@ -130,6 +130,8 @@ def describe_body(body) -> BodyDescription:
         effects['harvest_multiplier'] = body.harvest_multiplier
         rules.append(f'A functional Antimatter Harvester collects at {body.harvest_multiplier:g}x its base rate within its harvesting range of the star center.')
         if body.star_type == StarType.BLACK_HOLE:
+            effects.update(hyperdrive_recharge_multiplier=balance.BLACK_HOLE_RECHARGE_MULTIPLIER)
+            rules.append('Hyperdrive recharge started in this sector takes twice as long.')
             hazards.append(EnvironmentalHazard('black_hole', balance.BLACK_HOLE_EVENT_HORIZON_DAMAGE,
                 'hull', 'radius', balance.BLACK_HOLE_EVENT_HORIZON_RADIUS, affects_deployables=True))
         elif body.star_type == StarType.PULSAR:

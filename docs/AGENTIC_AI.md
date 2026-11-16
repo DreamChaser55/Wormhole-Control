@@ -939,7 +939,8 @@ Mechanical radii retain full precision. `environmental_effects` retains existing
 modifier keys and adds speed, concealment, sensor suppression, wing exceptions,
 and `hazards`. Each hazard specifies kind, amount/basis, target, timing, scope,
 radius, affected unit classes, and any sublight-movement/speed requirement.
-Black-hole hull damage uses its own radius. Pulsar hull damage, short-range
+Black-hole hull damage uses its own radius, and the whole sector doubles
+the recharge time of arrivals. Pulsar hull damage, short-range
 sensor penalties and long-range concealment cover the whole sector. Dust nebulae
 drain a fraction of current fuel.
 

@@ -212,14 +212,16 @@ def estimate_approach(unit, galaxy, target, origin=None, *, approach_range=ANTIM
             recharge = max(0, recharge - duration)
             point = end
 
-    def jump(cost):
+    def jump(cost, arrival_system, arrival_hex):
         nonlocal fuel, turns, recharge
         # Recharge blocks only the next jump and runs concurrently with sublight.
         # The jump's owner-turn update already ticks its new recharge once.
         duration = recharge + 1
         fuel += cost + duration * upkeep
         turns += duration
-        recharge = max(0, drive.RECHARGE_DURATION - 1)
+        from environmental_effects import hyperdrive_recharge_multiplier
+        multiplier = hyperdrive_recharge_multiplier(galaxy, arrival_system, arrival_hex)
+        recharge = max(0, drive.RECHARGE_DURATION * multiplier - 1)
 
     def result():
         return JourneyEstimate(fuel, turns, system, coord, point, recharge,
@@ -247,7 +249,7 @@ def estimate_approach(unit, galaxy, target, origin=None, *, approach_range=ANTIM
                 for zone in zones():
                     if is_point_in_circle(landing, zone):
                         landing = get_closest_point_on_circle_edge(landing, zone)
-                jump(get_hyperdrive_hex_jump_cost(unit.hull_size))
+                jump(get_hyperdrive_hex_jump_cost(unit.hull_size), system, coord)
                 point = landing
         sublight(destination)
 
@@ -281,7 +283,8 @@ def estimate_approach(unit, galaxy, target, origin=None, *, approach_range=ANTIM
                 exit_wormhole = galaxy.wormholes[wormhole.exit_wormhole_id]
                 from wormhole_stabilization import crossing_fuel_loss, effective_stability
                 jump(get_hyperdrive_system_jump_cost(unit.hull_size)
-                     + crossing_fuel_loss(effective_stability(galaxy, wormhole)))
+                     + crossing_fuel_loss(effective_stability(galaxy, wormhole)),
+                     next_system, exit_wormhole.in_hex)
                 system, coord, point = (
                     next_system,
                     exit_wormhole.in_hex,

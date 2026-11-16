@@ -1397,8 +1397,8 @@ A functioning Harvester must be within its harvesting range of the star's center
 | Red Dwarf | 0.5× |
 | Brown Dwarf | 0.3× |
 
-Black holes inflict 15 base hull damage per owner turn within their 750-radius
-event horizon after movement. Pulsars deal 4 base hull damage after movement
+Arriving in a black-hole sector doubles the drive's recharge time. Black holes
+also inflict 15 base hull damage within the 750-unit event horizon after movement. Pulsars deal 4 base hull damage after movement
 throughout their sector, reduce short-range sensors there to one third, and
 conceal ships there from long-range detection. Blue and Red Giants use the enlarged collision and inhibition radii in the dimensions table.
 

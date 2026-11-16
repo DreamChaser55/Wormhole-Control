@@ -80,3 +80,21 @@ def test_service_budget_retains_post_arrival_readiness_upkeep():
     assert quote.turns == 1
     assert quote.readiness_fuel > quote.fuel
     assert route_budget(unit, source, target, game.galaxy) >= buffered_fuel(quote.readiness_fuel)
+
+
+def test_black_hole_doubles_new_hyperdrive_recharge():
+    from constants import StarType
+    from domain.celestials import Star
+    from tests.support.campaigns import campaign, ship
+    from unit_components.movement import Hyperdrive
+
+    game = campaign()
+    unit = ship(game)
+    drive = Hyperdrive(unit)
+    unit.add_component(drive)
+    game.galaxy.systems["Sol"].add_celestial_body(Star("Sol", StarType.BLACK_HOLE))
+    drive.start_recharge()
+    assert drive.recharge_time_remaining == 2 * drive.RECHARGE_DURATION
+    unit.in_hex = (1, 0)
+    drive.start_recharge()
+    assert drive.recharge_time_remaining == drive.RECHARGE_DURATION

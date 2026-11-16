@@ -293,7 +293,11 @@ class Hyperdrive(UnitComponent):
 
         extra_turns = 3 if hasattr(self.unit, 'is_sabotaged') and self.unit.is_sabotaged(SabotageType.HYPERDRIVE) else 0
         self.jump_status = JumpStatus.CHARGING
-        self.recharge_time_remaining = self.RECHARGE_DURATION + extra_turns
+        from environmental_effects import hyperdrive_recharge_multiplier
+        multiplier = hyperdrive_recharge_multiplier(
+            getattr(self.unit, 'in_galaxy', None), self.unit.in_system, self.unit.in_hex,
+        )
+        self.recharge_time_remaining = (self.RECHARGE_DURATION + extra_turns) * multiplier
         owner_id = self.jump_target_order_id if local_order_id is None else local_order_id
         self.clear_jump_target(owner_id)
         logger.debug(f"Unit {format_unit_for_log(self.unit)} hyperdrive starting recharge for {self.recharge_time_remaining} turns. Status: CHARGING.")

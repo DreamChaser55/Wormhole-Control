@@ -64,6 +64,18 @@ def modifiers_for_unit(unit):
     return EnvironmentalModifiers(**values)
 
 
+def hyperdrive_recharge_multiplier(galaxy, system_name, coord):
+    from constants import BLACK_HOLE_RECHARGE_MULTIPLIER, StarType
+    from domain.celestials import Star
+
+    system = galaxy.systems.get(system_name) if galaxy else None
+    sector = system.hexes.get(coord) if system else None
+    if sector is not None and any(isinstance(body, Star) and body.star_type == StarType.BLACK_HOLE
+                                  for body in sector.celestial_bodies):
+        return BLACK_HOLE_RECHARGE_MULTIPLIER
+    return 1
+
+
 def sublight_speed(unit):
     """Current movement speed: engine modifiers followed by terrain drag once."""
     engines = getattr(unit, 'engines_component', None)
