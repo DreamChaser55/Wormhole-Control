@@ -132,6 +132,12 @@ def describe_body(body) -> BodyDescription:
         if body.star_type == StarType.BLACK_HOLE:
             hazards.append(EnvironmentalHazard('black_hole', balance.BLACK_HOLE_EVENT_HORIZON_DAMAGE,
                 'hull', 'radius', balance.BLACK_HOLE_EVENT_HORIZON_RADIUS, affects_deployables=True))
+        elif body.star_type == StarType.PULSAR:
+            effects.update(sensor_multiplier=balance.PULSAR_SHORT_RANGE_MULTIPLIER,
+                           long_range_concealment=True, affects_entire_sector=True)
+            hazards.append(EnvironmentalHazard('pulsar', balance.PULSAR_HULL_DAMAGE, 'hull', 'sector',
+                                               affects_deployables=True))
+            rules.append('Throughout its sector, a pulsar reduces short-range sensor radius to one third and hides units from long-range detection.')
     elif isinstance(body, Planet) and body.planet_type == PlanetType.GAS_GIANT:
         rules.extend(('Atmospheric hiding: Tiny through Titan ships with operational Engines may enter. Wings and stationary stations cannot.',
                       'Submerged ships are hidden from enemy sensors and cannot interact with outside space. Only a Leave at the front of the queue can execute; upkeep and existing ability timers continue.'))

@@ -118,11 +118,13 @@ class VisibilityService:
                 for body in hex_obj.celestial_bodies:
                     from environmental_effects import describe_body
                     description = describe_body(body)
-                    if dict(description.effects).get('long_range_concealment', False):
+                    effects = dict(description.effects)
+                    if effects.get('long_range_concealment', False):
                         hex_key = (system_name, hex_coord)
                         if hex_key not in nebulae_by_hex:
                             nebulae_by_hex[hex_key] = []
-                        field_radius = description.effect_radius
+                        field_radius = (float('inf') if effects.get('affects_entire_sector')
+                                        else description.effect_radius)
                         nebulae_by_hex[hex_key].append((body.position, field_radius))
 
                     is_infiltrated_body = False

@@ -94,6 +94,7 @@ def phase(game, unit, speed=100):
     ('radiation', 'radiation_hardening', 4, 1),
     ('magnetic', 'antimatter_containment', 6, 1.5),
     ('dust_nebula', 'antimatter_containment', 10, 199 * .0125),
+    ('pulsar', 'hazard_shielding', 4, 1),
 ])
 @pytest.mark.parametrize('enabled', [False, True])
 def test_each_hazard_at_inclusive_boundary(kind, ability, base, protected, enabled):
@@ -498,3 +499,24 @@ def test_toggle_controls_fit_sidebar_and_preserve_payload(pygame_context, size):
         assert payload['target_data'] == row['target_data']
         assert payload['action'] == 'toggle_resistance_ability'
     assert len(gui.dynamic_button_actions) == 3
+
+
+def test_pulsar_sector_conceals_enemy_from_radar_but_preserves_short_range_contact():
+    from environmental_effects import sensor_radius
+    from visibility import VisibilityService
+
+    game = campaign()
+    scout = equipped(game)
+    scout.position = Position(4000, 0)
+    scout.sensors_component.short_range_radius = 900
+    scout.sensors_component.long_range_hexes = 1
+    enemy = ship(game, owner=1)
+    enemy.position = Position(4500, 0)
+    source(game, 'pulsar')
+    snapshot = VisibilityService.compute(game.galaxy, scout.owner)
+    assert ('Sol', (0, 0)) in snapshot.long_range_hexes
+    assert ('Sol', (0, 0)) not in snapshot.presence_hexes
+    assert enemy.id not in snapshot.visible_enemy_unit_ids
+    assert sensor_radius(scout) == pytest.approx(300)
+    enemy.position = Position(4280, 0)
+    assert enemy.id in VisibilityService.compute(game.galaxy, scout.owner).visible_enemy_unit_ids

@@ -44,9 +44,11 @@ def modifiers_for_unit(unit):
     wing = getattr(unit, 'hull_size', None) == HullSize.STRIKECRAFT_WING
     for body in sector.celestial_bodies:
         description = describe_body(body)
-        if description.effect_radius is None or distance(unit.position, body.position) > description.effect_radius:
-            continue
         effects = dict(description.effects)
+        if not effects.get('affects_entire_sector') and (
+            description.effect_radius is None or distance(unit.position, body.position) > description.effect_radius
+        ):
+            continue
         for key in ('cooldown_reduction', 'splash_damage_multiplier', 'beam_cover', 'kinetic_missile_cover'):
             values[key] = max(values[key], effects.get(key, values[key]))
         for key in ('fuel_multiplier', 'sensor_multiplier', 'speed_multiplier'):

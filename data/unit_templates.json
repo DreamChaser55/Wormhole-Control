@@ -6222,7 +6222,7 @@
     "has_ability_component": true,
     "ability_hull_cost": 15.0,
     "abilities": [
-      "antimatter_containment"
+      "hazard_shielding"
     ],
     "has_sensors": true,
     "sensor_short_range": 2000.0,
@@ -6246,7 +6246,7 @@
       "fuel collection",
       "environmental resistance"
     ],
-    "description": "Reduces magnetic and dust-nebula fuel drain by 75% for this unit while enabled. Costs 1 AM each owner turn, including safe space. Requires functional Abilities and Antimatter Storage. Protection does not change terrain access, sensors or movement. Inter-system travel. Protection starts disabled.",
+    "description": "Pulsar harvesting specialist. Hazard Shielding reduces hull damage from pulsars, plasma storms, black holes and debris by 75% for 2 AM per owner turn while enabled. Inter-system travel.",
     "is_custom": false,
     "has_troop_transport_component": false,
     "troop_capacity": 40,
