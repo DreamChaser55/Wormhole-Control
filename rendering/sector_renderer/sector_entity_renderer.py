@@ -187,31 +187,32 @@ class SectorEntityRenderer:
                     dot_x = start_x + dot_i * icon_dot_spacing_px
                     draw_shape(self.screen, 'circle', obj_color, Position(dot_x, dot_base_y), icon_dot_radius_px)
 
-        # Draw Unit Name
-        bottom_y = icon_bottom
-        
-        if unit_obj.max_hit_points > 0:
-            health_bar_bottom = icon_bottom + 14
-            if health_bar_bottom > bottom_y:
-                bottom_y = health_bar_bottom
-                
-        if dot_count > 0:
-            icon_dot_radius_px = int(ICON_DOT_RADIUS * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
-            dot_base_y_offset = current_icon_base_size_px * 0.6 if shape_type == 'triangle' else current_icon_base_size_px
-            if shape_type == 'square':
-                dot_base_y_offset = icon_bottom - obj_pixel_pos.y
-            dot_bottom = obj_pixel_pos.y + dot_base_y_offset + 2 * icon_dot_radius_px + 2
-            if dot_bottom > bottom_y:
-                bottom_y = dot_bottom
-                
-        name_font_size = max(1, int(10 * display_config_for(self.game).text_scale))
-        if name_font_size not in self.parent._font_cache:
-            self.parent._font_cache[name_font_size] = pygame.font.Font(None, name_font_size)
-        name_font = self.parent._font_cache[name_font_size]
-        name_surface = name_font.render(unit_obj.name, True, obj_color)
-        name_rect = name_surface.get_rect()
-        name_rect.midtop = (obj_pixel_pos.x, bottom_y + 4)
-        self.screen.blit(name_surface, name_rect)
+        if self.game.sector_zoom >= 1.5:
+            # Draw Unit Name
+            bottom_y = icon_bottom
+
+            if unit_obj.max_hit_points > 0:
+                health_bar_bottom = icon_bottom + 14
+                if health_bar_bottom > bottom_y:
+                    bottom_y = health_bar_bottom
+
+            if dot_count > 0:
+                icon_dot_radius_px = int(ICON_DOT_RADIUS * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
+                dot_base_y_offset = current_icon_base_size_px * 0.6 if shape_type == 'triangle' else current_icon_base_size_px
+                if shape_type == 'square':
+                    dot_base_y_offset = icon_bottom - obj_pixel_pos.y
+                dot_bottom = obj_pixel_pos.y + dot_base_y_offset + 2 * icon_dot_radius_px + 2
+                if dot_bottom > bottom_y:
+                    bottom_y = dot_bottom
+
+            name_font_size = max(1, int(10 * display_config_for(self.game).text_scale))
+            if name_font_size not in self.parent._font_cache:
+                self.parent._font_cache[name_font_size] = pygame.font.Font(None, name_font_size)
+            name_font = self.parent._font_cache[name_font_size]
+            name_surface = name_font.render(unit_obj.name, True, obj_color)
+            name_rect = name_surface.get_rect()
+            name_rect.midtop = (obj_pixel_pos.x, bottom_y + 4)
+            self.screen.blit(name_surface, name_rect)
 
         # Draw Infiltration / Discovered Spy Indicator Badges
         current_viewer = getattr(self.game, 'current_player', None)

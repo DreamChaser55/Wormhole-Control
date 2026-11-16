@@ -110,7 +110,7 @@ These limits apply to new campaigns. Loading uses the separate
 and a faint tactical grid framed by a subtle coordinate boundary.
 Shared homes have concentric markers. **System View** shows sector hexes, bodies,
 routes and fog of war; hexes outside the current player's long-range sensor range have a grey background, while in-range hexes retain a black background. Newly opened systems fit the available map area. Unit icons leave space around solid bodies in each hex.
-**Sector View** shows individual units, weapon ranges, minefields, hyperspace inhibition fields, tactical movement, and a circular-clipped tactical grid.
+**Sector View** shows individual units, weapon ranges, minefields, hyperspace inhibition fields, tactical movement, and a circular-clipped tactical grid. Unit names appear at 1.5× zoom and above.
 All three views have independent zoom and pan controls. In Galaxy View, middle-click
 a system to enter it; dragging the middle button pans without entering a system.
 Galaxy markers, rings, tactical grid lines and links scale with zoom while text labels stay the same size.

@@ -52,7 +52,7 @@ def test_station_annotations_and_brackets_follow_rendered_square(pygame_context,
     owner = Player('Blue', BLUE)
     station = Unit(owner, Position(0, 0), (0, 0), 'Sol', 'Station', hull, None)
     game = SimpleNamespace(selected_objects=[station] if selected else [],
-                           current_player=owner, sector_view_mouse_hover_object=station,
+                           current_player=owner, sector_view_mouse_hover_object=station, sector_zoom=zoom,
                            display_config=DisplayConfig(960, 720, False))
     screen = RecordingSurface((960, 720))
     screen.text_bounds = []
@@ -90,13 +90,15 @@ def test_station_annotations_and_brackets_follow_rendered_square(pygame_context,
         expected_interior = darken_color(BLUE) if dot_radius > 1 else BLUE
         assert screen.get_at((dot_x, dot_y))[:3] == expected_interior
         assert screen.get_at((dot_x - dot_radius, dot_y))[:3] == BLUE
-    name, badge = screen.text_bounds
-    assert badge.bottom == square.top - 4
-    assert name.top >= square.bottom + 4
-    if dots:
-        assert name.top >= max(call.args[2][1] + call.args[3] for call in dots) + 4
-    if selected:
-        assert name.top >= max(pygame.Rect(call.args[2]).bottom for call in health_bars) + 4
+    assert len(screen.text_bounds) == (2 if zoom >= 1.5 else 1)
+    assert screen.text_bounds[-1].bottom == square.top - 4
+    if zoom >= 1.5:
+        name = screen.text_bounds[0]
+        assert name.top >= square.bottom + 4
+        if dots:
+            assert name.top >= max(call.args[2][1] + call.args[3] for call in dots) + 4
+        if selected:
+            assert name.top >= max(pygame.Rect(call.args[2]).bottom for call in health_bars) + 4
     with patch('rendering.sector_renderer.sector_overlay_renderer.draw_selection_brackets') as brackets:
         SectorOverlayRenderer(parent).draw_selection_brackets(station, center, dynamic_radius, logical_radius)
     if selected:
