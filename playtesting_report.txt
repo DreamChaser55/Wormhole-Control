@@ -17,7 +17,6 @@ FEEDBACK FROM PLAYTESTING:
 - Completely hide game graphics and GUI during AI enemy's turn, so the human player cannot see their units or bottom bar / sidebar info.
 - Rename “Transfer Antimatter” context menu button to “Give Antimatter”. Rename corresponding function in the AI interface.
 - Increase turret ranges of stationary defensive unit templates. Add more varied stationary defensive unit templates. Stationary units in general should have greater turret ranges than mobile units.
-- Add smaller strikecraft hangar station template.
 - Expand recon unit templates: add sensor ship unit template with advanced hyperdrive, so we have both basic and advanced hyperdrive sensor ship. We should also have at least 2 sensor ship template sizes (smaller and larger), and also smaller and larger sensor station. Reduce sensor ranges of other units (or perhaps remove sensors entirely from some units), to make dedicated sensor ships/stations more useful.
 - Add current construction progress to turn summary.
 - Add new section to AI memory: “Important events in previous turns”.
