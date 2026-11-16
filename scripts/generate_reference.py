@@ -156,6 +156,7 @@ def environmental_tables():
     nebulae = table(['Nebula', 'AM harvest', 'Propulsion AM', 'Short-range radius',
                      'Turret cooling (turns)', 'Cluster Warhead splash taken'], rows)
     bodies = [Storm((0, 0), 'Reference', kind) for kind in StormType]
+    bodies.extend(Nebula((0, 0), 'Reference', kind) for kind in NebulaType)
     bodies.extend(Star('Reference', kind) for kind in (StarType.BLACK_HOLE, StarType.PULSAR))
     rows = []
     for body in bodies:

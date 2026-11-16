@@ -639,7 +639,7 @@ report mandatory returns and endurance losses.
 | Wormhole Stabilizer Tender | Logistics | MEDIUM ship | 43.00/50 | 1790 | 68 | 22 | 19 | 0.43 | Maintain one wormhole within 500 units for 5 AM per owner turn. Both directions become safe for all ships, including enemies. Fuel shortages wait for resupply; support ends when cancelled. |
 | Antimatter Harvester | Logistics | MEDIUM ship | 49.00/50 | 1970 | 74 | 25 | 20 | 0.49 | Designed for fuel collection. Inter-system travel. Harvest near stars or inside hydrogen nebulae. |
 | Antimatter Transporter | Logistics | MEDIUM ship | 49.00/50 | 1970 | 74 | 25 | 20 | 0.49 | Dedicated antimatter transport. Inter-system travel. Take Antimatter loads from friendly units; Continuous Antimatter Transport repeats deliveries with an automatic return reserve. |
-| Pulsar Harvester | Logistics | LARGE ship | 70.25/100 | 3108 | 121 | 36 | 26 | 0.70 | Reduces magnetic, pulsar hazards by 75% for this unit while enabled. Costs 1 AM each owner turn, including safe space. Requires functional Abilities and Antimatter Storage. Protection does not change terrain access, sensors or movement. Inter-system travel. Protection starts disabled. |
+| Pulsar Harvester | Logistics | LARGE ship | 70.25/100 | 3108 | 121 | 36 | 26 | 0.70 | Reduces magnetic and dust-nebula fuel drain by 75% for this unit while enabled. Costs 1 AM each owner turn, including safe space. Requires functional Abilities and Antimatter Storage. Protection does not change terrain access, sensors or movement. Inter-system travel. Protection starts disabled. |
 | Utility Transport | Logistics | LARGE ship | 76.50/100 | 3295 | 127 | 39 | 26 | 0.77 | Designed for Tiny vessel transport. Inter-system travel. Hangar accepts Tiny vessels, not strikecraft wings. |
 | Nebula Tender | Logistics | LARGE ship | 84.25/100 | 3528 | 135 | 43 | 28 | 0.84 | Designed for nebula and fuel support. Inter-system travel. Harvest near stars or inside hydrogen nebulae. |
 | Fleet Repair Ship | Logistics | LARGE ship | 87.99/100 | 3640 | 138 | 44 | 28 | 0.88 | Designed for fleet repair. Inter-system travel. |
@@ -1157,7 +1157,7 @@ The normal Ability component cost applies: 10 hull plus 5 per equipped ability.
 |---|---|---:|---:|
 | Hazard Shielding | Plasma, black-hole and debris hull damage | 75% | 2 |
 | Radiation Hardening | Radiation component damage | 75% | 1 |
-| Antimatter Containment | Magnetic-storm and pulsar fuel drain | 75% | 1 |
+| Antimatter Containment | Magnetic-storm and dust-nebula fuel drain | 75% | 1 |
 
 Use **Enable/Disable** in the Abilities component panel. New units start disabled.
 Toggling is immediate, costs no activation AM, has no cooldown, and preserves
@@ -1174,7 +1174,7 @@ Each source's nominal damage or drain is reduced to 25%, before HP truncation or
 fuel clamping. Plasma damage becomes 2 HP, black-hole damage 3 HP, radiation 1
 component HP, and debris abrasion 0 HP at every density. Hull protection applies
 before Adaptive Forcefield; radiation still discards component spillover.
-Magnetic storms drain at most 1.5 AM. Pulsars drain 1.25% of fuel remaining after
+Magnetic storms drain at most 1.5 AM. Dust nebulae drain 1.25% of fuel remaining after
 upkeep and earlier hazards. Overlapping hazard sources resolve separately.
 
 Protection disables on capture, destruction, docking, atmospheric hiding,
@@ -1398,9 +1398,7 @@ A functioning Harvester must be within its harvesting range of the star's center
 | Brown Dwarf | 0.3× |
 
 Black holes inflict 15 base hull damage per owner turn within their 750-radius
-event horizon. Pulsars drain 5% of a ship's current AM from functioning storage
-per owner turn anywhere in their sector. Both are checked after movement. Blue and Red
-Giants use the enlarged collision and inhibition radii in the dimensions table.
+event horizon after movement. Blue and Red Giants use the enlarged collision and inhibition radii in the dimensions table.
 
 ### Planetary traits
 
@@ -1458,8 +1456,8 @@ overlapping penalty applies. Displayed effective speed includes current terrain.
 | Plasma | 8 | hull | Radius 3600 |
 | Magnetic | Up to 6 | antimatter | Radius 3600 |
 | Radiation | 4 | random non destroyed component | Radius 3600 |
+| Dust Nebula | 5% of current AM | antimatter | Radius 3600 |
 | Black Hole | 15 | hull | Radius 750 |
-| Pulsar | 5% of current AM | antimatter | Whole star sector |
 <!-- END GENERATED: environment -->
 
 Asteroid fields provide long-range concealment. Ice and debris reduce incoming
@@ -1487,7 +1485,8 @@ The generated tables above give baseline subtype values. Hydrogen harvesting
 requires a functioning Harvester within its harvesting range of the cloud **center**
 (default 3000 units); the cloud's effect radius does not extend harvesting range.
 Its propulsion discount applies to sublight movement only, not jumps or equipment.
-Dust reduces the observer's short-range sensor **radius**, not its scanned area.
+Dust reduces the observer's short-range sensor radius and drains 5% of current
+AM from functioning storage after movement each owner turn.
 
 Oxygen affects Cluster Warhead splash, not ordinary missiles, mines, hazards or
 component spillover. Apply it once after distance falloff and before mitigation,

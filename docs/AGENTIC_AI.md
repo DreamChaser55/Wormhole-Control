@@ -45,7 +45,7 @@ that mode. Other target checks retain the recording default, as described in the
 - owned and allied units;
 - enemy units only when detailed visibility permits them (concealed from long-range radar presence when cloaked or inside nebulae or asteroid fields);
 - celestial fields (asteroid, debris, ice) with density parameters (`density`, `max_hull_size`), solidity status (`is_solid: false`), and exact `effect_radius` values that restrict hulls exceeding the field's maximum allowable hull, rejecting forbidden commands with `hazard_blocked`;
-- space storms (plasma, magnetic, radiation) and nebulae exposing `is_solid: false` and exact `effect_radius`, along with separately scoped black-hole and pulsar hazards (strikecraft wings are banned from entering or launching in magnetic storms, but ignore field drag and debris abrasion and can enter fields of all densities);
+- space storms (plasma, magnetic, radiation) and nebulae exposing `is_solid: false` and exact `effect_radius`, along with separately scoped black-hole hazards (strikecraft wings are banned from entering or launching in magnetic storms, but ignore field drag and debris abrasion and can enter fields of all densities);
 - visible minefields;
 - undetailed enemy-presence hexes without count, identity, owner, or strength;
 - per-owned-unit supported commands, currently legal commands, conditional
@@ -939,7 +939,7 @@ Mechanical radii retain full precision. `environmental_effects` retains existing
 modifier keys and adds speed, concealment, sensor suppression, wing exceptions,
 and `hazards`. Each hazard specifies kind, amount/basis, target, timing, scope,
 radius, affected unit classes, and any sublight-movement/speed requirement.
-Black-hole hazards have their own radius; pulsar hazards cover the whole sector.
+Black-hole hull damage uses its own radius. Dust nebulae drain a fraction of current fuel.
 
 `environmental_rules` contains complete explanations of stacking, cooldown floors,
 damage classification, harvesting range, timing and exceptions. Humans can expand

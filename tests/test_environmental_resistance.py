@@ -69,6 +69,10 @@ def test_wrong_toggle_mode_names_cast_only_when_ability_is_equipped():
 def source(game, kind):
     if kind in ('black_hole', 'pulsar'):
         body = Star('Sol', StarType[kind.upper()])
+    elif kind == 'dust_nebula':
+        from constants import NebulaType
+        from domain.celestials import Nebula
+        body = Nebula((0, 0), 'Sol', NebulaType.DUST)
     elif kind == 'debris':
         body = DebrisField((0, 0), 'Sol', FieldDensity.HIGH)
     else:
@@ -89,7 +93,7 @@ def phase(game, unit, speed=100):
     ('debris', 'hazard_shielding', 3, 0),
     ('radiation', 'radiation_hardening', 4, 1),
     ('magnetic', 'antimatter_containment', 6, 1.5),
-    ('pulsar', 'antimatter_containment', 10, 199 * .0125),
+    ('dust_nebula', 'antimatter_containment', 10, 199 * .0125),
 ])
 @pytest.mark.parametrize('enabled', [False, True])
 def test_each_hazard_at_inclusive_boundary(kind, ability, base, protected, enabled):
@@ -105,7 +109,7 @@ def test_each_hazard_at_inclusive_boundary(kind, ability, base, protected, enabl
     phase(game, unit)
     expected = protected if enabled else base
     cost = SPECS[ability].upkeep if enabled else 0
-    if kind in ('magnetic', 'pulsar'):
+    if kind in ('magnetic', 'dust_nebula'):
         assert unit.antimatter_component.current_amount == pytest.approx(200 - cost - expected)
     elif kind == 'radiation':
         assert component_hp - unit.sensors_component.current_hit_points == expected
@@ -176,11 +180,11 @@ def test_overlapping_hazards_charge_once_and_stack_with_forcefield():
     assert unit.antimatter_component.current_amount == 196
 
 
-def test_fuel_clamping_and_pulsars_use_remaining_fuel():
+def test_fuel_clamping_and_dust_uses_remaining_fuel():
     game = campaign()
     unit = equipped(game)
     source(game, 'magnetic')
-    source(game, 'pulsar')
+    source(game, 'dust_nebula')
     set_enabled(unit, 'antimatter_containment', True)
     phase(game, unit)
     assert unit.antimatter_component.current_amount == pytest.approx((199 - 1.5) * .9875)
@@ -466,7 +470,7 @@ def test_full_owner_turn_charges_once_before_harvesting():
     unit.antimatter_component.current_amount = 1
     set_enabled(unit, 'antimatter_containment', True)
     TurnProcessor(game).process_player_turn(unit.owner)
-    # The 1 AM upkeep consumes the seed before the pulsar; harvest happens later.
+    # The 1 AM upkeep consumes the seed and harvesting happens later.
     expected = unit.harvester_component.harvest_rate * body.harvest_multiplier
     assert unit.antimatter_component.current_amount == expected
     assert active_kinds(unit) == {'antimatter_containment'}

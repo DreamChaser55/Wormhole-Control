@@ -6246,7 +6246,7 @@
       "fuel collection",
       "environmental resistance"
     ],
-    "description": "Reduces magnetic, pulsar hazards by 75% for this unit while enabled. Costs 1 AM each owner turn, including safe space. Requires functional Abilities and Antimatter Storage. Protection does not change terrain access, sensors or movement. Inter-system travel. Protection starts disabled.",
+    "description": "Reduces magnetic and dust-nebula fuel drain by 75% for this unit while enabled. Costs 1 AM each owner turn, including safe space. Requires functional Abilities and Antimatter Storage. Protection does not change terrain access, sensors or movement. Inter-system travel. Protection starts disabled.",
     "is_custom": false,
     "has_troop_transport_component": false,
     "troop_capacity": 40,

@@ -102,6 +102,8 @@ def describe_body(body) -> BodyDescription:
             ))
         elif body.nebula_type == NebulaType.DUST:
             effects['sensor_multiplier'] = balance.DUST_NEBULA_SENSOR_MOD
+            hazards.append(EnvironmentalHazard('dust_nebula', balance.DUST_NEBULA_AM_DRAIN_FRACTION,
+                'antimatter', 'radius', radius, amount_basis='fraction_of_current_antimatter'))
             rules.append(f'Short-range sensor radius: {balance.DUST_NEBULA_SENSOR_MOD:.0%} of normal for observers inside. Overlapping clouds do not stack.')
         elif body.nebula_type == NebulaType.NITROGEN:
             effects['cooldown_reduction'] = balance.NITROGEN_NEBULA_COOLDOWN_REDUCTION
@@ -130,9 +132,6 @@ def describe_body(body) -> BodyDescription:
         if body.star_type == StarType.BLACK_HOLE:
             hazards.append(EnvironmentalHazard('black_hole', balance.BLACK_HOLE_EVENT_HORIZON_DAMAGE,
                 'hull', 'radius', balance.BLACK_HOLE_EVENT_HORIZON_RADIUS, affects_deployables=True))
-        elif body.star_type == StarType.PULSAR:
-            hazards.append(EnvironmentalHazard('pulsar', balance.PULSAR_ANTIMATTER_DRAIN_PERCENT,
-                'antimatter', 'sector', amount_basis='fraction_of_current_antimatter'))
     elif isinstance(body, Planet) and body.planet_type == PlanetType.GAS_GIANT:
         rules.extend(('Atmospheric hiding: Tiny through Titan ships with operational Engines may enter. Wings and stationary stations cannot.',
                       'Submerged ships are hidden from enemy sensors and cannot interact with outside space. Only a Leave at the front of the queue can execute; upkeep and existing ability timers continue.'))
@@ -152,7 +151,7 @@ def describe_body(body) -> BodyDescription:
             rules.append(f'Abrasion: {hazard.amount:g} base hull damage per owner turn if ending {area} after positive sublight movement at post-drag speed > {hazard.speed_threshold:g}. Arrivals count; wings, stationary ships, jumps and tractor-only movement are exempt. Crossing without ending inside is safe.')
         elif hazard.kind == 'magnetic':
             rules.append(f'Drains up to {hazard.amount:g} AM from functioning storage {area}, after movement each owner turn; limited to available fuel.')
-        elif hazard.kind == 'pulsar':
+        elif hazard.amount_basis == 'fraction_of_current_antimatter':
             rules.append(f'Drains {hazard.amount:.0%} of current AM from functioning storage {area}, after movement each owner turn.')
         elif hazard.kind == 'radiation':
             rules.append(f'Radiation: {hazard.amount:g} damage to one random non-destroyed component {area}, after movement each owner turn; excess component damage is discarded.')

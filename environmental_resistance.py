@@ -13,7 +13,7 @@ class ResistanceSpec:
 SPECS = {
     'hazard_shielding': ResistanceSpec('Hazard Shielding', ('plasma', 'black_hole', 'debris'), 2),
     'radiation_hardening': ResistanceSpec('Radiation Hardening', ('radiation',), 1),
-    'antimatter_containment': ResistanceSpec('Antimatter Containment', ('magnetic', 'pulsar'), 1),
+    'antimatter_containment': ResistanceSpec('Antimatter Containment', ('magnetic', 'dust_nebula'), 1),
 }
 
 
