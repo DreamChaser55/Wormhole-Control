@@ -216,3 +216,30 @@ def test_ai_request_and_repair_share_frozen_report_and_codex_observation(game_fa
         assert data["observation"]["turn_summary"] == expected
     finally:
         coordinator.shutdown()
+
+
+@pytest.mark.parametrize('view_mode', ['galaxy', 'system', 'sector'])
+def test_automated_turn_draws_neutral_status_instead_of_map_and_gui(pygame_context, view_mode):
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+    from player_controller import PlayerController
+    from renderer import Renderer
+
+    game = SimpleNamespace(game_started=True, view_mode=view_mode,
+                           current_player=SimpleNamespace(controller=PlayerController.OPENAI),
+                           ai_coordinator=SimpleNamespace(state='thinking'))
+    renderer = Renderer.__new__(Renderer)
+    renderer.game = game
+    renderer.screen = pygame.display.get_surface()
+    renderer.overlay_surface = pygame.Surface(renderer.screen.get_size(), pygame.SRCALPHA)
+    renderer.gui, renderer.galaxy_renderer = Mock(), Mock()
+    renderer.system_renderer, renderer.sector_renderer = Mock(), Mock()
+    renderer._draw_status = Mock()
+    renderer.screen.fill((255, 100, 40))
+    renderer.draw()
+    renderer._draw_status.assert_called_once()
+    renderer.gui.draw.assert_not_called()
+    renderer.galaxy_renderer.draw_galaxy_view.assert_not_called()
+    renderer.system_renderer.draw_system_view.assert_not_called()
+    renderer.sector_renderer.draw_sector_view.assert_not_called()
+    assert renderer.screen.get_at((0, 0))[:3] == (0, 0, 0)

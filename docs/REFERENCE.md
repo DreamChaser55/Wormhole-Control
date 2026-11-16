@@ -118,7 +118,9 @@ The galaxy camera is retained across view switches and turns, and resets to the
 fitted overview when starting or loading a campaign. Camera positions are not saved.
 In Galaxy View, click **Reset View** in the top bar or press `R` to restore the
 fitted overview at any time.
-These controls apply during play; the New Game map preview remains fitted and static.
+During an automated turn, the local display shows a neutral status screen and
+blocks map and HUD controls. If the built-in AI stops with an error, press **E**
+to advance to the next turn. The New Game map preview remains fitted and static.
 Selected objects have corner brackets using their disclosed owner's faction color.
 Enemy home-system markers appear only while the associated homeworld is currently
 inside shared sensor coverage; the setup preview retains its assignment markers.

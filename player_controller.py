@@ -16,3 +16,10 @@ class PlayerController(str, Enum):
             PlayerController.CODEX: "Codex",
         }[self]
 
+
+
+def automated_turn_active(game) -> bool:
+    """Whether the local display must keep the active controller's view private."""
+    return getattr(game, 'game_started', False) is True and getattr(
+        getattr(game, 'current_player', None), 'controller', None,
+    ) in (PlayerController.OPENAI, PlayerController.CODEX)

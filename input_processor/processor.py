@@ -2,6 +2,7 @@
 import typing
 import logging
 import pygame
+from player_controller import PlayerController, automated_turn_active
 from geometry import Position
 from game_camera import camera_input_blocked, cancel_camera_drag
 from domain.units import Unit
@@ -53,7 +54,10 @@ class InputProcessor:
         from gui.antimatter_transport_window import is_open as transport_is_open
         from gui.wing_production_window import is_open as wing_is_open
         from gui.dismantling_window import is_open as dismantling_is_open
-        if not is_open(self.gui) and not settings_is_open(self.gui) and not transport_is_open(self.gui) and not planetary_is_open(self.gui) and not wing_is_open(self.gui) and not dismantling_is_open(self.gui):
+        if not automated_turn_active(self.game) and not (
+            is_open(self.gui) or settings_is_open(self.gui) or transport_is_open(self.gui)
+            or planetary_is_open(self.gui) or wing_is_open(self.gui) or dismantling_is_open(self.gui)
+        ):
             handle_keyboard_panning(self.game, self.gui, time_delta)
 
         modal_consumed = False
@@ -63,6 +67,14 @@ class InputProcessor:
             if event.type == pygame.QUIT:
                 self.game.is_running = False
                 return
+
+            if automated_turn_active(self.game):
+                if (event.type == pygame.KEYDOWN and event.key == pygame.K_e
+                        and self.game.current_player.controller == PlayerController.OPENAI
+                        and self.game.ai_coordinator.state == 'error' and not self.game.is_ai_input_locked()):
+                    self.game.end_turn()
+                    return
+                continue
 
             if is_open(self.gui) or settings_is_open(self.gui) or transport_is_open(self.gui) or planetary_is_open(self.gui) or wing_is_open(self.gui) or dismantling_is_open(self.gui):
                 self.gui.process_event(event)
@@ -121,7 +133,8 @@ class InputProcessor:
                 self.game.handle_mouse_wheel(event.y)
 
         self._cancel_interrupted_camera_drag()
-        self.update_hover_states(mouse_pos)
+        if not automated_turn_active(self.game):
+            self.update_hover_states(mouse_pos)
 
     def update_hover_states(self, mouse_pos: Position) -> None:
         """Updates entity hover state tracking across galaxy, system, and sector views.

@@ -692,7 +692,8 @@ hidden target and defers cancellation/history to the first gameplay validation.
   closes owned provider resources, and stops/joins the loop within a five-second
   total budget. Incomplete cleanup produces a payload-free warning; the daemon
   runtime thread cannot hold process exit open.
-- On final failure, the error is shown and End Turn is re-enabled.
+- On final failure, the local status screen allows **E** to skip the AI turn.
+  Game graphics and the HUD are hidden for both automated controllers.
 - TLS verification combines the bundled CA roots with operating-system trust.
   Explicit `SSL_CERT_FILE` or `SSL_CERT_DIR` overrides remain supported; verification
   and hostname checks stay enabled. Safe error categories distinguish certificate

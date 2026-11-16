@@ -1,5 +1,4 @@
 FEEDBACK FROM PLAYTESTING:
 - Make construction and repair consume antimatter.
-- Completely hide game graphics and GUI during AI enemy's turn, so the human player cannot see their units or bottom bar / sidebar info.
 - When a player no longer has any units or colonized bodies, a “Player has been defeated.” screen should appear. From that time, defeated player's turn should simply be skipped.
 - Reorganize and clean the strikecraft bay component sidebar GUI.
