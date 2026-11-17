@@ -193,11 +193,12 @@ def setup_game_ui(gui) -> None:
     )
 
     # --- Resource Readouts in Bottom Bar (Spacious Layout) ---
-    resource_start_x = unit_editor_button_rect.right + int(25 * gui.scale_x)
-    resource_spacing = int(20 * gui.scale_x)
-    credits_label_width = int(220 * gui.scale_x)
-    metal_label_width = int(180 * gui.scale_x)
-    crystal_label_width = int(180 * gui.scale_x)
+    resource_start_x = unit_editor_button_rect.right + int(20 * gui.scale_x)
+    resource_spacing = int(15 * gui.scale_x)
+    credits_label_width = int(165 * gui.scale_x)
+    metal_label_width = int(145 * gui.scale_x)
+    crystal_label_width = int(145 * gui.scale_x)
+    population_label_width = int(200 * gui.scale_x)
 
     credits_x = resource_start_x
     gui.credits_label = pygame_gui.elements.UIButton(
@@ -217,8 +218,9 @@ def setup_game_ui(gui) -> None:
         object_id='#resource_label'
     )
     gui.metal_label.text_horiz_alignment = 'left'
+    gui.metal_label.rebuild()
 
-    crystal_x = metal_x + metal_label_width + resource_spacing
+    crystal_x = metal_x + crystal_label_width + resource_spacing
     gui.crystal_label = pygame_gui.elements.UILabel(
         relative_rect=pygame.Rect(crystal_x, padding, crystal_label_width, -1),
         text="Crystal: 0",
@@ -227,16 +229,18 @@ def setup_game_ui(gui) -> None:
         object_id='#resource_label'
     )
     gui.crystal_label.text_horiz_alignment = 'left'
+    gui.crystal_label.rebuild()
 
     population_x = crystal_x + crystal_label_width + resource_spacing
     gui.population_label = pygame_gui.elements.UILabel(
-        relative_rect=pygame.Rect(population_x, padding, int(220 * gui.scale_x), -1),
+        relative_rect=pygame.Rect(population_x, padding, population_label_width, -1),
         text="Population: 0",
         manager=gui.manager,
         container=gui.bottom_bar_panel,
         object_id='#resource_label'
     )
     gui.population_label.text_horiz_alignment = 'left'
+    gui.population_label.rebuild()
 
     # --- Galaxy Generation Rect ---
     galaxy_rect_x = 0

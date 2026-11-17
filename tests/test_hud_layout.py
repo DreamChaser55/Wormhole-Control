@@ -95,29 +95,46 @@ def test_top_bar_elements_layout(mock_gui):
     assert view_rect.right <= indicator_rect.left
 
 
-def test_bottom_bar_elements_layout(mock_gui):
+def test_bottom_bar_elements_layout(mock_gui, monkeypatch):
     setup_game_ui(mock_gui)
 
     # Action buttons on the left
     assert mock_gui.menu_button is not None
     assert mock_gui.comms_button is not None
+    assert mock_gui.unit_editor_button is not None
     menu_rect = mock_gui.menu_button.get_relative_rect()
     comms_rect = mock_gui.comms_button.get_relative_rect()
+    editor_rect = mock_gui.unit_editor_button.get_relative_rect()
     assert menu_rect.left >= 0
     assert comms_rect.left >= menu_rect.right
+    assert editor_rect.left >= comms_rect.right
 
     # Resource readouts spaced across expanded space
     assert mock_gui.credits_label is not None
     assert mock_gui.metal_label is not None
     assert mock_gui.crystal_label is not None
+    assert mock_gui.population_label is not None
     credits_rect = mock_gui.credits_label.get_relative_rect()
     metal_rect = mock_gui.metal_label.get_relative_rect()
     crystal_rect = mock_gui.crystal_label.get_relative_rect()
+    population_rect = mock_gui.population_label.get_relative_rect()
 
-    assert credits_rect.left >= comms_rect.right
+    bottom_container_width = mock_gui.bottom_bar_panel.get_container().get_rect().width
+    assert credits_rect.left >= editor_rect.right
     assert metal_rect.left >= credits_rect.right
     assert crystal_rect.left >= metal_rect.right
-    assert crystal_rect.right <= (int(SCREEN_RES.x) - INFO_BOX_WIDTH)
+    assert population_rect.left >= crystal_rect.right
+    assert population_rect.right <= bottom_container_width
+    assert population_rect.right <= (int(SCREEN_RES.x) - INFO_BOX_WIDTH)
+
+    # Verify population text is left-aligned and not clipped by the bottom bar container
+    from domain.players import Player
+    import economy
+    monkeypatch.setattr(economy, "total_population", lambda _galaxy, _player: 9876.5)
+    mock_gui.update_resource_display(Player("P1", pygame.Color("blue")))
+    assert mock_gui.population_label.text == "Population: 9,876.5"
+    assert mock_gui.population_label.get_image_clipping_rect() is None
+    assert mock_gui.population_label.image.get_bounding_rect().width > 0
 
 
 def test_is_mouse_over_gui_panels(mock_gui):
