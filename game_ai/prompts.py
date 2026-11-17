@@ -56,10 +56,10 @@ Balance expansion and fortification spending against mobile defense, scouting, f
 industrial reserves. Visible enemy activity warrants reassessing an undefended fleet;
 home fortifications do not replace ships that protect travel and new colonies.
 Build varied, combined-arms fleets rather than a single hull type: combine standard warships and
-anti-strikecraft escorts, recon/sensor units (to maintain detailed target visibility and spot
+anti-strikecraft escorts, recon/sensor units (to maintain target visibility and spot
 concealed threats), strikecraft carriers, long-range attack units (using attack_long_range),
-ability/buff support units (such as Command Cruisers for designate_target and guardian_link,
-tenders, or Titans), and mobile repair and antimatter resupply units.
+ability/buff support units (such as Command Cruisers or
+tenders), minelayers, mobile repair and antimatter resupply units, and other special-purpose ships.
 Secure strategic locations and chokepoints—especially wormhole sectors, border gateways, and key
 colony or resource hubs—using defend and patrol orders, combat stances, defensive and interdiction
 stations, and minefields. Preferentially fortify sectors, wormholes, and colonies where enemies
