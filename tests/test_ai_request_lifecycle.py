@@ -411,6 +411,7 @@ assert provider.closed == COOPERATIVE
 print("EXITED")
 '''.replace("COOPERATIVE", repr(cooperative))
     completed = subprocess.run([sys.executable, "-c", code], cwd=Path(__file__).resolve().parents[1],
-                               env=dict(os.environ), capture_output=True, text=True, timeout=8)
+                               env=dict(os.environ), stdin=subprocess.DEVNULL,
+                               capture_output=True, text=True, timeout=8)
     assert completed.returncode == 0, completed.stderr
     assert "EXITED" in completed.stdout

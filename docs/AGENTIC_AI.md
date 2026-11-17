@@ -777,16 +777,17 @@ each actor's own eligible `target_ids` and turret `eligible_target_classes`.
 
 Run `python scripts/benchmark_mission_pacing.py` for reproducible Normal-opening
 travel estimates (five fixed seeds, two radius-3 systems). The nearby colony
-sample spans 37–46 owner turns, with median 44 across 14 routes. These estimates
+sample spans 22–28 owner turns, with median 26 across 12 routes. These estimates
 exclude loading/action/queued time and assume enough fuel and unchanged terrain;
 the empty starting Colonizer remains near its population source. The script also
 compares the former and current Constructor/Harvester positions: across 20 samples,
-median home-field egress falls from 23 to 2 owner turns. This measures departure,
+median home-field egress falls from 18.5 to 2 owner turns. This measures departure,
 not complete missions or live AI strength. Stable planning instructions now cover
 idle builders, parallel production, distinct colony assignments, population loading,
 concurrent multi-source mining, Orbital Bastion colony defense, combined-arms fleet composition
-(standard warships, recon/sensor units, strikecraft carriers, long-range attack units,
-ability/buff units, and repair/antimatter resupply units), long-range sensor coverage of
+(standard warships, anti-strikecraft escorts, recon/sensor units, strikecraft carriers,
+long-range attack units, ability/buff units, minelayers, repair/antimatter resupply units,
+and other special-purpose ships), long-range sensor coverage of
 enemy arrival sectors, securing chokepoints and wormholes, preferentially fortifying
 historical enemy sighting and approach locations, and balancing fortifications with
 reconnaissance, mobile defense and logistics.
