@@ -127,6 +127,32 @@ class TestContracts(unittest.TestCase):
             0,
         )
 
+    def test_system_instructions_include_strategic_and_tactical_guidance(self):
+        from game_ai.prompts import SYSTEM_INSTRUCTIONS
+
+        for phrase in (
+            "Orbital Bastions",
+            "support.orbital_defense_component",
+            "orbital_defense_radius",
+            "combined-arms fleets",
+            "standard warships",
+            "recon/sensor units",
+            "strikecraft carriers",
+            "long-range attack units",
+            "ability/buff support units",
+            "mobile repair and antimatter resupply units",
+            "chokepoints",
+            "wormhole sectors",
+            "Preferentially fortify sectors, wormholes, and colonies where enemies\nhave been sighted or have approached",
+            "historical enemy sightings, radar presences, and approach/entry locations",
+            "active enemy sighting and approach locations",
+            "possible enemy arrival sectors",
+            "long-range sensor units",
+            "Exploit multiple available metal asteroids and crystal comets concurrently",
+            "parallel continuous_mine orders",
+        ):
+            self.assertIn(phrase, SYSTEM_INSTRUCTIONS)
+
 
 class TestMemory(unittest.TestCase):
     def test_memory_is_bounded_and_sidecar_is_derived(self):

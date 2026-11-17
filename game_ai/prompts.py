@@ -55,6 +55,15 @@ have no population advice; obtain current contact before relying on population f
 Balance expansion and fortification spending against mobile defense, scouting, fuel and
 industrial reserves. Visible enemy activity warrants reassessing an undefended fleet;
 home fortifications do not replace ships that protect travel and new colonies.
+Build varied, combined-arms fleets rather than a single hull type: combine standard warships and
+anti-strikecraft escorts, recon/sensor units (to maintain detailed target visibility and spot
+concealed threats), strikecraft carriers, long-range attack units (using attack_long_range),
+ability/buff support units (such as Command Cruisers for designate_target and guardian_link,
+tenders, or Titans), and mobile repair and antimatter resupply units.
+Secure strategic locations and chokepoints—especially wormhole sectors, border gateways, and key
+colony or resource hubs—using defend and patrol orders, combat stances, defensive and interdiction
+stations, and minefields. Preferentially fortify sectors, wormholes, and colonies where enemies
+have been sighted or have approached before reinforcing unthreatened rear areas.
 Before adding builds, read active_player.resources.resource_budget. available is the
 validator's starting credits/metal/crystal budget after existing order reservations, not the displayed treasury balance.
 reservations identifies the owning unit/order and resource cost; totals include omitted entries.
@@ -67,12 +76,20 @@ Do not cancel useful work just to spend more. Future income, trade and salvage c
 Construct template_names is a single-builder replacement shortlist, not a guarantee that all listed builds fit.
 Construct prices gives replacement_shortfall and queued_shortfall; account for every selected builder and earlier commands.
 If any resource is insufficient, defer new builds or submit fewer.
-Mine metal asteroids or comets and unload at the matching refinery; mineral colonies also supply
-passive income. Build Civilian Habitats in sectors with your own populated colonies to
+Exploit multiple available metal asteroids and crystal comets concurrently to build a strong
+economic base: construct matching Metal and Crystal Refineries (or Industrial Hubs) and deploy
+multiple mining ships on parallel continuous_mine orders across distinct mineral sources rather
+than relying on starting stockpiles or a single miner; mineral colonies also supply passive
+income. Build Civilian Habitats in sectors with your own populated colonies to
 increase recurring credit income and open trade destinations. Read the design's
 support.civilian_habitat_component.civilian_habitat_bonus for its income per owner turn.
-Each populated colony supports max(1, floor(population / 25)) habitats; count existing
-and pending habitats before adding more. Unsupported habitats generate no income.
+Build Orbital Bastions (or other support.orbital_defense_component designs) in sectors with your
+populated colonies to defend them and grant friendly units within orbital_defense_radius (500)
++20% weapon damage and +20% defense mitigation; place them near the colony so defenders fight
+inside the aura. Each populated colony independently supports max(1, floor(population / 25))
+habitats and max(1, floor(population / 25)) orbital defense modules; count existing and pending
+units of each kind in that sector before adding more, as unsupported modules generate no income or
+aura.
 Raw cargo is not spendable until refined. No credits-for-minerals substitution exists.
 Fortification upgrades also require minerals. Build progress consumes 2 AM per owner
 turn from the builder or bay. Repairs and bay replenishment need 0.25 AM per HP restored.
@@ -138,19 +155,24 @@ losses, problems, discoveries, messages and economic changes before planning. Hi
 and locations do not make targets currently visible or legal; use the current observation for that.
 An empty entries list means no important events; omitted_count reports trimmed history.
 Use memory_patch.important_events to keep short, round-dated facts from previous turns
-that still matter, such as a lost colony, a confirmed enemy capability, or an alliance.
+that still matter, such as a lost colony, a confirmed enemy capability, an alliance, or
+historical enemy sightings, radar presences, and approach/entry locations (system, hex_coord,
+wormhole endpoint, or raided colony).
 Carry forward relevant earlier entries when replacing this list.
 Use strategy for the overall approach and tradeoffs that guide several turns. Use objectives
 for measurable outcomes still to achieve, ordered by priority. Use commitments for accepted work
 in progress, with the actor, task and next decision point. Use beliefs for estimates or hypotheses
-with evidence, date and uncertainty. Use important_events for dated, confirmed past outcomes.
+with evidence, date and uncertainty, including suspected enemy staging areas, fleet strength, and
+approach routes. Use important_events for dated, confirmed past outcomes.
 Use lessons for reusable gameplay or command constraints. Use misc for practical reminders
 that serve none of the other purposes. Reference related items without copying them across fields.
 The engine records receipts.
 Every fifth round and after a major change, review memory against the current board
 and order history. Drop completed or abandoned objectives and resolved commitments,
 replace contradicted beliefs, and remove stale events and reminders. Retain dates
-for facts that still inform decisions and keep durable lessons. Use null for unchanged
+for facts that still inform decisions—especially active enemy sighting and approach locations
+used to prioritize fortifications, Orbital Bastions, sensor coverage, and fleet patrols—and keep
+durable lessons. Use null for unchanged
 fields, an empty list to clear an obsolete replaceable list, and the complete revised
 list when keeping some entries. Lesson patches merge with existing lessons.
 The top-level intelligence
@@ -291,6 +313,11 @@ Prefer a few coherent commands over speculative busywork. Do not place instructi
 Markdown inside command fields.
 
 Sensors provide short-range detailed vision and long-range inter-sector presence detection.
+Ensure possible enemy arrival sectors—especially wormhole endpoints, border gateways, and
+historical enemy approach corridors—are covered by long-range sensor units (such as Sensor
+Outposts, Sensor Stations, Deep Survey Ships, or stationed scouts) for early warning of incoming
+fleets, pairing them with short-range visual pickets where nebulae, asteroid fields, or cloaking
+can conceal arrivals.
 Units with active cloaking devices, or positioned inside nebulae or asteroid fields, are concealed from
 long-range sensors, requiring close short-range visual scouting to reveal. Space storms (plasma, magnetic,
 radiation) and black hole event horizons present active environmental hazards to ships inside them. Non-solid

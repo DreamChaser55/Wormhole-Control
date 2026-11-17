@@ -238,11 +238,15 @@ after a repaired plan commits successfully; rejected model memory patches never
 apply. An empty lesson list does not erase learned constraints. Other patched
 sections replace their previous contents. Strategy describes the multi-turn approach.
 Objectives state measurable outcomes. Commitments track accepted work. Beliefs capture
-estimates with evidence and uncertainty. Event memory records confirmed history.
+estimates with evidence and uncertainty, including suspected enemy staging areas and
+approach routes. Event memory records confirmed history, including dated enemy sightings,
+radar presences, and entry/approach locations.
 Lessons retain reusable constraints, and misc holds reminders that fit nowhere else.
 Receipts come from the engine. Planners place each fact in its most useful section.
 Every fifth round and after major changes, they reconcile memory with the current
-board and order history and remove outdated entries from replaceable sections. Planning instructions require objectives
+board and order history, remove outdated entries from replaceable sections, and retain
+active enemy sighting and approach locations that inform fortifications, Orbital Bastions,
+sensor coverage, and fleet patrols. Planning instructions require objectives
 and commitments to match accepted orders, compare mission value with remaining
 travel before replacement, and consult terminal history before repeating failures.
 Zero-command plans are valid when useful work should continue.
@@ -503,9 +507,13 @@ the available budget after reservations; wing shortfalls use the current treasur
 because configuring production is free. Planetary upgrade options include
 `resource_shortfall` against the available budget. Mineral prices derive from hull capacity, installed equipment and refinery
 recipes, including custom human designs. Turret and defense overrides preserve them.
-Use mining, matching refinery deliveries and passive-yield colonies to replenish
-materials. Planners use the habitat design's income bonus and build habitats in
-sectors with their own populated colonies and spare support capacity. Raw cargo cannot be spent and credits cannot substitute for minerals.
+Use concurrent `continuous_mine` operations across multiple metal asteroids and comets,
+matching refinery deliveries and passive-yield colonies to replenish
+materials. Planners use the habitat design's income bonus and build Civilian Habitats and
+Orbital Bastions (`support.orbital_defense_component`) in
+sectors with their own populated colonies and spare independent `max(1, floor(population / 25))`
+support capacity of each kind, placing bastions near colonies so defenders fight within their
+500-unit aura. Raw cargo cannot be spent and credits cannot substitute for minerals.
 
 Replacement or cancellation releases the affected pending reservations, not effects
 already completed synchronously (such as a colonist load). Construction/refit jobs
@@ -776,7 +784,12 @@ compares the former and current Constructor/Harvester positions: across 20 sampl
 median home-field egress falls from 23 to 2 owner turns. This measures departure,
 not complete missions or live AI strength. Stable planning instructions now cover
 idle builders, parallel production, distinct colony assignments, population loading,
-and balancing fortifications with reconnaissance, mobile defense and logistics.
+concurrent multi-source mining, Orbital Bastion colony defense, combined-arms fleet composition
+(standard warships, recon/sensor units, strikecraft carriers, long-range attack units,
+ability/buff units, and repair/antimatter resupply units), long-range sensor coverage of
+enemy arrival sectors, securing chokepoints and wormholes, preferentially fortifying
+historical enemy sighting and approach locations, and balancing fortifications with
+reconnaissance, mobile defense and logistics.
 Keep fixed observations, seeds, model snapshots, and game balance constants
 with any published result so regressions can be reproduced.
 
