@@ -339,7 +339,7 @@ separate from a wait. Loading/harvesting and any remaining wait appear after arr
 
 The transporter has speed 100 and Advanced Hyperdrive range 5. Both stations are stationary. These designs have storage, sensors and defenses, with no harvester or special ability, and start with full tanks under the normal construction rules.
 
-The built-in Colonizer has a base speed of 200, the Antimatter Harvester 180,
+The built-in Colonizer and Antimatter Harvester have a base speed of 175,
 and the Small Mining Ship 145. Faster engines use more antimatter per movement
 turn.
 
@@ -655,8 +655,8 @@ report mandatory returns and endurance losses.
 | Mining Drone | Economy | TINY ship | 9.78/10 | 393 | 15 | 5 | 6 | 0.10 | Designed for transportable mining. Local-sector operations; Tiny craft can travel aboard a hangar transport. Mine metal asteroids or comets and unload at the matching refinery. |
 | Civilian Habitat | Economy | SMALL station | 24.00/25 | 970 | 37 | 12 | 12 | 0.24 | Adds 12 credits per owner turn when supported by a populated colony you own in the same sector. An active habitat is also a trade destination. |
 | Small Mining Ship | Economy | SMALL ship | 25.00/25 | 1000 | 38 | 13 | 12 | 0.25 | Designed for local mining. Intra-system travel only. Mine metal asteroids or comets and unload at the matching refinery. |
+| Colonizer | Economy | MEDIUM ship | 36.12/50 | 1584 | 62 | 19 | 17 | 0.36 | Designed for colonization. Inter-system travel. |
 | Trade Freighter | Economy | MEDIUM ship | 37.00/50 | 1610 | 62 | 19 | 17 | 0.37 | Designed for local trade. Intra-system travel only. Needs active habitats in different sectors. |
-| Colonizer | Economy | MEDIUM ship | 37.38/50 | 1621 | 63 | 19 | 17 | 0.37 | Designed for colonization. Inter-system travel. |
 | Blockade Runner | Economy | MEDIUM ship | 49.00/50 | 1970 | 74 | 25 | 20 | 0.49 | Designed for covert inter-system trade. Inter-system travel. Needs active habitats in different sectors. |
 | Expedition Miner | Economy | MEDIUM ship | 49.00/50 | 1970 | 74 | 25 | 20 | 0.49 | Designed for expedition mining. Inter-system travel. Mine metal asteroids or comets and unload at the matching refinery. |
 | Crystal Refinery Station | Economy | MEDIUM station | 32.00/50 | 2060 | 0 | 5 | 16 | 0.32 | Designed for crystal refining. Stationary installation. |
@@ -671,7 +671,7 @@ report mandatory returns and endurance losses.
 | Wormhole Stabilizer Station | Logistics | MEDIUM station | 42.50/50 | 1775 | 68 | 22 | 18 | 0.42 | Maintain one wormhole within 500 units for 5 AM per owner turn. Both directions become safe for all ships, including enemies. Fuel shortages wait for resupply; support ends when cancelled. |
 | Fuel Depot | Logistics | MEDIUM station | 43.00/50 | 1790 | 68 | 22 | 19 | 0.43 | Designed for stationary fuel collection. Stationary installation. Harvest near stars or inside hydrogen nebulae. |
 | Wormhole Stabilizer Tender | Logistics | MEDIUM ship | 43.00/50 | 1790 | 68 | 22 | 19 | 0.43 | Maintain one wormhole within 500 units for 5 AM per owner turn. Both directions become safe for all ships, including enemies. Fuel shortages wait for resupply; support ends when cancelled. |
-| Antimatter Harvester | Logistics | MEDIUM ship | 48.50/50 | 1955 | 74 | 25 | 20 | 0.48 | Designed for fuel collection. Inter-system travel. Harvest near stars or inside hydrogen nebulae. |
+| Antimatter Harvester | Logistics | MEDIUM ship | 48.25/50 | 1948 | 74 | 25 | 20 | 0.48 | Designed for fuel collection. Inter-system travel. Harvest near stars or inside hydrogen nebulae. |
 | Antimatter Transporter | Logistics | MEDIUM ship | 49.00/50 | 1970 | 74 | 25 | 20 | 0.49 | Dedicated antimatter transport. Inter-system travel. Take Antimatter loads from friendly units; Continuous Antimatter Transport repeats deliveries with an automatic return reserve. |
 | Pulsar Harvester | Logistics | LARGE ship | 70.25/100 | 3108 | 121 | 36 | 26 | 0.70 | Pulsar harvesting specialist. Hazard Shielding reduces hull damage from pulsars, plasma storms, black holes and debris by 75% for 2 AM per owner turn while enabled. Inter-system travel. |
 | Utility Transport | Logistics | LARGE ship | 76.50/100 | 3295 | 127 | 39 | 26 | 0.77 | Designed for Tiny vessel transport. Inter-system travel. Hangar accepts Tiny vessels, not strikecraft wings. |
