@@ -8,6 +8,7 @@ import pygame_gui
 import pytest
 
 from display_config import DisplayConfig
+from custom_unit_templates import CustomTemplateManager, CustomUnitTemplate
 from gui.retrofit_gui import RetrofitWizardWindow
 from gui.unit_editor_gui import UnitEditorWindow
 from gui.unit_catalog_window import UnitCatalogWindow
@@ -17,7 +18,7 @@ from tests.support.campaigns import campaign, ship
 from constants import HullSize
 from unit_catalog import describe_template
 from unit_components.constructor import instantiate_unit_from_template
-from unit_templates import UNIT_TEMPLATES
+from unit_templates import UNIT_TEMPLATES, load_testing_templates, publish_testing_templates
 
 pytestmark = [
     pytest.mark.filterwarnings('error:Finding font with id:UserWarning'),
@@ -172,6 +173,7 @@ def test_wing_production_layout_at_explicit_display_sizes(pygame_context, tmp_pa
 
 @pytest.mark.parametrize('size', [(1280, 720), (1920, 1080), (2560, 1440)])
 def test_catalog_layout_at_explicit_display_sizes(pygame_context, tmp_path, size):
+    publish_testing_templates(load_testing_templates())
     screen = pygame.display.set_mode(size)
     manager = build_ui_manager(DisplayConfig(*size))
     world = campaign()
@@ -206,11 +208,15 @@ def test_catalog_layout_at_explicit_display_sizes(pygame_context, tmp_path, size
 
         catalog.show_entry(describe_template('FLEET_CARRIER', UNIT_TEMPLATES['FLEET_CARRIER']))
         capture('fleet-carrier')
+        row_button = catalog.list.item_list[0]['button_element']
+        assert row_button.text_horiz_alignment == 'left'
+        assert row_button.text_horiz_alignment_padding == 8
+        assert any(item['text'].startswith('Tiny · Tiny Ship (') for item in catalog.list.item_list)
+        available_width = row_button.get_abs_rect().width - 8
         for item in catalog.list.item_list:
-            button = item['button_element']
-            if button is not None:
-                assert button.font.get_rect(item['text']).height < catalog.list.list_item_height
-                assert button.font.get_rect(item['text']).width < button.get_abs_rect().width
+            text_rect = row_button.font.get_rect(item['text'])
+            assert text_rect.height < catalog.list.list_item_height
+            assert text_rect.width < available_width
 
         for button in (catalog.build_button, catalog.queue_button):
             assert button.font.get_rect(button.text).width < button.get_abs_rect().width - 10
@@ -229,6 +235,21 @@ def test_catalog_layout_at_explicit_display_sizes(pygame_context, tmp_path, size
             dropdown.process_event(pygame.event.Event(pygame_gui.UI_BUTTON_PRESSED,
                 ui_element=dropdown.current_state.close_button))
             manager.update(0.1)
+
+        custom = CustomUnitTemplate('Long Custom Surveyor ' + 'W' * 100, HullSize.MEDIUM)
+        custom.components.has_engine = True
+        assert CustomTemplateManager().save_design(custom) == []
+        catalog.search.set_text('Long Custom Surveyor')
+        catalog.refresh()
+        custom_row, = catalog.list.item_list
+        label, button = custom_row['text'], custom_row['button_element']
+        assert label.startswith(f'Medium · {custom.display_name} (')
+        assert button.font.get_rect(label).width > button.get_abs_rect().width
+        catalog.process_event(pygame.event.Event(pygame_gui.UI_SELECTION_LIST_NEW_SELECTION,
+                                                ui_element=catalog.list, text=label))
+        assert custom.display_name in catalog.details.html_text
+        assert custom.resource_cost.describe() in catalog.details.html_text
+        capture('long-custom-name')
 
         catalog.process_event(pygame.event.Event(pygame_gui.UI_BUTTON_PRESSED,
                                                 ui_element=catalog.queue_button))

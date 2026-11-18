@@ -384,7 +384,19 @@ def test_catalog_window_filters_build_dispatch_and_stale_context(pygame_context)
         assert rows and all(e['credit_cost'] <= 1000 for e in rows)
         assert not catalog_entries(UNIT_TEMPLATES, affordable=True, budget={'credits': 1000, 'metal': 0, 'crystal': 0})
         assert not any(e['template_name'] in ('FIGHTER_WING', 'BOMBER_WING') for e in window.entries.values())
-        window.show_entry(None)
+        assert {
+            'Small · Scout (982c / 37m / 13x)',
+            'Medium · Wormhole Stabilizer Station (1775c / 68m / 22x)',
+            'Titan · Titan Citadel (41012c / 1101m / 351x)',
+        } <= {item['text'] for item in window.list.item_list}
+        window.show_entry(describe_template('FLEET_CARRIER', UNIT_TEMPLATES['FLEET_CARRIER']))
+        window.hull.selected_option = 'SMALL'
+        window.process_event(pygame.event.Event(pygame_gui.UI_DROP_DOWN_MENU_CHANGED,
+                                                ui_element=window.hull))
+        assert {entry['template_name'] for entry in window.entries.values()} == {
+            key for key, template in UNIT_TEMPLATES.items() if template['hull_size'] is HullSize.SMALL
+        }
+        assert window.list.get_single_selection() is None
         assert not window.build_button.is_enabled
         window.show_entry(describe_template('SCOUT', UNIT_TEMPLATES['SCOUT']))
         window.process_event(pygame.event.Event(pygame_gui.UI_BUTTON_PRESSED, ui_element=window.build_button))
@@ -490,6 +502,8 @@ def test_catalog_queue_and_build_orders_close_window(construction_catalog):
 
 @pytest.mark.parametrize("queue", [False, True])
 def test_catalog_retains_clicked_sector_for_every_builder_after_view_change(construction_catalog, queue):
+    import pygame
+    import pygame_gui
     from gui.unit_catalog_window import UnitCatalogWindow
     game, builders, original, events = construction_catalog
     original.kill()
@@ -498,12 +512,23 @@ def test_catalog_retains_clicked_sector_for_every_builder_after_view_change(cons
     point.x = 999
     game.current_system_name, game.current_sector_coord = "Beta", (0, 0)
     try:
-        window.show_entry(describe_template('CRYSTAL_REFINERY_STATION', UNIT_TEMPLATES['CRYSTAL_REFINERY_STATION']))
+        window.search.set_text('Crystal Refinery Station')
+        window.refresh()
+        label = 'Medium · Crystal Refinery Station (2060c / 0m / 5x)'
+        row = next(item for item in window.list.item_list if item['text'] == label)
+        window.list.process_event(pygame.event.Event(pygame_gui.UI_BUTTON_PRESSED,
+                                                     ui_element=row['button_element']))
+        selection, = pygame.event.get(pygame_gui.UI_SELECTION_LIST_NEW_SELECTION)
+        window.process_event(selection)
         press_catalog(window, window.queue_button if queue else window.build_button)
-        assert events[-1].target_system_name == "Sol"
-        assert events[-1].target_hex_coord == (1, 0)
+        event, = events
+        assert event.unit_template_name == 'CRYSTAL_REFINERY_STATION'
+        assert event.shift_pressed is queue
+        assert event.target_system_name == "Sol"
+        assert event.target_hex_coord == (1, 0)
         for builder in builders:
             params = builder.commander_component.current_order.parameters
+            assert params['unit_template_name'] == 'CRYSTAL_REFINERY_STATION'
             assert params['target_system_name'] == 'Sol'
             assert params['target_hex_coord'] == (1, 0)
             assert params['target_position'] == Position(200, 200)
@@ -536,6 +561,7 @@ def test_catalog_queue_order_execution_and_affordability(construction_catalog):
 
 def test_catalog_refresh_preserves_list_scroll_and_clears_filtered_selection(construction_catalog):
     game, builders, window, events = construction_catalog
+    label = 'Huge · Fleet Carrier (6998c / 267m / 84x)'
     window.show_entry(describe_template('FLEET_CARRIER', UNIT_TEMPLATES['FLEET_CARRIER']))
     window.list.scroll_bar.set_scroll_from_start_percentage(.4)
     window.gui.manager.update(.1)
@@ -543,13 +569,13 @@ def test_catalog_refresh_preserves_list_scroll_and_clears_filtered_selection(con
     game.players[0].credits -= 1
     window.update()
     assert window.list.scroll_bar.start_percentage == pytest.approx(scroll)
-    assert window.list.get_single_selection() == 'Fleet Carrier (6998c / 267m / 84x)'
+    assert window.list.get_single_selection() == label
     # A changed list must also retain the highlight and viewport where possible.
     window.affordability.selected_option = 'Affordable'
     game.players[0].credits = 15000
     window.update()
     assert window.list.scroll_bar.start_percentage == pytest.approx(scroll)
-    assert window.list.get_single_selection() == 'Fleet Carrier (6998c / 267m / 84x)'
+    assert window.list.get_single_selection() == label
     game.players[0].credits = 2 * UNIT_TEMPLATES['SCOUT']['build_cost']
     window.show_entry(describe_template('SCOUT', UNIT_TEMPLATES['SCOUT']))
     game.players[0].credits = 0

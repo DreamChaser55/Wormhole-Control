@@ -118,6 +118,12 @@
             "padding": "10,0"
         }
     },
+    "#unit_catalog_list.#item_list_item": {
+        "misc": {
+            "text_horiz_alignment": "left",
+            "text_horiz_alignment_padding": "8"
+        }
+    },
     "panel": {
         "colours": {
             "dark_bg": "#0D1220FF",

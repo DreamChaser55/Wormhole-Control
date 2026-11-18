@@ -152,7 +152,12 @@ class UnitCatalogWindow:
         rows = catalog_entries(templates, search=self.search.get_text(), category=self.choice(self.category),
             hull=self.choice(self.hull), kind=self.choice(self.kind),
             affordable=self.choice(self.affordability) == 'Affordable', budget=self.budget(queue=False), builder_count=len(self.units))
-        entries = {f"{entry['name']} ({entry['credit_cost']}c / {entry['resource_cost']['metal']:g}m / {entry['resource_cost']['crystal']:g}x)": entry for entry in rows}
+        entries = {
+            f"{entry['hull_size'].title()} · {entry['name']} "
+            f"({entry['credit_cost']}c / {entry['resource_cost']['metal']:g}m / "
+            f"{entry['resource_cost']['crystal']:g}x)": entry
+            for entry in rows
+        }
         if list(entries) != list(self.entries):
             scroll = self.list.scroll_bar.start_percentage if self.list.scroll_bar else 0
             self.list.set_item_list(list(entries))

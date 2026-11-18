@@ -539,9 +539,10 @@ movement until repaired. An operational Hyperdrive can still perform jumps.
 ### Built-in unit catalog
 
 Constructors can build ordinary ships and stations from the catalogue below.
-Select a Constructor, right-click a location, and choose **Construct...**. Search
-by name, role or ability; filter by category, hull, unit kind or price. Details
-show equipment, effective weapon ranges, fuel, abilities, costs and upkeep.
+Select a Constructor, right-click a location, and choose **Construct...**. Each
+row shows the design's hull size, name and price in credits, metal and crystal.
+Search by name, role or ability and filter by category, hull, unit kind or price.
+Details show equipment, effective weapon ranges, fuel, abilities, costs and upkeep.
 
 **Build** replaces current orders and closes the catalogue. **Queue after existing
 orders** appends one build per selected builder and also closes the catalogue. These
