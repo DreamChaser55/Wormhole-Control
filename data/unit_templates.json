@@ -1114,16 +1114,16 @@
   },
   "MISSILE_PLATFORM": {
     "name": "Missile Platform",
-    "hull_size": "TINY",
-    "hull_points": 20,
-    "build_time": 6,
-    "build_cost": 400,
+    "hull_size": "SMALL",
+    "hull_points": 50,
+    "build_time": 9,
+    "build_cost": 622,
     "has_engine": false,
     "engine_speed": 100.0,
     "engine_hull_cost": 0.0,
     "has_antimatter_storage": true,
-    "antimatter_capacity": 60.0,
-    "antimatter_hull_cost": 3.0,
+    "antimatter_capacity": 80.0,
+    "antimatter_hull_cost": 4.0,
     "has_antimatter_harvester": false,
     "antimatter_harvester_hull_cost": 15.0,
     "has_hyperdrive": false,
@@ -1131,12 +1131,12 @@
     "hyperdrive_jump_range": 5,
     "hyperdrive_hull_cost": 0.0,
     "has_weapon_bays": true,
-    "weapon_bays_hull_cost": 6.6,
+    "weapon_bays_hull_cost": 8.0,
     "turrets": [
       {
         "type": "MISSILE",
         "damage": 10,
-        "range": 260,
+        "range": 400,
         "cooldown": 2,
         "variant": "STANDARD"
       }

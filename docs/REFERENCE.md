@@ -643,7 +643,7 @@ report mandatory returns and endurance losses.
 | Large Strikecraft Station | Carriers | LARGE station | 87.20/100 | 3616 | 138 | 44 | 28 | 0.87 | Large stationary eight-wing base for local-sector defense. Builds and replenishes strikecraft wings; select production separately for each slot. |
 | Fleet Carrier | Carriers | HUGE ship | 166.60/200 | 6998 | 267 | 84 | 37 | 1.67 | Designed for carrier command. Inter-system travel. Select a built-in strikecraft wing design using the production picker. |
 | Patrol Cutter | Combat | TINY ship | 9.88/10 | 396 | 15 | 5 | 6 | 0.10 | Designed for local patrol. Local-sector operations; Tiny craft can travel aboard a hangar transport. |
-| Missile Platform | Combat | TINY station | 10.00/10 | 400 | 15 | 5 | 6 | 0.10 | Designed for local missile defense. Stationary installation. |
+| Missile Platform | Combat | SMALL station | 12.40/25 | 622 | 25 | 7 | 9 | 0.12 | Designed for local missile defense. Stationary installation. |
 | Kinetic Emplacement | Combat | SMALL station | 19.93/25 | 848 | 33 | 10 | 11 | 0.20 | Compact armored defense station with an extended-range mass driver. |
 | System Patrol Craft | Combat | SMALL ship | 23.20/25 | 946 | 36 | 12 | 12 | 0.23 | Affordable armed patrol craft for single-system policing and convoy protection. Basic Hyperdrive allows intra-system travel only. |
 | Interceptor | Combat | SMALL ship | 24.20/25 | 976 | 37 | 13 | 12 | 0.24 | Designed for strikecraft interception. Inter-system travel. |
