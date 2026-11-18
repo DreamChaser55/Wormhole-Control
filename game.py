@@ -37,6 +37,7 @@ from visibility import (
 from game_ai.coordinator import AgentTurnCoordinator
 from game_control_protocol import ControlService
 from player_controller import PlayerController
+from game_actions.turn_presentation import ai_summary_active
 
 # Subsystem modules
 import game_camera
@@ -125,7 +126,7 @@ class Game:
         from game_actions.turn_presentation import ApplicationTurnPresentation
         self.turn_presentation = ApplicationTurnPresentation(self)
         self.turn_processor = TurnProcessor(self, presentation=self.turn_presentation)
-        self.ai_coordinator = AgentTurnCoordinator(self)
+        self.ai_coordinator = AgentTurnCoordinator(self, on_progress=self.turn_presentation.present_ai_progress)
         self.control_service = ControlService(self, port=control_port)
         from application_instance import AlreadyRunningError
         try:
@@ -227,6 +228,8 @@ class Game:
     # --- GUI Action Handling ---
     def handle_gui_action(self, action: typing.Dict[str, typing.Any]):
         """Handles action events triggered by user interactions with GUI controls."""
+        if ai_summary_active(self):
+            return
         from gui.turn_briefing_window import is_open
         if is_open(getattr(self, "gui", None)):
             return
@@ -246,6 +249,8 @@ class Game:
         refresh_discoveries(self)
 
     def is_ai_input_locked(self) -> bool:
+        if ai_summary_active(self):
+            return True
         current = self.current_player
         return bool(
             self.game_started
@@ -361,7 +366,7 @@ class Game:
 
         # Smooth map camera zoom
         from gui.turn_briefing_window import is_open
-        if not is_open(self.gui):
+        if not is_open(self.gui) and not ai_summary_active(self):
             self.update_sector_camera(time_delta)
             self.update_system_camera(time_delta)
             self.update_galaxy_camera(time_delta)
@@ -384,7 +389,7 @@ class Game:
             self.update_player_turn_display()
 
         # Handle pending non-blocking AI turn progression
-        if self.game_started and self.pending_ai_turn_end_time > 0:
+        if self.game_started and self.pending_ai_turn_end_time > 0 and not ai_summary_active(self):
             if pygame.time.get_ticks() >= self.pending_ai_turn_end_time:
                 self.pending_ai_turn_end_time = 0
                 if not self.ai_coordinator.start_current_turn():

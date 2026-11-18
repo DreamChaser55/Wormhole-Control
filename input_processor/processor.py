@@ -3,7 +3,7 @@ import typing
 import logging
 import pygame
 from player_controller import PlayerController, automated_turn_active
-from game_actions.turn_presentation import defeat_notice
+from game_actions.turn_presentation import defeat_notice, ai_summary_active
 from geometry import Position
 from game_camera import camera_input_blocked, cancel_camera_drag
 from domain.units import Unit
@@ -55,7 +55,7 @@ class InputProcessor:
         from gui.antimatter_transport_window import is_open as transport_is_open
         from gui.wing_production_window import is_open as wing_is_open
         from gui.dismantling_window import is_open as dismantling_is_open
-        if not defeat_notice(self.game) and not automated_turn_active(self.game) and not (
+        if not defeat_notice(self.game) and not automated_turn_active(self.game) and not ai_summary_active(self.game) and not (
             is_open(self.gui) or settings_is_open(self.gui) or transport_is_open(self.gui)
             or planetary_is_open(self.gui) or wing_is_open(self.gui) or dismantling_is_open(self.gui)
         ):
@@ -73,6 +73,11 @@ class InputProcessor:
                 if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
                     self.game.defeat_notice = (0, ())
                     return
+                continue
+            if ai_summary_active(self.game):
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
+                    self.game.turn_presentation.dismiss_ai_summary()
+                    return  # Do not forward this event to the next player's briefing.
                 continue
             if automated_turn_active(self.game):
                 if (event.type == pygame.KEYDOWN and event.key == pygame.K_e
@@ -139,7 +144,7 @@ class InputProcessor:
                 self.game.handle_mouse_wheel(event.y)
 
         self._cancel_interrupted_camera_drag()
-        if not automated_turn_active(self.game):
+        if not automated_turn_active(self.game) and not ai_summary_active(self.game):
             self.update_hover_states(mouse_pos)
 
     def update_hover_states(self, mouse_pos: Position) -> None:

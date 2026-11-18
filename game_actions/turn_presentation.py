@@ -1,7 +1,20 @@
 """Application adapter for turn notifications and delayed AI startup."""
-from typing import Any
+from time import perf_counter
+from typing import Any, Callable
 
+from game_ai.progress import AITurnProgress
 from player_controller import PlayerController
+
+AI_SUMMARY_SECONDS = 2.0
+
+
+def ai_summary_snapshot(game: Any) -> AITurnProgress | None:
+    presenter = getattr(game, "turn_presentation", None)
+    return presenter.ai_summary_snapshot() if isinstance(presenter, ApplicationTurnPresentation) else None
+
+
+def ai_summary_active(game: Any) -> bool:
+    return ai_summary_snapshot(game) is not None
 
 
 def defeat_notice(game: Any) -> tuple[str, ...]:
@@ -16,8 +29,55 @@ def defeat_notice(game: Any) -> tuple[str, ...]:
 
 
 class ApplicationTurnPresentation:
-    def __init__(self, game: Any) -> None:
+    def __init__(self, game: Any, *, clock: Callable[[], float] = perf_counter) -> None:
         self.game = game
+        self._clock = clock
+        self._ai_summary: AITurnProgress | None = None
+        self._summary_remaining = AI_SUMMARY_SECONDS
+        self._summary_visible_since: float | None = None
+
+    def present_ai_progress(self, progress: AITurnProgress | None) -> None:
+        """Main-thread callback: paint blocking phases; retain completion after handoff."""
+        if progress is None:
+            self.dismiss_ai_summary()
+        elif progress.phase == "complete":
+            self._ai_summary = progress
+            self._summary_remaining = AI_SUMMARY_SECONDS
+            self._summary_visible_since = None
+        elif progress.phase in {"preparing", "checking", "resolving"}:
+            # Paint without pumping input or yielding between commit and End Turn.
+            renderer = getattr(self.game, "renderer", None)
+            if renderer is not None:
+                renderer.draw()
+
+    def dismiss_ai_summary(self) -> None:
+        self._ai_summary = None
+        self._summary_visible_since = None
+        self._summary_remaining = AI_SUMMARY_SECONDS
+
+    def ai_summary_snapshot(self) -> AITurnProgress | None:
+        summary = self._ai_summary
+        if summary is None:
+            return None
+        players = getattr(self.game, "players", ())
+        if (not getattr(self.game, "game_started", False)
+                or summary.campaign_id != str(getattr(self.game, "campaign_id", ""))
+                or (players and all(getattr(player, "defeated", False) for player in players))):
+            self.dismiss_ai_summary()
+            return None
+        now = self._clock()
+        if self._summary_visible_since is not None:
+            self._summary_remaining -= max(0.0, now - self._summary_visible_since)
+            self._summary_visible_since = None if defeat_notice(self.game) else now
+            if self._summary_remaining <= 0:
+                self.dismiss_ai_summary()
+                return None
+        return summary
+
+    def mark_ai_summary_visible(self) -> None:
+        """Count visible time only; defeat notices can postpone or interrupt the summary."""
+        if self.ai_summary_snapshot() is not None and self._summary_visible_since is None:
+            self._summary_visible_since = self._clock()
 
     def refresh_player_turn(self, player: Any) -> None:
         self.game.recompute_visibility()
@@ -75,6 +135,10 @@ class ApplicationTurnPresentation:
             pygame.time.get_ticks() + 500
             if player.controller == PlayerController.OPENAI and not getattr(player, 'defeated', False) else 0
         )
+        if self.game.pending_ai_turn_end_time:
+            coordinator = getattr(self.game, "ai_coordinator", None)
+            if coordinator is not None:
+                coordinator.schedule_current_turn()
 
     def warn_human(self, player: Any, message: str, *, title: str) -> None:
         gui = getattr(self.game, "gui", None)

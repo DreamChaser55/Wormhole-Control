@@ -117,6 +117,16 @@ Core imports must not initialize Pygame, GUI or displays. Import entities, order
 and components from their defining modules. Canonical domain classes live in
 `domain/`; clean-process tests enforce the import boundary.
 
+AI progress is a transient metadata view owned by the coordinator, separate from
+provider requests, game commands and saved reports. The application presentation
+adapter receives optional main-thread progress notifications and paints synchronous
+phases without processing events. Its completion overlay follows authoritative
+resolution and handoff, blocks local input and defers the next built-in AI request;
+it never performs another End Turn. The renderer consumes immutable, allowlisted
+snapshots. The domain `TurnPresentation` port remains independent of this UI timing.
+See [local turn progress](AGENTIC_AI.md#local-turn-progress) for phases, measurement
+and disclosure rules.
+
 Commander owns explicit queue promotion and stance arbitration. An Order owns
 subtree status, cancellation and outcomes; concrete orders own actuator/job cleanup.
 The [shared order contract](AGENTIC_AI.md#shared-order-contract) and

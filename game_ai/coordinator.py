@@ -7,7 +7,7 @@ import logging
 from concurrent.futures import Future
 from pathlib import Path
 from time import perf_counter
-from typing import Any
+from typing import Any, Callable
 
 from .adapters.base import (
     PlanningOutputError,
@@ -31,6 +31,7 @@ from .runtime import (
 )
 from player_controller import PlayerController
 from .provider_errors import classify_provider_error, MESSAGES
+from .progress import AIAttemptStatistics, AITurnProgress
 
 logger = logging.getLogger(__name__)
 
@@ -43,8 +44,13 @@ class AgentTurnCoordinator:
         game: Any,
         *,
         provider: PlanningProvider | None = None,
+        on_progress: Callable[[AITurnProgress | None], None] | None = None,
+        clock: Callable[[], float] | None = None,
     ):
         self.game = game
+        self._clock = clock if clock is not None else lambda: perf_counter()
+        self._on_progress = on_progress
+        self._progress: AITurnProgress | None = None
         self.provider = provider if provider is not None else OpenAIResponsesProvider()
         self._runtime = AsyncPlanningRuntime(self.provider)
         self._closed = False
@@ -70,14 +76,90 @@ class AgentTurnCoordinator:
     def is_busy(self) -> bool:
         return self.state in {"thinking", "repairing", "applying", "cancelling"}
 
+    def _current_identity(self) -> tuple[str, str, int] | None:
+        player = getattr(self.game, "current_player", None)
+        if (not getattr(self.game, "game_started", False) or player is None
+                or player.controller != PlayerController.OPENAI):
+            return None
+        return str(self.game.campaign_id), str(player.agent_id), int(self.game.turn_number)
+
+    def progress_snapshot(self) -> AITurnProgress | None:
+        """Return only current-generation numeric/public metadata, never live game data."""
+        progress = self._progress
+        if (progress is None or progress.generation != self._generation
+                or progress.identity != self._current_identity()):
+            return None
+        return progress.sample(self._clock())
+
+    def _notify_progress(self, progress: AITurnProgress | None) -> None:
+        if self._on_progress is not None:
+            try:
+                self._on_progress(progress)
+            except Exception as exc:
+                # Presentation failure must not interrupt commit or leak payloads.
+                logger.warning("AI progress presentation failed (%s).", type(exc).__name__)
+
+    def _begin_progress(self, phase: str) -> None:
+        player = self.game.current_player
+        config = get_runtime_config(getattr(player, "ai_reasoning_effort", DEFAULT_REASONING_EFFORT))
+        now = self._clock()
+        self._progress = AITurnProgress(
+            campaign_id=str(self.game.campaign_id), agent_id=str(player.agent_id),
+            generation=self._generation, player_name=str(player.name),
+            turn_number=int(self.game.turn_number), model=config.model,
+            reasoning_effort=config.reasoning_effort, phase=phase,
+            turn_started_at=now, phase_started_at=now, sampled_at=now,
+            repair_limit=normalize_repair_retries(getattr(player, "ai_repair_retries", DEFAULT_REPAIR_RETRIES)),
+        )
+        self._notify_progress(self._progress)
+
+    def schedule_current_turn(self) -> None:
+        """Begin the visible handoff delay without submitting provider work."""
+        if not self._closed and not self.is_busy and self._current_identity() is not None:
+            self._begin_progress("scheduled")
+
+    def _set_phase(self, phase: str, *, error_category: str | None = None) -> None:
+        if self._progress is not None:
+            self._progress = self._progress.transition(
+                phase, self._clock(), repair_attempt=self._repair_attempts_used,
+                repair_limit=self._max_repair_retries, error_category=error_category,
+            )
+            self._notify_progress(self._progress)
+
+    def _finish_attempt(self, *, status: str, usage=None, latency_seconds=None) -> None:
+        if self._progress is None:
+            return
+        now = self._clock()
+        started = self._attempt_started if self._attempt_started is not None else now
+        self._progress = self._progress.with_attempt(AIAttemptStatistics.from_usage(
+            attempt_index=self._repair_attempts_used, started_at=started, finished_at=now,
+            latency_seconds=latency_seconds if latency_seconds is not None else max(0.0, now - started),
+            status=status, usage=usage or {},
+        ))
+
     def start_current_turn(self) -> bool:
         if self._closed or self._future is not None or not getattr(self.game, "game_started", False):
             return False
         player = getattr(self.game, "current_player", None)
         if player is None or player.controller != PlayerController.OPENAI:
             return False
-        observation = build_observation(self.game, player)
-        memory = AgentMemory.from_dict(getattr(player, "ai_memory", None))
+        self._repair_attempts_used = 0
+        self._max_repair_retries = normalize_repair_retries(
+            getattr(player, "ai_repair_retries", DEFAULT_REPAIR_RETRIES)
+        )
+        self.state = "thinking"
+        self._set_end_turn_enabled(False)
+        if self.progress_snapshot() is None or self._progress.phase != "scheduled":
+            self._begin_progress("preparing")
+        else:
+            self._set_phase("preparing")
+        try:
+            observation = build_observation(self.game, player)
+            memory = AgentMemory.from_dict(getattr(player, "ai_memory", None))
+        except Exception as exc:
+            logger.error("AI turn preparation failed (%s).", type(exc).__name__)
+            self._fail("The AI turn could not be prepared.")
+            return True  # Handled failure: do not invoke the scheduler's skip fallback.
         request = PlanningRequest(
             campaign_id=str(self.game.campaign_id),
             agent_id=str(player.agent_id),
@@ -87,11 +169,7 @@ class AgentTurnCoordinator:
             memory=memory.to_dict(),
         )
         self._base_request = request
-        self._repair_attempts_used = 0
         self._rejection_lessons = []
-        self._max_repair_retries = normalize_repair_retries(
-            getattr(player, "ai_repair_retries", DEFAULT_REPAIR_RETRIES)
-        )
         self._submit(request, repairing=False)
         return True
 
@@ -109,13 +187,15 @@ class AgentTurnCoordinator:
             self._runtime.cancel(handle)
             self._future = None
             self._handle = None
-            self._record_transport_error(PlanningRetirementError())
-            self._fail(MESSAGES["cancellation_timeout"], category="cancellation_timeout")
+            self._handle_provider_error(PlanningRetirementError())
             return
         if handle is not None and handle.waiting.is_set() and not handle.started.is_set():
             self.state, self.status_message = "cancelling", "cancelling previous request…"
+            if self._progress is not None and self._progress.phase != "cancelling":
+                self._set_phase("cancelling")
         elif self.state == "cancelling":
             self.state, self.status_message = self._planning_status
+            self._set_phase("requesting")
         if not future.done():
             return
         self._future = None
@@ -126,8 +206,7 @@ class AgentTurnCoordinator:
         try:
             result = future.result()
         except PlanningRetirementError as exc:
-            self._record_transport_error(exc)
-            self._fail(MESSAGES["cancellation_timeout"], category="cancellation_timeout")
+            self._handle_provider_error(exc)
             return
         except PlanningOutputError as exc:
             logger.warning("AI output was invalid: %s", exc)
@@ -135,9 +214,7 @@ class AgentTurnCoordinator:
             return
         except Exception as exc:
             logger.error("AI planning provider failed: %s", exc.__class__.__name__)
-            self._record_transport_error(exc)
-            category = classify_provider_error(exc)
-            self._fail(MESSAGES[category], category=category)
+            self._handle_provider_error(exc)
             return
         if not self._turn_is_current():
             self._discard_stale_result()
@@ -162,6 +239,8 @@ class AgentTurnCoordinator:
         self.last_error_category = None
         self._failure_identity = None
         self._attempt_started = None
+        self._progress = None
+        self._notify_progress(None)
         self._set_end_turn_enabled(True)
 
     def shutdown(self) -> None:
@@ -196,7 +275,8 @@ class AgentTurnCoordinator:
         self.last_error_category = None
         self._failure_identity = None
         self._set_end_turn_enabled(False)
-        self._attempt_started = perf_counter()
+        self._attempt_started = self._clock()
+        self._set_phase("requesting")
         self._handle = self._runtime.submit(request, runtime_config)
         self._future = self._handle.result
 
@@ -204,13 +284,21 @@ class AgentTurnCoordinator:
         player = self.game.current_player
         self.state = "applying"
         self.status_message = "issuing…"
+        self._set_phase("checking")
         try:
             TurnPlan.from_dict(result.plan.to_dict())
         except (ContractError, TypeError, ValueError) as exc:
             self._handle_output_error(PlanningOutputError("invalid_contract", str(exc), provider=result.provider,
-                model=result.model, reasoning_effort=result.reasoning_effort))
+                model=result.model, reasoning_effort=result.reasoning_effort,
+                response_id=result.response_id, usage=result.usage,
+                latency_seconds=result.latency_seconds, prompt_metrics=result.prompt_metrics))
             return
         command_result = CommandGateway(self.game).apply_batch(player, result.plan.batch)
+        self._finish_attempt(
+            status="accepted" if command_result.accepted else (
+                "commit_failed" if command_result.failure_stage == "commit" else "rejected"),
+            usage=result.usage, latency_seconds=result.latency_seconds,
+        )
         if not command_result.accepted:
             will_retry = bool(
                 command_result.retryable
@@ -276,6 +364,9 @@ class AgentTurnCoordinator:
         self._record_telemetry(
             result, command_result, status="accepted", will_retry=False
         )
+        self._set_phase("resolving")
+        resolving_progress = self._progress
+        generation = self._generation
         self.state = "idle"
         self.status_message = ""
         self._request = None
@@ -283,7 +374,22 @@ class AgentTurnCoordinator:
         self._turn_token = None
         self._set_end_turn_enabled(True)
         if result.plan.batch.end_turn:
-            self.game.end_turn()
+            try:
+                self.game.end_turn()
+            except Exception as exc:
+                logger.error("AI turn resolution failed (%s).", type(exc).__name__)
+                if resolving_progress is not None and resolving_progress.identity == self._current_identity():
+                    self._fail("The AI turn could not be resolved safely.", category="commit")
+                else:
+                    self.reset()
+                return
+            # Handoff may schedule another player. Its progress is independent of
+            # the completed snapshot; never postpone resolution to show a summary.
+            if (resolving_progress is not None and generation == self._generation
+                    and resolving_progress.campaign_id == str(self.game.campaign_id)):
+                if self._progress is resolving_progress:
+                    self._progress = None
+                self._notify_progress(resolving_progress.transition("complete", self._clock()))
         else:
             self._fail("The AI returned control without ending its turn.")
 
@@ -291,6 +397,9 @@ class AgentTurnCoordinator:
         if not self._turn_is_current():
             self._discard_stale_result()
             return
+        self._set_phase("checking")
+        self._finish_attempt(status="invalid_output", usage=error.usage,
+                             latency_seconds=error.latency_seconds)
         will_retry = bool(
                 self._repair_attempts_used < self._max_repair_retries
                 and self._base_request is not None
@@ -307,6 +416,12 @@ class AgentTurnCoordinator:
             self._submit(self._repair_request(context), repairing=True)
             return
         self._fail(f"AI planning output was invalid: {error}", category="invalid_output")
+
+    def _handle_provider_error(self, error: Exception) -> None:
+        self._finish_attempt(status="failed")
+        self._record_transport_error(error)
+        category = classify_provider_error(error)
+        self._fail(MESSAGES[category], category=category)
 
     def _repair_request(self, context: RepairContext) -> PlanningRequest:
         base = self._base_request
@@ -455,7 +570,7 @@ class AgentTurnCoordinator:
             "response_id": None,
             "usage": {},
             "prompt_metrics": prompt_metrics,
-            "latency_seconds": round(max(0.0, perf_counter() - self._attempt_started), 3) if self._attempt_started is not None else 0.0,
+            "latency_seconds": round(max(0.0, self._clock() - self._attempt_started), 3) if self._attempt_started is not None else 0.0,
             "status": "transport_error",
             "commands": 0,
             "command_summaries": [],
@@ -496,6 +611,9 @@ class AgentTurnCoordinator:
         self.status_message = "attention"
         self.last_error = message
         self.last_error_category = category
+        if self._progress is None and self._current_identity() is not None:
+            self._begin_progress("error")
+        self._set_phase("error", error_category=category)
         player = getattr(self.game, "current_player", None)
         self._failure_identity = (str(self.game.campaign_id), str(player.agent_id), int(self.game.turn_number)) if player is not None else None
         self._request = None
@@ -515,6 +633,8 @@ class AgentTurnCoordinator:
         self._request = None
         self._base_request = None
         self._turn_token = None
+        self._progress = None
+        self._notify_progress(None)
         self._set_end_turn_enabled(True)
 
     def failed_current_turn(self) -> bool:

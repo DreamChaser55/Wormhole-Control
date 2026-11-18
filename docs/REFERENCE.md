@@ -118,9 +118,26 @@ The galaxy camera is retained across view switches and turns, and resets to the
 fitted overview when starting or loading a campaign. Camera positions are not saved.
 In Galaxy View, click **Reset View** in the top bar or press `R` to restore the
 fitted overview at any time.
-During an automated turn, the local display shows a neutral status screen and
-blocks map and HUD controls. If the built-in AI stops with an error, press **E**
-to advance to the next turn. The New Game map preview remains fitted and static.
+During an automated turn, a neutral dashboard replaces the map and blocks map
+and HUD controls. Built-in AI turns show the player, round, model, reasoning
+effort, live elapsed timers, and phases: scheduled, preparing the observation,
+requesting a plan, checking/applying orders, and resolving the turn. Repairs show
+their retry number; cancellation and failures have their own status.
+
+Each completed request reports its duration and available input, output, total,
+cached/uncached input and reasoning-token counts. The request history includes
+repairs, and reported totals mark missing data as partial. Token counts arrive
+after each response; unavailable statistics show a dash. Cached input and
+reasoning output are parts of the input and output counts, respectively.
+AI plans, orders, messages and memory remain private.
+
+After resolution, a completion summary stays visible for two seconds. Press
+**Enter** to dismiss it immediately; this does not end the next player's turn or
+acknowledge their briefing. The next built-in AI request waits until the summary
+closes. Defeat notices take priority, and an ended campaign replaces the summary.
+If the built-in AI stops with an error, press **E** to skip its turn. Codex turns
+show **Waiting for Codex**; external inference statistics are unavailable.
+The New Game map preview remains fitted and static.
 Selected objects have corner brackets using their disclosed owner's faction color.
 Enemy home-system markers appear only while the associated homeworld is currently
 inside shared sensor coverage; the setup preview retains its assignment markers.

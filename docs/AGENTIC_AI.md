@@ -31,6 +31,45 @@ for the independent save, observation, command and transport identifiers.
 No API call is made for a human player. Tests and evaluation use injected fake
 providers by default, so they do not consume API credits.
 
+### Local turn progress
+
+The coordinator exposes a read-only `progress_snapshot()` containing immutable
+`AITurnProgress` and bounded `AIAttemptStatistics` records. These contain public
+player/model metadata, generation and turn identity, monotonic phase timings,
+repair counters, safe error categories and allowlisted numeric usage only.
+Snapshots never contain observations, plans, orders, messages, memory or raw
+provider errors. Reset clears them, and changed campaign/agent/round/controller
+identity suppresses obsolete snapshots before display or result handling.
+
+The local dashboard shows scheduled, observation preparation, plan request,
+checking/applying orders, resolution and completion phases, with distinct repair,
+cancellation and attention states. An optional main-thread progress callback
+paints synchronous phases before their work without pumping input. Command
+validation/commit remains one operation; memory updates and End Turn are not
+separated by a presentation delay. The provider interface and non-streaming
+request mode are unchanged.
+
+Completed responses, including malformed outputs and rejected batches, contribute
+once to the request history and cumulative reported usage across semantic repairs.
+Input/output/total tokens, cached/uncached input and optional reasoning tokens
+come from the provider; missing values stay unavailable and incomplete aggregates
+are marked partial. Cached and reasoning counts are subsets, not additions to
+token totals. Request latency includes provider processing and SDK retry/backoff;
+transport failures retain elapsed time but no fabricated token usage. There are
+no live token counts, inference-speed or price estimates. SDK transport retries
+remain internal to a planning attempt.
+
+After successful resolution and handoff, the application presentation layer holds
+a frozen completion snapshot for two visible seconds, dismissible with Enter.
+It blocks local gameplay and subsequent built-in AI submissions while preserving
+the normal 500 ms minimum scheduling delay and actual bridge state. Enter closes
+only this summary, never the next player's turn or briefing. Defeat notices can
+postpone the summary; campaign completion supersedes it. Reset, campaign replacement,
+return to menu and shutdown clear it. Progress is transient, is not reconstructed
+from telemetry or saved reports, and changes no save or socket protocol. Codex
+turns use the same dashboard with an external-controller waiting state and no
+inference statistics.
+
 ## Information boundary
 
 `game_ai.observation.build_observation` recomputes visibility for the active
@@ -688,8 +727,8 @@ hidden target and defers cancellation/history to the first gameplay validation.
   dialog and defaulting to 2. The initial submission is not counted as a retry.
 - Each semantic repair is a complete replacement response made with the
   player's selected reasoning effort. The retry budget is not sent to the
-  model. The HUD turn status label updates to show the active retry attempt
-  (e.g., `revising... retry 1/2`).
+  model. The dashboard shows the active retry attempt (e.g.,
+  `Revising — retry 1/2`); the hidden HUD label retains its compact status.
 - Transport, authentication, quota, timeout, and commit failures do not consume
   semantic repairs.
 - The retry limit is snapshotted when an AI turn begins, so in-match edits take
@@ -698,7 +737,7 @@ hidden target and defers cancellation/history to the first gameplay validation.
   without blocking the game loop. Stale successes and errors are discarded when
   generation, campaign, agent, turn or controller changes.
 - Replacement planning starts after the previous request's cleanup actually
-  finishes. The HUD shows `cancelling previous request…` during retirement.
+  finishes. The dashboard shows `Cancelling previous request` during retirement.
   Cancelling a completion future alone does not release the provider. If the
   request does not retire within two seconds, the replacement fails into manual
   recovery; no additional worker or overlapping provider call is created. Retry

@@ -1,13 +1,14 @@
 import pygame
 
 from constants import BLACK
-from game_actions.turn_presentation import defeat_notice
-from player_controller import PlayerController, automated_turn_active
+from game_actions.turn_presentation import defeat_notice, ai_summary_snapshot
+from player_controller import automated_turn_active
 
 from rendering.galaxy_renderer import GalaxyViewRenderer
 from rendering.system_renderer import SystemViewRenderer
 from rendering.sector_renderer import SectorViewRenderer
 from rendering.main_menu_renderer import MainMenuRenderer
+from rendering.ai_turn_renderer import AITurnRenderer
 
 class Renderer:
     def __init__(self, game_instance):
@@ -21,6 +22,7 @@ class Renderer:
         self.system_renderer = SystemViewRenderer(game_instance)
         self.sector_renderer = SectorViewRenderer(game_instance)
         self.main_menu_renderer = MainMenuRenderer(game_instance)
+        self.ai_turn_renderer = AITurnRenderer(game_instance)
 
     def _draw_status(self, title, detail):
         center_x, center_y = self.screen.get_rect().center
@@ -52,17 +54,16 @@ class Renderer:
             self._draw_status("Campaign ended", "All players have been defeated.")
             return
 
+        summary = ai_summary_snapshot(self.game)
+        if summary is not None:
+            self.game.turn_presentation.mark_ai_summary_visible()
+            self.ai_turn_renderer.draw(summary)
+            pygame.display.flip()
+            return
+
         if automated_turn_active(self.game):
-            if self.game.current_player.controller == PlayerController.CODEX:
-                status = 'Waiting for Codex'
-                detail = 'The map returns on the next human turn.'
-            elif getattr(self.game.ai_coordinator, 'state', None) == 'error':
-                status = 'AI turn needs attention'
-                detail = 'Press E to skip this turn.'
-            else:
-                status = 'AI turn in progress'
-                detail = 'The map returns on the next human turn.'
-            self._draw_status(status, detail)
+            self.ai_turn_renderer.draw(self.game.ai_coordinator.progress_snapshot())
+            pygame.display.flip()
             return
 
         if self.game.view_mode == 'galaxy' and self.game.game_started:

@@ -170,4 +170,8 @@ def _usage_dict(usage: Any) -> dict[str, int]:
         result["cached_input_tokens"] = cached
         if "input_tokens" in result:
             result["uncached_input_tokens"] = max(0, result["input_tokens"] - cached)
+    output_details = getattr(usage, "output_tokens_details", None)
+    reasoning = getattr(output_details, "reasoning_tokens", None)
+    if type(reasoning) is int and reasoning >= 0:
+        result["reasoning_tokens"] = reasoning
     return result
