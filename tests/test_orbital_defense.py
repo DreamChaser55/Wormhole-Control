@@ -1,7 +1,7 @@
 from display_config import DisplayConfig
 from player_controller import PlayerController
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 from constants import (
     HullSize, RED, BLUE,
     DEFAULT_ORBITAL_DEFENSE_RADIUS,
@@ -51,13 +51,7 @@ class TestOrbitalDefenseComponent(unittest.TestCase):
         self.unit.in_galaxy = self.galaxy
         self.system.add_unit(self.unit)
 
-        self.od_comp = OrbitalDefenseComponent(
-            unit=self.unit,
-            radius=DEFAULT_ORBITAL_DEFENSE_RADIUS,
-            attack_bonus=DEFAULT_ORBITAL_DEFENSE_ATTACK_BONUS,
-            defense_bonus=DEFAULT_ORBITAL_DEFENSE_DEFENSE_BONUS,
-            hull_cost=ORBITAL_DEFENSE_HULL_COST
-        )
+        self.od_comp = OrbitalDefenseComponent(unit=self.unit)
         self.unit.add_component(self.od_comp)
 
     def test_component_initialization(self):
@@ -190,23 +184,22 @@ class TestOrbitalDefenseComponent(unittest.TestCase):
         planet.population = 50.0
         self.system.add_celestial_body(planet)
 
-        # Ship within radius (distance 300 <= 500)
+        ally = Player(name="Ally", color=BLUE, team_id=self.player.team_id)
         ship_in = Unit(
-            owner=self.player,
-            position=Position(300.0, 0.0),
+            owner=ally,
+            position=Position(750.0, 0.0),
             in_hex=self.hex_coord,
             in_system="Sol",
-            name="Friendly Corvette",
+            name="Allied Corvette",
             hull_size=HullSize.SMALL,
             game=self.game_mock
         )
         ship_in.in_galaxy = self.galaxy
         self.system.add_unit(ship_in)
 
-        # Ship outside radius (distance 600 > 500)
         ship_out = Unit(
             owner=self.player,
-            position=Position(600.0, 0.0),
+            position=Position(751.0, 0.0),
             in_hex=self.hex_coord,
             in_system="Sol",
             name="Far Corvette",
@@ -216,13 +209,8 @@ class TestOrbitalDefenseComponent(unittest.TestCase):
         ship_out.in_galaxy = self.galaxy
         self.system.add_unit(ship_out)
 
-        atk_in, def_in = ship_in.get_orbital_defense_buffs(self.galaxy)
-        self.assertAlmostEqual(atk_in, 0.20)
-        self.assertAlmostEqual(def_in, 0.20)
-
-        atk_out, def_out = ship_out.get_orbital_defense_buffs(self.galaxy)
-        self.assertAlmostEqual(atk_out, 0.0)
-        self.assertAlmostEqual(def_out, 0.0)
+        self.assertEqual(ship_in.get_orbital_defense_buffs(self.galaxy), (0.25, 0.25))
+        self.assertEqual(ship_out.get_orbital_defense_buffs(self.galaxy), (0.0, 0.0))
 
     def test_additive_stacking(self):
         # Planet supporting 2 modules
@@ -245,11 +233,10 @@ class TestOrbitalDefenseComponent(unittest.TestCase):
             game=self.game_mock
         )
         unit2.in_galaxy = self.galaxy
-        od2 = OrbitalDefenseComponent(unit=unit2, radius=500.0, attack_bonus=0.20, defense_bonus=0.20)
-        unit2.add_component(od2)
+        unit2.add_component(OrbitalDefenseComponent(unit=unit2))
         self.system.add_unit(unit2)
 
-        # Ship at (100, 0) -> distance to Unit 1 is 100 <= 500, distance to Unit 2 is 100 <= 500
+        # Ship in both auras
         ship = Unit(
             owner=self.player,
             position=Position(100.0, 0.0),
@@ -262,10 +249,7 @@ class TestOrbitalDefenseComponent(unittest.TestCase):
         ship.in_galaxy = self.galaxy
         self.system.add_unit(ship)
 
-        atk_bonus, def_bonus = ship.get_orbital_defense_buffs(self.galaxy)
-        # Should sum additively: 0.20 + 0.20 = 0.40
-        self.assertAlmostEqual(atk_bonus, 0.40)
-        self.assertAlmostEqual(def_bonus, 0.40)
+        self.assertEqual(ship.get_orbital_defense_buffs(self.galaxy), (0.50, 0.50))
 
     def test_friendly_only_buff(self):
         planet = Planet(in_hex=self.hex_coord, in_system="Sol", planet_type=None)
@@ -335,10 +319,9 @@ class TestOrbitalDefenseComponent(unittest.TestCase):
         shooter.add_component(wep)
         self.system.add_unit(shooter)
 
-        # Damage should be 100 * (1 + 0.20) = 120
         turret.fire()
         hp_lost = 500 - target.current_hit_points
-        self.assertEqual(hp_lost, 120)
+        self.assertEqual(hp_lost, 125)
 
     def test_defenses_mitigation_buff(self):
         planet = Planet(in_hex=self.hex_coord, in_system="Sol", planet_type=None)
@@ -349,7 +332,7 @@ class TestOrbitalDefenseComponent(unittest.TestCase):
         # Defender with 100 Armor
         defender = Unit(
             owner=self.player,
-            position=Position(50.0, 0.0),
+            position=Position(751.0, 0.0),
             in_hex=self.hex_coord,
             in_system="Sol",
             name="Armored Cruiser",
@@ -361,15 +344,10 @@ class TestOrbitalDefenseComponent(unittest.TestCase):
         defender.add_component(defenses)
         self.system.add_unit(defender)
 
-        # Without OD (e.g. at distance 1000)
-        defender.position = Position(1000.0, 0.0)
-        _, def_bonus_far = defender.get_orbital_defense_buffs(self.galaxy)
-        self.assertEqual(def_bonus_far, 0.0)
-
-        # Inside OD radius
-        defender.position = Position(50.0, 0.0)
-        _, def_bonus_near = defender.get_orbital_defense_buffs(self.galaxy)
-        self.assertAlmostEqual(def_bonus_near, 0.20)
+        with patch("unit_components.defenses.random.uniform", return_value=100.0):
+            self.assertEqual(defenses.calculate_mitigation(200, TurretType.MASS_DRIVER), 100)
+            defender.position = Position(750.0, 0.0)
+            self.assertEqual(defenses.calculate_mitigation(200, TurretType.MASS_DRIVER), 125)
 
     def test_destroyed_component_deactivation(self):
         planet = Planet(in_hex=self.hex_coord, in_system="Sol", planet_type=None)
@@ -431,15 +409,63 @@ class TestOrbitalDefenseComponent(unittest.TestCase):
         )
         self.assertTrue(len(invalid_tiny.validate()) > 0)
 
-    def test_save_and_load_persistence(self):
+    def test_custom_design_defaults_apply_to_omitted_aura_fields(self):
+        from custom_unit_templates import template_from_dict
+        from unit_components.constructor import instantiate_unit_from_template
+
+        name = "Custom Defense"
+        for overrides, expected in (
+            ({}, (750.0, 0.25, 0.25)),
+            ({"orbital_defense_radius": 500.0, "orbital_defense_defense_bonus": 0.20}, (500.0, 0.25, 0.20)),
+        ):
+            with self.subTest(overrides=overrides):
+                template = {"name": name, "hull_size": "MEDIUM", "has_orbital_defense_component": True, **overrides}
+                design = template_from_dict(name, template)
+                self.assertEqual(design.validate(), [])
+                config = design.components
+                self.assertEqual((config.orbital_defense_radius, config.orbital_defense_attack_bonus,
+                                  config.orbital_defense_defense_bonus), expected)
+                unit = instantiate_unit_from_template(
+                    name, self.player, "Sol", self.hex_coord, Position(200.0, 0.0),
+                    self.galaxy, self.game_mock, templates={name: template},
+                )
+                aura = unit.orbital_defense_component
+                self.assertEqual((aura.radius, aura.attack_bonus, aura.defense_bonus), expected)
+
+    def test_save_and_load_preserves_explicit_aura(self):
+        configuration = {"radius": 500.0, "attack_bonus": 0.20, "defense_bonus": 0.20}
+        self.unit.add_component(OrbitalDefenseComponent(self.unit, **configuration))
         serialized = serialize_unit(self.unit)
-        self.assertIn("OrbitalDefenseComponent", serialized["components"])
-        self.assertEqual(serialized["components"]["OrbitalDefenseComponent"]["configuration"]["radius"], DEFAULT_ORBITAL_DEFENSE_RADIUS)
+        self.assertEqual(serialized["components"]["OrbitalDefenseComponent"]["configuration"], configuration)
 
         players_by_id = {self.player.id: self.player}
         deserialized = deserialize_unit(serialized, players_by_id, self.game_mock)
-        deserialized.in_galaxy = self.galaxy
-        self.assertIsNotNone(deserialized.orbital_defense_component)
-        self.assertEqual(deserialized.orbital_defense_component.radius, DEFAULT_ORBITAL_DEFENSE_RADIUS)
-        self.assertEqual(deserialized.orbital_defense_component.attack_bonus, DEFAULT_ORBITAL_DEFENSE_ATTACK_BONUS)
-        self.assertEqual(deserialized.orbital_defense_component.defense_bonus, DEFAULT_ORBITAL_DEFENSE_DEFENSE_BONUS)
+        aura = deserialized.orbital_defense_component
+        self.assertIsNotNone(aura)
+        self.assertEqual((aura.radius, aura.attack_bonus, aura.defense_bonus), (500.0, 0.20, 0.20))
+
+    def test_aura_help_sidebar_and_range_ring(self):
+        from constants import ORBITAL_DEFENSE_RING_COLOR
+        from gui.retrofit_gui.catalog import RETROFIT_COMPONENTS
+        from gui.unit_editor_gui.descriptions import component_description
+        from rendering.sector_renderer.sector_overlay_renderer import SectorOverlayRenderer
+
+        _, designer_help = component_description("has_orbital_defense_component")
+        refit_help = next(component["description"] for component in RETROFIT_COMPONENTS
+                          if component["comp_key"] == "OrbitalDefenseComponent")
+        for description in (designer_help, refit_help):
+            self.assertIn("750", description)
+            self.assertIn("+25% weapon damage", description)
+            self.assertIn("+25% defense mitigation", description)
+
+        planet = Planet(in_hex=self.hex_coord, in_system="Sol", planet_type=None)
+        planet.owner = self.player
+        planet.population = 50.0
+        self.system.add_celestial_body(planet)
+        sidebar = self.od_comp.get_basic_sidebar_data(self.game_mock)
+        self.assertTrue(any("+25% Atk/+25% Def (R750)" in row["text"] for row in sidebar))
+
+        parent = MagicMock()
+        renderer = SectorOverlayRenderer(parent)
+        renderer.draw_unit_range_circles(self.unit, Position(160, 100), 500.0)
+        parent.grid_renderer.draw_range_ring.assert_any_call(160, 100, 75, ORBITAL_DEFENSE_RING_COLOR)

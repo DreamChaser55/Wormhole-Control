@@ -72,6 +72,20 @@ def test_runtime_equipment_matches_description(key):
         assert unit.cloaking_component.get_antimatter_cost_per_turn() == pytest.approx(entry['support']['cloaking_device']['antimatter_cost_per_turn'])
 
 
+def test_orbital_bastion_aura_matches_catalogue():
+    game = campaign()
+    bastion = create(game, 'ORBITAL_BASTION')
+    aura = bastion.orbital_defense_component
+    assert (aura.radius, aura.attack_bonus, aura.defense_bonus) == (750.0, 0.25, 0.25)
+
+    entry = describe_template('ORBITAL_BASTION', UNIT_TEMPLATES['ORBITAL_BASTION'])
+    assert entry['support']['orbital_defense_component'] == {
+        'orbital_defense_radius': aura.radius,
+        'orbital_defense_attack_bonus': aura.attack_bonus,
+        'orbital_defense_defense_bonus': aura.defense_bonus,
+    }
+
+
 def test_revised_specialists():
     game = campaign()
     intel = create(game, 'INTELLIGENCE_SHIP')

@@ -6,6 +6,11 @@ for the Retrofit Customization Options Wizard.
 """
 
 from typing import List, Dict, Any
+from constants import (
+    DEFAULT_ORBITAL_DEFENSE_ATTACK_BONUS,
+    DEFAULT_ORBITAL_DEFENSE_DEFENSE_BONUS,
+    DEFAULT_ORBITAL_DEFENSE_RADIUS,
+)
 from unit_components.movement import Engines, Hyperdrive
 from unit_components.weapons import Weapons
 from unit_components.defenses import Defenses
@@ -177,7 +182,11 @@ RETROFIT_COMPONENTS: List[Dict[str, Any]] = [
         "display_name": "Orbital Defense",
         "comp_cls": OrbitalDefenseComponent,
         "is_dynamic": False,
-        "description": "Projects a tactical aura (+20% damage, +20% defense mitigation) for friendly ships in colonized sectors.",
+        "description": (
+            f"With colony support, grants friendly and allied ships within {DEFAULT_ORBITAL_DEFENSE_RADIUS:g} units "
+            f"+{DEFAULT_ORBITAL_DEFENSE_ATTACK_BONUS:.0%} weapon damage and "
+            f"+{DEFAULT_ORBITAL_DEFENSE_DEFENSE_BONUS:.0%} defense mitigation."
+        ),
     },
     {
         "comp_key": "TradeComponent",

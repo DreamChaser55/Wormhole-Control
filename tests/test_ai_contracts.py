@@ -134,6 +134,8 @@ class TestContracts(unittest.TestCase):
             "Orbital Bastions",
             "support.orbital_defense_component",
             "orbital_defense_radius",
+            "orbital_defense_attack_bonus",
+            "orbital_defense_defense_bonus",
             "combined-arms fleets",
             "standard warships",
             "anti-strikecraft escorts",

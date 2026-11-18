@@ -341,8 +341,7 @@ class Unit(GameObject):
         """Calculates the total additive attack and defense percentage bonuses granted to this
         unit by friendly active Orbital Defense units within effective radius in the current sector.
 
-        Returns:
-            (total_attack_bonus, total_defense_bonus): e.g. (0.40, 0.40) for two +20% auras.
+        Returns the total attack bonus followed by the total defense bonus.
         """
         if not self.owner or self.current_hit_points <= 0 or not self.in_system or self.in_hex is None or not self.position:
             return (0.0, 0.0)

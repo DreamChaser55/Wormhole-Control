@@ -101,6 +101,37 @@ def test_sensor_installation_rejects_below_minimum_then_accepts_boundary(world, 
     assert payer.credits == before['credits'] - 6
 
 
+@pytest.mark.parametrize('config,expected', [
+    ({}, (750.0, 0.25, 0.25)),
+    ({'radius': 500.0, 'attack_bonus': 0.20, 'defense_bonus': 0.20}, (500.0, 0.20, 0.20)),
+])
+def test_saved_orbital_defense_refit_installs_configured_aura(config, expected):
+    from campaign_graph import find_unit
+    from save_manager import deserialize_game_state, serialize_game_state
+    from tests.support.campaigns import campaign, ship
+
+    game = campaign()
+    actor, target = ship(game, 'Builder'), ship(game, 'Target')
+    actor.add_component(Constructor(actor))
+    target.antimatter_component.max_capacity = target.antimatter_component.current_amount = 200
+    component_name = 'OrbitalDefenseComponent'
+    component = instantiate_component_for_unit(component_name, target, config)
+    assert (component.radius, component.attack_bonus, component.defense_bonus) == expected
+
+    order = RefitOrder(actor, dict(target_unit_id=target.id, action='ADD',
+                                  component_type=component_name, component_config=config))
+    actor.commander_component.add_order(order)
+    assert order.status == OrderStatus.IN_PROGRESS
+
+    assert deserialize_game_state(game, serialize_game_state(game))
+    actor, target = find_unit(game.galaxy, actor.id), find_unit(game.galaxy, target.id)
+    order = actor.commander_component.current_order
+    actor.constructor_component.finish_refit(game.galaxy)
+    assert order.status == OrderStatus.COMPLETED
+    aura = target.orbital_defense_component
+    assert (aura.radius, aura.attack_bonus, aura.defense_bonus) == expected
+
+
 def test_refit_must_remove_historical_subminimum_sensors_before_other_equipment(world):
     target = world[-1]
     target.sensors_component.short_range_radius = 100.0

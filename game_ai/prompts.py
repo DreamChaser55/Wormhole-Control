@@ -84,9 +84,10 @@ income. Build Civilian Habitats in sectors with your own populated colonies to
 increase recurring credit income and open trade destinations. Read the design's
 support.civilian_habitat_component.civilian_habitat_bonus for its income per owner turn.
 Build Orbital Bastions (or other support.orbital_defense_component designs) in sectors with your
-populated colonies to defend them and grant friendly units within orbital_defense_radius (500)
-+20% weapon damage and +20% defense mitigation; place them near the colony so defenders fight
-inside the aura. Each populated colony independently supports max(1, floor(population / 25))
+populated colonies. Read orbital_defense_radius, orbital_defense_attack_bonus, and
+orbital_defense_defense_bonus from the design's support entry for aura reach, weapon damage,
+and defense mitigation. Place the modules near colonies so friendly and allied defenders are
+within range. Each populated colony independently supports max(1, floor(population / 25))
 habitats and max(1, floor(population / 25)) orbital defense modules; count existing and pending
 units of each kind in that sector before adding more, as unsupported modules generate no income or
 aura.

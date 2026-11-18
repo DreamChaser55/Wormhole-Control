@@ -501,8 +501,9 @@ hulls. Dynamic costs follow configured performance; fixed costs appear in the ta
 - **Repair:** Cost scales with repair rate; restores friendly/allied ships.
 - **Colony:** Colonizes habitable bodies and loads population from allied colonies.
 - **Civilian Habitat:** Generates income when supported by its owner's populated colony.
-- **Orbital Defense:** A supported module provides +20% weapon damage and +20%
-  defense mitigation within 500 units. Overlapping auras stack additively.
+- A supported **Orbital Defense** module's default aura grants +25% weapon damage
+  and +25% defense mitigation to friendly and allied ships within 750 units in the
+  same sector. Overlapping auras stack additively.
 - **Trade Module:** Requires Engines; earns income between active habitats in
   different sectors.
 - **Mining:** Tiny or larger; cost scales with mining rate and cargo capacity.

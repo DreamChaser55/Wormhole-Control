@@ -45,9 +45,9 @@ BASE_HABITAT_CAPACITY: int = 1  # Base habitat modules supported by any colonize
 # Orbital Defense Constants
 POPULATION_PER_ORBITAL_DEFENSE: float = 25.0  # Population required per supported orbital defense module
 BASE_ORBITAL_DEFENSE_CAPACITY: int = 1  # Base orbital defense modules supported by any colonized celestial body with population > 0
-DEFAULT_ORBITAL_DEFENSE_RADIUS: float = 500.0  # Tactical effective radius in logical sector units
-DEFAULT_ORBITAL_DEFENSE_ATTACK_BONUS: float = 0.20  # +20% weapon attack damage bonus
-DEFAULT_ORBITAL_DEFENSE_DEFENSE_BONUS: float = 0.20  # +20% damage mitigation bonus
+DEFAULT_ORBITAL_DEFENSE_RADIUS: float = 750.0  # Tactical effective radius in logical sector units
+DEFAULT_ORBITAL_DEFENSE_ATTACK_BONUS: float = 0.25  # +25% weapon damage bonus
+DEFAULT_ORBITAL_DEFENSE_DEFENSE_BONUS: float = 0.25  # +25% damage mitigation bonus
 ORBITAL_DEFENSE_HULL_COST: float = 20.0  # Base hull cost for orbital defense component
 ORBITAL_DEFENSE_RING_COLOR: tuple[int, int, int] = (100, 220, 100)  # Visual range ring color in sector view
 

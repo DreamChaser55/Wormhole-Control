@@ -40,6 +40,8 @@ from constants import (
     ANTIMATTER_HARVESTER_HULL_COST, MINELAYER_HULL_COST,
     DEFAULT_JUMP_RANGE, HullSize, DEFAULT_SENSOR_SHORT_RANGE, REPAIR_CREDIT_COST_PER_HP,
     CONSTRUCTOR_BUILD_RANGE, DEFAULT_CIVILIAN_HABITAT_BONUS, CONSTRUCTION_AM_PER_OWNER_TURN,
+    DEFAULT_ORBITAL_DEFENSE_RADIUS, DEFAULT_ORBITAL_DEFENSE_ATTACK_BONUS,
+    DEFAULT_ORBITAL_DEFENSE_DEFENSE_BONUS,
 )
 
 
@@ -303,9 +305,9 @@ def assemble_unit_from_template(template_name, template, owner, system_name, hex
 
     if template.get("has_orbital_defense_component"):
         cost = template.get("orbital_defense_hull_cost", 20.0)
-        radius = float(template.get("orbital_defense_radius", 500.0))
-        atk_bonus = float(template.get("orbital_defense_attack_bonus", 0.20))
-        def_bonus = float(template.get("orbital_defense_defense_bonus", 0.20))
+        radius = float(template.get("orbital_defense_radius", DEFAULT_ORBITAL_DEFENSE_RADIUS))
+        atk_bonus = float(template.get("orbital_defense_attack_bonus", DEFAULT_ORBITAL_DEFENSE_ATTACK_BONUS))
+        def_bonus = float(template.get("orbital_defense_defense_bonus", DEFAULT_ORBITAL_DEFENSE_DEFENSE_BONUS))
         new_unit.add_component(OrbitalDefenseComponent(
             new_unit,
             radius=radius,
@@ -1216,9 +1218,9 @@ def instantiate_component_for_unit(component_name: str, unit: 'Unit', config: Op
         return CivilianHabitatComponent(unit, economic_bonus=bonus, hull_cost=cost)
 
     elif comp_cls == OrbitalDefenseComponent:
-        radius = float(config.get("radius", 500.0))
-        atk_bonus = float(config.get("attack_bonus", 0.20))
-        def_bonus = float(config.get("defense_bonus", 0.20))
+        radius = float(config.get("radius", DEFAULT_ORBITAL_DEFENSE_RADIUS))
+        atk_bonus = float(config.get("attack_bonus", DEFAULT_ORBITAL_DEFENSE_ATTACK_BONUS))
+        def_bonus = float(config.get("defense_bonus", DEFAULT_ORBITAL_DEFENSE_DEFENSE_BONUS))
         return OrbitalDefenseComponent(unit, radius=radius, attack_bonus=atk_bonus, defense_bonus=def_bonus, hull_cost=cost)
 
     elif comp_cls == TradeComponent:

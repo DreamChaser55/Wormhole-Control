@@ -548,11 +548,13 @@ because configuring production is free. Planetary upgrade options include
 recipes, including custom human designs. Turret and defense overrides preserve them.
 Use concurrent `continuous_mine` operations across multiple metal asteroids and comets,
 matching refinery deliveries and passive-yield colonies to replenish
-materials. Planners use the habitat design's income bonus and build Civilian Habitats and
-Orbital Bastions (`support.orbital_defense_component`) in
-sectors with their own populated colonies and spare independent `max(1, floor(population / 25))`
-support capacity of each kind, placing bastions near colonies so defenders fight within their
-500-unit aura. Raw cargo cannot be spent and credits cannot substitute for minerals.
+materials. Use the habitat design's income bonus. Build Civilian Habitats and Orbital Bastions
+in sectors with your own populated colonies and spare independent
+`max(1, floor(population / 25))` support capacity of each kind.
+Read `orbital_defense_radius`, `orbital_defense_attack_bonus`,
+and `orbital_defense_defense_bonus` from the design's `support.orbital_defense_component` entry.
+Place bastions near colonies so friendly and allied defenders fight within the aura.
+Raw cargo cannot be spent and credits cannot substitute for minerals.
 
 Replacement or cancellation releases the affected pending reservations, not effects
 already completed synchronously (such as a colonist load). Construction/refit jobs
