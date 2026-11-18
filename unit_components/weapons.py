@@ -289,7 +289,7 @@ class Weapons(UnitComponent):
         if not self.turrets:
             data.append({
                 'type': 'label',
-                'text': "• Turrets: None",
+                'text': 'No turrets',
                 'object_id': '#sidebar_status_idle_label',
                 'height': 18,
                 'indent_level': 1
@@ -297,25 +297,23 @@ class Weapons(UnitComponent):
             return data
 
         xp_dmg_mult = self.unit.xp_multiplier(XP_WEAPON_DAMAGE_BONUS)
-        data.append({
-            'type': 'label',
-            'text': f"• Turrets ({len(self.turrets)}):",
-            'object_id': '#sidebar_component_header_label',
-            'height': 18,
-            'indent_level': 1
-        })
-        for i, turret in enumerate(self.turrets, 1):
+        for turret in self.turrets:
             variant_str = turret.variant.name.replace('_', ' ').title()
             type_str = turret.turret_type.name.replace('_', ' ').title()
             eff_dmg = turret.damage * xp_dmg_mult
-            cd_str = f" [CD: {turret.current_cooldown}t]" if turret.current_cooldown > 0 else ""
-            turret_obj_id = '#sidebar_status_charging_label' if turret.current_cooldown > 0 else '#sidebar_value_label'
+            status = 'Ready'
+            style = '#sidebar_value_label'
+            if turret.current_cooldown > 0:
+                turns = turret.current_cooldown
+                turn_label = 'turn' if turns == 1 else 'turns'
+                status = f'Cooldown ({turns} {turn_label})'
+                style = '#sidebar_status_charging_label'
             data.append({
                 'type': 'label',
-                'text': f"Turret {i}: {variant_str} {type_str} (Dmg {eff_dmg:.1f}, Rng {int(turret.range)}){cd_str}",
-                'object_id': turret_obj_id,
+                'text': f"{variant_str} {type_str} · {eff_dmg:.1f} damage · Range {turret.range:g} · {status}",
+                'object_id': style,
                 'height': 18,
-                'indent_level': 2
+                'indent_level': 1
             })
         return data
 

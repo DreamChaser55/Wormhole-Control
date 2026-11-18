@@ -74,7 +74,7 @@ class HyperspaceInhibitionFieldEmitter(UnitComponent):
         cost_str = f" ({self.get_antimatter_cost_per_turn():.1f} AM/turn)" if self.is_active else ""
         data.append({
             'type': 'label',
-            'text': f"• FTL Inhibition: {status_str}{cost_str} (Radius {int(self.radius)})",
+            'text': f"{status_str}{cost_str} (Radius {int(self.radius)})",
             'object_id': obj_id,
             'height': 18,
             'indent_level': 1

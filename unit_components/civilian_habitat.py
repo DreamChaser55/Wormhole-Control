@@ -211,13 +211,13 @@ class CivilianHabitatComponent(UnitComponent):
         galaxy = getattr(game_state, 'galaxy', None)
         status_info = self.get_sector_habitat_status(galaxy)
         if status_info['active']:
-            text = f"• Civilian Habitat: +{int(self.economic_bonus)} Credits/Turn [{status_info['slot']}/{status_info['capacity']}]"
+            text = f"+{int(self.economic_bonus)} Credits/Turn [{status_info['slot']}/{status_info['capacity']}]"
             obj_id = '#sidebar_value_label'
         elif status_info['capacity'] > 0:
-            text = f"• Civilian Habitat: Inactive (Capacity {status_info['capacity']}/{status_info['capacity']} Reached)"
+            text = f"Inactive (Capacity {status_info['capacity']}/{status_info['capacity']} Reached)"
             obj_id = '#sidebar_info_label'
         else:
-            text = "• Civilian Habitat: Inactive"
+            text = "Inactive"
             obj_id = '#sidebar_info_label'
 
         data.append({

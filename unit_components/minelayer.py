@@ -62,7 +62,7 @@ class MinelayerComponent(UnitComponent):
             return data
         data.append({
             'type': 'label',
-            'text': f"• Minelayer: Active ({int(self.credit_cost)} cr / {int(self.antimatter_cost)} AM)",
+            'text': f"Active ({int(self.credit_cost)} cr / {int(self.antimatter_cost)} AM)",
             'object_id': '#sidebar_status_active_label',
             'height': 18,
             'indent_level': 1

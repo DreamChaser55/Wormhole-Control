@@ -61,7 +61,7 @@ class RepairComponent(UnitComponent):
         suffix = f" ({tgt_str})" if show_target else ""
         data.append({
             'type': 'label',
-            'text': f"• Repair Rate: {self.repair_rate:.0f} HP/t{suffix}",
+            'text': f"Rate: {self.repair_rate:.0f} HP/t{suffix}",
             'object_id': obj_id if show_target else '#sidebar_value_label',
             'height': 18,
             'indent_level': 1

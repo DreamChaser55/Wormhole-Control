@@ -196,7 +196,7 @@ class CloakingDevice(UnitComponent):
         radius_str = f", Radius {int(self.area_radius)}" if self.device_type == CloakingType.ADVANCED else ""
         data.append({
             'type': 'label',
-            'text': f"• Cloaking ({self.device_type.display_name}): {status_str} ({self.get_antimatter_cost_per_turn():.1f} AM/turn{radius_str})",
+            'text': f"{self.device_type.display_name} · {status_str} ({self.get_antimatter_cost_per_turn():.1f} AM/turn{radius_str})",
             'object_id': obj_id,
             'height': 18,
             'indent_level': 1

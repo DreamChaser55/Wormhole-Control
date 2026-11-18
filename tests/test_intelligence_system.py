@@ -632,12 +632,13 @@ def test_enemy_unit_intelligence_hidden_in_sidebar_basic_info(test_setup):
     labels = [item['text'] for item in panel_data if item.get('type') == 'label']
 
     # Standard components are visible in Component Overview
-    assert any("Speed:" in lbl for lbl in labels)
-    assert any("Turrets" in lbl for lbl in labels)
-    assert any("FTL Jump:" in lbl for lbl in labels)
+    assert {'Engines', 'Weapons', 'Hyperdrive'} <= set(labels)
+    assert '100.0 units/turn' in labels
+    assert any('Mass Driver' in lbl for lbl in labels)
+    assert any(lbl.startswith('Basic · Range') for lbl in labels)
 
     # IntelligenceComponent must be completely hidden from enemy inspection
-    assert not any("Intelligence:" in lbl for lbl in labels)
+    assert 'Intelligence' not in labels
     assert not any("Agents" in lbl for lbl in labels)
     assert not any("CI Active" in lbl for lbl in labels)
 
@@ -700,7 +701,8 @@ def test_friendly_unit_intelligence_visible_in_sidebar(test_setup):
     game.selected_unit_tab = 'basic_info'
     panel_data = build_unit_panel(game, friendly_ship)
     labels = [item['text'] for item in panel_data if item.get('type') == 'label']
-    assert any("• Intelligence: 2/2 Agents | CI: Ready" in lbl for lbl in labels)
+    intel_index = labels.index('Intelligence')
+    assert labels[intel_index + 1] == '2/2 Agents | CI: Ready'
 
     # 2. Components Tab
     game.selected_unit_tab = 'components'

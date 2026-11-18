@@ -80,7 +80,7 @@ class StrikecraftWingComponent(UnitComponent):
         role_str = "Fighter" if self.wing_type == WingType.FIGHTER else "Bomber"
         data.append({
             'type': 'label',
-            'text': f"• Strikecraft ({role_str})",
+            'text': f"Role: {role_str}",
             'object_id': '#sidebar_info_label',
             'height': 18,
             'indent_level': 1
@@ -371,7 +371,7 @@ class StrikecraftBayComponent(UnitComponent):
         launched_cnt = len(self.launched_units)
         data.append({
             'type': 'label',
-            'text': f"• Strikecraft Wings: {used_slots}/{self.max_slots} ({docked_cnt} docked, {launched_cnt} launched)",
+            'text': f"Wings: {used_slots}/{self.max_slots} ({docked_cnt} docked, {launched_cnt} launched)",
             'object_id': '#sidebar_value_label',
             'height': 18,
             'indent_level': 1

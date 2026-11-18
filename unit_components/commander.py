@@ -136,7 +136,7 @@ class Commander(UnitComponent):
         stance_prefix = f"Stance: [{self.stance.display_name}] | " if self.supports_stances else ""
         data.append({
             'type': 'label',
-            'text': f"• {stance_prefix}Order: {curr_name} ({orders_count} active)",
+            'text': f"{stance_prefix}Order: {curr_name} ({orders_count} active)",
             'object_id': obj_id,
             'height': 18,
             'indent_level': 1

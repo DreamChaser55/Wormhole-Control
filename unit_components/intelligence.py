@@ -328,7 +328,7 @@ class IntelligenceComponent(UnitComponent):
             ci_text = ""
         data.append({
             'type': 'label',
-            'text': f"• Intelligence: {self.agents_count}/{self.agents_capacity} Agents{ci_text}",
+            'text': f"{self.agents_count}/{self.agents_capacity} Agents{ci_text}",
             'object_id': '#sidebar_value_label',
             'height': 18,
             'indent_level': 1

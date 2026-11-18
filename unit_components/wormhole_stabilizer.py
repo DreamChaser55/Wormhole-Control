@@ -28,12 +28,11 @@ class WormholeStabilizerComponent(UnitComponent):
         from wormhole_stabilization import interrupt
         interrupt(self.unit)
 
-    def get_sidebar_data(self, game_state):
+    def _stabilization_rows(self, game_state):
         from component_visibility import unit_details_are_public_in_game
         from wormhole_stabilization import current_order, state_view
-        data = super().get_sidebar_data(game_state)
-        data += [{'type': 'label', 'text': f'Range: {STABILIZER_RANGE:g}; upkeep: {STABILIZER_UPKEEP:g} AM/owner turn', 'height': 24},
-                 {'type': 'label', 'text': '100% stability for everyone in both directions', 'height': 24}]
+        data = [{'type': 'label', 'text': f'Range: {STABILIZER_RANGE:g}; upkeep: {STABILIZER_UPKEEP:g} AM/owner turn', 'height': 24},
+                {'type': 'label', 'text': '100% stability for everyone in both directions', 'height': 24}]
         if unit_details_are_public_in_game(self.unit, game_state):
             state = state_view(self.unit)
             data.append({'type': 'label', 'text': state['phase'].replace('_', ' ').title(), 'height': 24})
@@ -46,5 +45,8 @@ class WormholeStabilizerComponent(UnitComponent):
                     data.append({'type': 'label', 'text': f'Target: {target.name}', 'height': 24})
         return data
 
+    def get_sidebar_data(self, game_state):
+        return super().get_sidebar_data(game_state) + self._stabilization_rows(game_state)
+
     def get_basic_sidebar_data(self, game_state):
-        return self.get_sidebar_data(game_state)
+        return [self._basic_sidebar_health_row(), *self._stabilization_rows(game_state)]

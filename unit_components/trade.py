@@ -186,10 +186,10 @@ class TradeComponent(UnitComponent):
             return data
 
         if self.trades_completed > 0:
-            text = f"• Trade Module: Active (+{int(self.total_trade_income)}c earned, {self.trades_completed} trades)"
+            text = f"Active (+{int(self.total_trade_income)}c earned, {self.trades_completed} trades)"
             obj_id = '#sidebar_value_label'
         else:
-            text = "• Trade Module: Ready"
+            text = "Ready"
             obj_id = '#sidebar_info_label'
 
         data.append({

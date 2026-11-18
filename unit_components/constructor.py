@@ -579,7 +579,7 @@ class Constructor(UnitComponent):
             obj_id = '#sidebar_status_idle_label'
         data.append({
             'type': 'label',
-            'text': f"• Construction: {status_str}",
+            'text': status_str,
             'object_id': obj_id,
             'height': 18,
             'indent_level': 1

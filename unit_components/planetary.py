@@ -28,17 +28,19 @@ class TroopTransportComponent(UnitComponent):
     def on_destroyed(self):
         self.troops = 0
 
-    def get_sidebar_data(self, game_state):
+    def _cargo_row(self, game_state):
         from component_visibility import unit_details_are_public_in_game
-        data = super().get_sidebar_data(game_state)
         if unit_details_are_public_in_game(self.unit, game_state):
-            data.append({'type': 'label', 'text': f'Troops: {self.troops}/{self.capacity}', 'height': 24})
+            text = f'Troops: {self.troops}/{self.capacity}'
         else:
-            data.append({'type': 'label', 'text': f'Troop capacity: {self.capacity}', 'height': 24})
-        return data
+            text = f'Troop capacity: {self.capacity}'
+        return {'type': 'label', 'text': text, 'height': 24}
+
+    def get_sidebar_data(self, game_state):
+        return super().get_sidebar_data(game_state) + [self._cargo_row(game_state)]
 
     def get_basic_sidebar_data(self, game_state):
-        return self.get_sidebar_data(game_state)
+        return [self._basic_sidebar_health_row(), self._cargo_row(game_state)]
 
 
 class SiegeBatteryComponent(UnitComponent):
@@ -55,11 +57,15 @@ class SiegeBatteryComponent(UnitComponent):
     def calc_hull_cost():
         return SIEGE_HULL_COST
 
-    def get_sidebar_data(self, game_state):
-        return super().get_sidebar_data(game_state) + [
+    @staticmethod
+    def _volley_rows():
+        return [
             {'type': 'label', 'text': f'Siege: {SIEGE_DAMAGE:g} defense damage / {SIEGE_AM_COST:g} AM', 'height': 24},
             {'type': 'label', 'text': f'Range: {SIEGE_RANGE:g} from surface; once per owner turn', 'height': 24},
         ]
 
+    def get_sidebar_data(self, game_state):
+        return super().get_sidebar_data(game_state) + self._volley_rows()
+
     def get_basic_sidebar_data(self, game_state):
-        return self.get_sidebar_data(game_state)
+        return [self._basic_sidebar_health_row(), *self._volley_rows()]

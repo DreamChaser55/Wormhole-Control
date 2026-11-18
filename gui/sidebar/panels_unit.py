@@ -3,8 +3,48 @@ from constants import MAX_UNIT_XP
 from economy import calculate_unit_upkeep
 from domain.units import Unit
 from domain.players import are_enemies
-from component_visibility import component_is_public, unit_details_are_public
+from component_visibility import public_components, unit_details_are_public
+from unit_components.antimatter import AntimatterStorage
+from unit_components.base import UnitComponent
+from unit_components.commander import Commander
+from unit_components.movement import Engines, Hyperdrive
+from unit_components.weapons import Weapons
 from unit_naming import MAX_UNIT_NAME_LENGTH
+
+
+_BASIC_COMPONENT_ORDER = {
+    Commander: 0,
+    AntimatterStorage: 1,
+    Engines: 2,
+    Hyperdrive: 3,
+    Weapons: 4,
+}
+
+
+def _build_component_overview(game, components: list[UnitComponent]) -> list[dict]:
+    ordered_components = sorted(components, key=lambda component: (
+        _BASIC_COMPONENT_ORDER.get(type(component), len(_BASIC_COMPONENT_ORDER)),
+        component.SIDEBAR_ORDER,
+    ))
+    sections = []
+    for component in ordered_components:
+        rows = component.get_basic_sidebar_data(game)
+        if not rows:
+            continue
+        sections.append({
+            'type': 'label',
+            'text': component.DISPLAY_NAME,
+            'object_id': '#sidebar_component_header_label',
+            'height': 20,
+        })
+        sections.extend({**row, 'indent_level': max(1, row.get('indent_level', 0))} for row in rows)
+
+    if not sections:
+        return []
+    return [
+        {'type': 'label', 'text': 'Component Overview:', 'object_id': '#sidebar_section_header_label', 'height': 25},
+        *sections,
+    ]
 
 
 def hit_point_style_id(unit: Unit) -> str:
@@ -138,6 +178,7 @@ def build_unit_panel(game, unit: Unit) -> list[dict]:
         'side_by_side': True
     })
 
+    installed_components = public_components(unit, enemy=is_enemy)
     if active_tab == 'basic_info':
         data.append({'type': 'label', 'text': f"System: {unit.in_system or 'None'}", 'object_id': '#sidebar_info_label', 'height': 20})
         hex_pos_str = "N/A"
@@ -174,25 +215,13 @@ def build_unit_panel(game, unit: Unit) -> list[dict]:
                     if ag.is_discovered and ag.owner != current_player:
                         data.append({'type': 'label', 'text': f"⚠ Discovered Enemy Agent ({ag.owner.name})", 'object_id': '#sidebar_status_charging_label', 'height': 20})
 
-        # Summaries from all installed components
-        data.append({'type': 'label', 'text': "Component Overview:", 'object_id': '#sidebar_section_header_label', 'height': 25})
-        installed_components = [
-            comp for comp in unit.components.values()
-            if component_is_public(comp, enemy=is_enemy)
-        ]
-        installed_components.sort(key=lambda c: getattr(c, 'SIDEBAR_ORDER', 100))
-        for comp in installed_components:
-            data.extend(comp.get_basic_sidebar_data(game))
+        data.extend(_build_component_overview(game, installed_components))
 
     else:  # 'components' tab
         data.append({'type': 'label', 'text': f"Hit Points: {unit.current_hit_points}/{unit.max_hit_points}", 'object_id': hit_point_style_id(unit), 'height': 20})
         data.append({'type': 'label', 'text': "Select Component:", 'object_id': '#sidebar_section_header_label', 'height': 25})
 
-        installed_components = [
-            comp for comp in unit.components.values()
-            if component_is_public(comp, enemy=is_enemy)
-        ]
-        installed_components.sort(key=lambda c: getattr(c, 'SIDEBAR_ORDER', 100))
+        installed_components.sort(key=lambda component: component.SIDEBAR_ORDER)
 
         components_map = {c.DISPLAY_NAME: c for c in installed_components}
         dropdown_options = list(components_map.keys())

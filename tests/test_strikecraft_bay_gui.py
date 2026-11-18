@@ -333,7 +333,9 @@ def test_wing_gui_data_generation(wing_type, hull_hp, tab):
             assert f"Role: {role}" in labels
             assert "Mother Carrier: None" in labels
         else:
-            summary = next(d for d in data_list if d.get("text") == f"• Strikecraft ({role})")
+            heading_index = labels.index('Strikecraft Wing')
+            assert labels[heading_index + 1] == f'Role: {role}'
+            summary = next(d for d in data_list if d.get("text") == f"Role: {role}")
             assert summary["object_id"] == "#sidebar_info_label"
     finally:
         game_module.PROFILE = original_profile

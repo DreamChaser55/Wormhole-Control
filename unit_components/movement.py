@@ -143,7 +143,7 @@ class Engines(UnitComponent):
         eff_speed = sublight_speed(self.unit)
         data.append({
             'type': 'label',
-            'text': f"• Speed: {eff_speed:.1f}",
+            'text': f"{eff_speed:.1f} units/turn",
             'object_id': '#sidebar_value_label',
             'height': 18,
             'indent_level': 1
@@ -260,18 +260,20 @@ class Hyperdrive(UnitComponent):
         data = super().get_basic_sidebar_data(game_state)
         if self.is_destroyed:
             return data
-        status_str = "Ready"
+        status_str = self.jump_status.value.title()
         obj_id = '#sidebar_status_active_label'
         if self.jump_status == JumpStatus.CHARGING:
-            status_str = f"Charging ({self.recharge_time_remaining}t)"
+            turns = self.recharge_time_remaining
+            turn_label = 'turn' if turns == 1 else 'turns'
+            status_str = f"Charging ({turns} {turn_label})"
             obj_id = '#sidebar_status_charging_label'
-        elif self.jump_status == JumpStatus.JUMPING:
-            status_str = "Jumping"
-            obj_id = '#sidebar_status_active_label'
+        elif self.jump_status == JumpStatus.ERROR:
+            obj_id = '#sidebar_hit_points_critical_damage_label'
         effective_range = self.effective_jump_range
+        range_unit = 'hex' if effective_range == 1 else 'hexes'
         data.append({
             'type': 'label',
-            'text': f"• FTL Jump: {self.drive_type.value} ({status_str}, Rng {effective_range})",
+            'text': f"{self.drive_type.value.title()} · Range {effective_range} {range_unit} · {status_str}",
             'object_id': obj_id,
             'height': 18,
             'indent_level': 1

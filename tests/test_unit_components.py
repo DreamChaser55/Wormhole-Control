@@ -17,7 +17,7 @@ from unit_components.mining import MiningComponent, MetalRefineryComponent, Crys
 from unit_components.defenses import Defenses
 from unit_orders.combat import AttackOrder
 from unit_orders.base import Order, OrderStatus, OrderType
-from constants import HullSize
+from constants import HullSize, MAX_UNIT_XP
 from tests.support.units import ComponentPlayer, ComponentUnit
 
 
@@ -939,7 +939,7 @@ def test_weapons_sidebar_data():
     turret2 = Turret(
         turret_type=TurretType.BEAM,
         damage=30.0,
-        range=200.0,
+        range=97.5,
         cooldown=3,
         parent_unit=unit,
         variant=TurretVariant.LONG_RANGE,
@@ -990,7 +990,7 @@ def test_weapons_sidebar_data():
 
     t2_stats = sidebar_data[6]
     assert "Damage: 30" in t2_stats['text']
-    assert "Range: 600" in t2_stats['text']
+    assert "Range: 292.5" in t2_stats['text']
     assert "Cooldown: 9t" in t2_stats['text']
 
     t2_status = sidebar_data[7]
@@ -1003,17 +1003,16 @@ def test_weapons_sidebar_data():
     assert all("â" not in row.get('text', '') for row in sidebar_data)
 
     # Verify basic sidebar data
-    basic_data = weapons.get_basic_sidebar_data(mock_game)
-    assert basic_data[0]['text'] == "• Turrets (2):"
-    assert basic_data[1]['text'].startswith("Turret 1:")
-    assert basic_data[2]['text'].startswith("Turret 2:")
-    assert all("â" not in row.get('text', '') for row in basic_data)
+    unit.experience_points = MAX_UNIT_XP
+    ready, cooling = weapons.get_basic_sidebar_data(mock_game)
+    assert ready['text'] == 'Standard Mass Driver · 18.8 damage · Range 300 · Ready'
+    assert cooling['text'] == 'Long Range Beam · 37.5 damage · Range 292.5 · Cooldown (2 turns)'
+    assert cooling['object_id'] == '#sidebar_status_charging_label'
 
     # Verify empty basic sidebar data
     empty_weapons = Weapons(unit)
     empty_basic_data = empty_weapons.get_basic_sidebar_data(mock_game)
-    assert empty_basic_data[0]['text'] == "• Turrets: None"
-    assert all("â" not in row.get('text', '') for row in empty_basic_data)
+    assert [row['text'] for row in empty_basic_data] == ['No turrets']
 
 
 def test_unit_template_name_assignment():

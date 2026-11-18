@@ -239,13 +239,13 @@ class OrbitalDefenseComponent(UnitComponent):
         def_pct = int(self.defense_bonus * 100)
 
         if status_info['active']:
-            text = f"• Orbital Defense: +{atk_pct}% Atk/+{def_pct}% Def (R{int(self.radius)}) [{status_info['slot']}/{status_info['capacity']}]"
+            text = f"+{atk_pct}% Atk/+{def_pct}% Def (R{int(self.radius)}) [{status_info['slot']}/{status_info['capacity']}]"
             obj_id = '#sidebar_value_label'
         elif status_info['capacity'] > 0:
-            text = f"• Orbital Defense: Inactive (Capacity {status_info['capacity']}/{status_info['capacity']} Reached)"
+            text = f"Inactive (Capacity {status_info['capacity']}/{status_info['capacity']} Reached)"
             obj_id = '#sidebar_info_label'
         else:
-            text = "• Orbital Defense: Inactive"
+            text = "Inactive"
             obj_id = '#sidebar_info_label'
 
         data.append({

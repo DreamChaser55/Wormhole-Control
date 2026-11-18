@@ -1,10 +1,36 @@
 import pytest
 from display_config import DisplayConfig
 from unittest.mock import MagicMock
+from constants import FieldDensity, HullSize, MAX_UNIT_XP
+from domain.celestials import IceField
 from domain.units import Unit
 from game import Game
-from constants import HullSize
 from geometry import Position
+from gui.sidebar.builder import build_sidebar_data
+from tests.support.campaigns import campaign, ship
+from unit_components.antimatter import AntimatterHarvester, AntimatterStorage
+from unit_components.constructor import Constructor
+from unit_components.defenses import Defenses
+from unit_components.enums import HyperdriveType, JumpStatus, TurretType, TurretVariant
+from unit_components.movement import Engines, Hyperdrive
+from unit_components.weapons import Turret, Weapons
+
+
+def _overview_sections(data):
+    overview_index = next(i for i, row in enumerate(data) if row.get('text') == 'Component Overview:')
+    sections = {}
+    for row in data[overview_index + 1:]:
+        if row.get('object_id') == '#sidebar_component_header_label':
+            title = row['text']
+            assert title not in sections
+            assert row.get('indent_level', 0) == 0
+            sections[title] = []
+        else:
+            assert row['indent_level'] >= 1
+            sections[title].append(row)
+    assert all(sections.values())
+    return sections
+
 
 def test_multi_unit_selection_sidebar_buttons():
     # Setup mock game and units
@@ -134,6 +160,13 @@ def test_single_unit_sidebar_tabs_basic_info():
         game=mock_game
     )
     unit.id = 201
+    unit.add_component(AntimatterHarvester(unit))
+    weapons = Weapons(unit)
+    weapons.add_turret(Turret(TurretType.BEAM, 16, 300, 2, unit))
+    unit.add_component(weapons)
+    unit.add_component(Hyperdrive(unit))
+    unit.add_component(Defenses(unit))
+    unit.add_component(Engines(unit, speed=175))
 
     mock_game.selected_objects = [unit]
     mock_game.players = [player]
@@ -155,6 +188,15 @@ def test_single_unit_sidebar_tabs_basic_info():
     # Verify Component Overview header is present in Basic Info tab
     headers = [d for d in data_list if d.get("type") == "label" and d.get("text") == "Component Overview:"]
     assert len(headers) == 1
+
+    sections = _overview_sections(data_list)
+    assert list(sections) == [
+        'Commander', 'Antimatter Storage', 'Engines', 'Hyperdrive', 'Weapons',
+        'Antimatter Harvester', 'Defenses', 'Sensors',
+    ]
+    assert sections['Engines'][0]['text'] == '175.0 units/turn'
+    assert sections['Weapons'][0]['text'].startswith('Standard Beam')
+
 
 def test_single_unit_sidebar_tabs_switch_to_components():
     mock_game = MagicMock()
@@ -178,6 +220,8 @@ def test_single_unit_sidebar_tabs_switch_to_components():
         game=mock_game
     )
     unit.id = 202
+    unit.add_component(Engines(unit, speed=100))
+    unit.add_component(Weapons(unit))
 
     mock_game.selected_objects = [unit]
     mock_game.players = [player]
@@ -199,57 +243,125 @@ def test_single_unit_sidebar_tabs_switch_to_components():
     # Verify component selection dropdown menu is present
     comp_dropdowns = [d for d in data_list if d.get("type") == "drop_down_menu" and d.get("action_id") is None]
     assert len(comp_dropdowns) == 1
-    assert "Commander" in comp_dropdowns[0]["options_list"]
+    assert comp_dropdowns[0]['starting_option'] == 'Commander'
+    assert comp_dropdowns[0]['options_list'] == ['Commander', 'Antimatter Storage', 'Weapons', 'Engines', 'Sensors']
+    assert all(row.get('text') != 'Component Overview:' for row in data_list)
 
 
-def test_component_overview_colored_labels():
-    """Verify that component overview items return appropriate colored label object IDs based on state."""
-    mock_game = MagicMock()
-    mock_game.display_config = DisplayConfig()
-    mock_game.galaxy = MagicMock()
-    player = MagicMock()
-    mock_game.players = [player]
-    mock_game.current_player_index = 0
+@pytest.mark.parametrize(('status', 'text', 'style'), [
+    (JumpStatus.READY, 'Ready', '#sidebar_status_active_label'),
+    (JumpStatus.CHARGING, 'Charging (2 turns)', '#sidebar_status_charging_label'),
+    (JumpStatus.JUMPING, 'Jumping', '#sidebar_status_active_label'),
+    (JumpStatus.ERROR, 'Error', '#sidebar_hit_points_critical_damage_label'),
+])
+def test_hyperdrive_overview_status(status, text, style):
+    game = campaign()
+    unit = ship(game)
+    game.selected_objects = [unit]
+    unit.experience_points = MAX_UNIT_XP
+    hyperdrive = Hyperdrive(unit, drive_type=HyperdriveType.ADVANCED, jump_range=10)
+    hyperdrive.jump_status = status
+    hyperdrive.recharge_time_remaining = 2 if status == JumpStatus.CHARGING else 0
+    unit.add_component(hyperdrive)
 
-    unit = Unit(
-        owner=player,
-        position=Position(0, 0),
-        in_hex=(0, 0),
-        in_system="Sol",
-        name="Test Cruiser",
-        hull_size=HullSize.MEDIUM,
-        game=mock_game
-    )
+    row, = _overview_sections(build_sidebar_data(game))['Hyperdrive']
+    assert row['text'] == f'Advanced · Range 12 hexes · {text}'
+    assert row['object_id'] == style
 
-    # Check Engine (Speed readout)
-    engine = unit.components.get("Engine")
-    if engine:
-        basic_data = engine.get_basic_sidebar_data(mock_game)
-        assert len(basic_data) == 1
-        assert basic_data[0]['object_id'] == '#sidebar_value_label'
 
-    # Check Hyperdrive (Ready vs Charging)
-    hyperdrive = unit.components.get("Hyperdrive")
-    if hyperdrive:
-        from unit_components.movement import JumpStatus
-        hyperdrive.jump_status = JumpStatus.READY
-        data_ready = hyperdrive.get_basic_sidebar_data(mock_game)
-        assert data_ready[0]['object_id'] == '#sidebar_status_active_label'
+def test_overview_uses_current_fuel_and_terrain_adjusted_speed():
+    game = campaign()
+    unit = ship(game, hull=HullSize.MEDIUM)
+    game.selected_objects = [unit]
+    unit.experience_points = MAX_UNIT_XP
+    unit.add_component(Engines(unit, speed=200))
+    storage = AntimatterStorage(unit, max_capacity=120)
+    unit.add_component(storage)
+    field = IceField(unit.in_hex, unit.in_system, FieldDensity.LOW)
+    field.position = unit.position
+    game.galaxy.systems[unit.in_system].add_celestial_body(field)
 
-        hyperdrive.jump_status = JumpStatus.CHARGING
-        hyperdrive.recharge_time_remaining = 2
-        data_charging = hyperdrive.get_basic_sidebar_data(mock_game)
-        assert data_charging[0]['object_id'] == '#sidebar_status_charging_label'
+    storage.current_amount = 84.5
+    sections = _overview_sections(build_sidebar_data(game))
+    assert sections['Antimatter Storage'][0]['text'] == '84.5 / 120.0 AM'
+    speed, = sections['Engines']
+    assert speed['text'] == '207.0 units/turn'
+    assert speed['object_id'] == '#sidebar_value_label'
 
-    # Check Constructor (Idle vs Constructing)
-    from unit_components.constructor import Constructor
+    storage.current_amount = 0
+    sections = _overview_sections(build_sidebar_data(game))
+    assert sections['Antimatter Storage'][0]['text'] == '0.0 / 120.0 AM'
+
+
+def test_overview_distinguishes_missing_empty_and_destroyed_equipment():
+    game = campaign()
+    station = ship(game, 'Defense platform')
+    game.selected_objects = [station]
+    sections = _overview_sections(build_sidebar_data(game))
+    assert list(sections) == ['Commander', 'Antimatter Storage', 'Sensors']
+
+    weapons = Weapons(station)
+    station.add_component(weapons)
+    sections = _overview_sections(build_sidebar_data(game))
+    assert [row['text'] for row in sections['Weapons']] == ['No turrets']
+
+    weapons.current_hit_points = 0
+    destroyed, = _overview_sections(build_sidebar_data(game))['Weapons']
+    assert destroyed['text'] == 'Destroyed'
+    assert destroyed['object_id'] == '#sidebar_hit_points_critical_damage_label'
+
+
+def test_constructor_overview_status_colors():
+    game = campaign()
+    unit = ship(game)
     constructor = Constructor(unit)
-    idle_data = constructor.get_basic_sidebar_data(mock_game)
-    assert idle_data[0]['object_id'] == '#sidebar_status_idle_label'
+    unit.add_component(constructor)
+    game.selected_objects = [unit]
+    idle, = _overview_sections(build_sidebar_data(game))['Constructor']
+    assert idle['text'] == 'Idle'
+    assert idle['object_id'] == '#sidebar_status_idle_label'
 
-    constructor.current_construction_target = dict(template_name="Scout", system_name="Sol", hex_coord=(0, 0), position=Position(100, 0))
-    active_data = constructor.get_basic_sidebar_data(mock_game)
-    assert active_data[0]['object_id'] == '#sidebar_status_active_label'
+    constructor.current_construction_target = {
+        'template_name': 'Scout', 'system_name': 'Sol',
+        'hex_coord': (0, 0), 'position': Position(100, 0),
+    }
+    active, = _overview_sections(build_sidebar_data(game))['Constructor']
+    assert active['text'].startswith('Constructing Scout')
+    assert active['object_id'] == '#sidebar_status_active_label'
+
+
+def test_equipment_health_and_allowed_details_are_inside_each_section():
+    from unit_components.planetary import SiegeBatteryComponent, TroopTransportComponent
+    from unit_components.wormhole_stabilizer import WormholeStabilizerComponent
+
+    game = campaign()
+    unit = ship(game)
+    troops = TroopTransportComponent(unit, capacity=40)
+    troops.troops = 7
+    components = (troops, SiegeBatteryComponent(unit), WormholeStabilizerComponent(unit))
+    for component in components:
+        unit.add_component(component)
+        component.current_hit_points = 7
+    game.selected_objects = [unit]
+
+    sections = _overview_sections(build_sidebar_data(game))
+    for component in components:
+        health, *details = sections[component.DISPLAY_NAME]
+        assert health['text'] == f'HP: 7/{component.max_hit_points}'
+        assert all(component.DISPLAY_NAME not in row['text'] for row in details)
+    assert sections['Troop Transport'][1]['text'] == 'Troops: 7/40'
+    assert any(row['text'] == 'Idle' for row in sections['Wormhole Stabilizer'])
+
+    game.current_player_index = 1
+    enemy_sections = _overview_sections(build_sidebar_data(game))
+    assert enemy_sections['Troop Transport'][1]['text'] == 'Troop capacity: 40'
+    assert all(row['text'] != 'Idle' for row in enemy_sections['Wormhole Stabilizer'])
+    assert 'Commander' not in enemy_sections
+
+    game.players[1].team_id = unit.owner.team_id
+    ally_sections = _overview_sections(build_sidebar_data(game))
+    assert ally_sections['Troop Transport'] == sections['Troop Transport']
+    assert ally_sections['Wormhole Stabilizer'] == sections['Wormhole Stabilizer']
 
 
 def test_stop_unit_button_visibility():
@@ -297,6 +409,35 @@ def test_stop_unit_button_visibility():
     stop_buttons = [d for d in data_list if d.get("type") == "button" and d.get("action_id") == "stop_unit"]
     assert len(stop_buttons) == 1
     assert stop_buttons[0]["target_data"] == 301
+    assert stop_buttons[0] in _overview_sections(data_list)['Commander']
+
+
+@pytest.mark.usefixtures('pygame_context')
+def test_cancel_dismantling_from_commander_overview():
+    from dismantling import offline
+    from game_actions import handle_gui_action
+    from gui.dynamic_actions import build_button_payload
+    from tactical_ui import issue
+    from unit_orders.base import OrderStatus
+
+    game = campaign()
+    game.galaxy.game = game
+    constructor = ship(game, 'Constructor')
+    constructor.add_component(Constructor(constructor))
+    target = ship(game, 'Target', hull=HullSize.SMALL)
+    assert issue(game, {'type': 'dismantle_unit', 'unit_ids': [constructor.id], 'target_id': target.id})
+    order = constructor.commander_component.current_order
+    assert offline(target)
+
+    game.selected_objects = [target]
+    commander_rows = _overview_sections(build_sidebar_data(game))['Commander']
+    button, = [row for row in commander_rows if row.get('action_id') == 'cancel_dismantling']
+    assert button['text'] == 'Cancel dismantling'
+    assert any(row['type'] == 'progress_bar' for row in commander_rows)
+    action = build_button_payload(None, button['action_id'], button['target_data'])
+    handle_gui_action(game, action)
+    assert order.status == OrderStatus.CANCELLED
+    assert not offline(target)
 
 
 def test_handle_gui_action_stop_unit():
@@ -451,6 +592,75 @@ def test_unit_sidebar_identity():
     assert p1_comp[0]['sidebar_identity'] == 'unit:501:components:Commander'
 
 
+@pytest.mark.filterwarnings('error:Label Rect is too small:UserWarning')
+@pytest.mark.parametrize('size', [(1280, 720), (2560, 1440)])
+def test_component_overview_wraps_and_scrolls_in_hud(pygame_context, tmp_path, size):
+    from pygame_gui.elements import UILabel
+    from gui.handler import GUI_Handler
+
+    screen = pygame_context.display.set_mode(size)
+    game = campaign()
+    game.display_config = DisplayConfig(*size, fullscreen=False)
+    first, second = ship(game, 'First cruiser'), ship(game, 'Second cruiser')
+    for unit in (first, second):
+        unit.add_component(Engines(unit, speed=175))
+        unit.add_component(Hyperdrive(unit, drive_type=HyperdriveType.ADVANCED, jump_range=5))
+        weapons = Weapons(unit)
+        for _ in range(20):
+            weapons.add_turret(Turret(
+                TurretType.MASS_DRIVER, 23.5, 345.75, 12, unit,
+                variant=TurretVariant.ANTI_STRIKECRAFT, current_cooldown=12,
+            ))
+        unit.add_component(weapons)
+
+    game.gui = gui = GUI_Handler(game.display_config, game)
+
+    def refresh(unit):
+        game.selected_objects = [unit]
+        game.sidebar_needs_update = True
+        Game.update_side_bar_content(game)
+        gui.manager.update(0.1)
+
+    try:
+        gui.show_game_ui()
+        refresh(first)
+        scroll = gui.side_bar_scroll_container
+        labels = [element for element in gui.side_bar_dynamic_elements if isinstance(element, UILabel)]
+        headings = [label for label in labels if '#sidebar_component_header_label' in label.object_ids]
+        assert [label.text for label in headings] == [
+            'Commander', 'Antimatter Storage', 'Engines', 'Hyperdrive', 'Weapons', 'Sensors',
+        ]
+        for label in labels:
+            assert label.font.get_rect(label.text).width <= label.get_relative_rect().width
+
+        weapons_heading, sensors_heading = headings[-2:]
+        weapon_labels = labels[labels.index(weapons_heading) + 1:labels.index(sensors_heading)]
+        weapon_rows = _overview_sections(build_sidebar_data(game))['Weapons']
+        assert len(weapon_labels) > len(weapon_rows)
+        assert ' '.join(label.text for label in weapon_labels) == ' '.join(row['text'] for row in weapon_rows)
+        assert weapon_labels[0].get_relative_rect().x > weapons_heading.get_relative_rect().x
+
+        screen.fill((5, 10, 20))
+        gui.manager.draw_ui(screen)
+        sidebar_image = screen.subsurface(gui.side_bar_info_panel.get_abs_rect())
+        pygame_context.image.save(sidebar_image, str(tmp_path / 'component-overview.png'))
+
+        assert scroll.vert_scroll_bar_active
+        scroll.vert_scroll_bar.set_scroll_from_start_percentage(0.25)
+        gui.manager.update(0.1)
+        original_y = scroll.get_container().get_relative_rect().y
+        assert original_y < 0
+        first.weapons_component.turrets[0].current_cooldown = 11
+        refresh(first)
+        assert scroll.get_container().get_relative_rect().y == pytest.approx(original_y, abs=2)
+
+        refresh(second)
+        assert scroll.vert_scroll_bar_active
+        assert scroll.get_container().get_relative_rect().y == 0
+    finally:
+        gui.clear_and_reset()
+
+
 @pytest.mark.parametrize('scroll_percentage', [0.25, 1.0], ids=['interior', 'bottom'])
 def test_sidebar_scroll_resets_on_new_unit_selection(game_factory, scroll_percentage):
     """Verify that scrolling down a tall unit sidebar and selecting a shorter unit resets scroll to top."""
@@ -584,6 +794,7 @@ def test_abilities_only_shown_in_abilities_component_tab():
     mock_game.selected_component_name = None
     data_basic = build_sidebar_data(mock_game)
     texts_basic = [d.get('text', '') for d in data_basic]
+    assert 'Abilities' not in _overview_sections(data_basic)
     assert not any('Ghost Fleet' in t for t in texts_basic)
     assert not any('Repair Cloud' in t for t in texts_basic)
 

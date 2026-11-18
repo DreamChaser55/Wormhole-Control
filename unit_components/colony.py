@@ -53,7 +53,7 @@ class ColonyComponent(UnitComponent):
             return data
         data.append({
             'type': 'label',
-            'text': f"• Population: {self.population_cargo}/{self.max_cargo}",
+            'text': f"Population: {self.population_cargo}/{self.max_cargo}",
             'object_id': '#sidebar_value_label',
             'height': 18,
             'indent_level': 1

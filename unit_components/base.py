@@ -120,19 +120,17 @@ class UnitComponent:
         ]
 
     def get_basic_sidebar_data(self, game_state: 'Game') -> list[dict]:
-        """
-        Returns a list of concise UI element definitions for the Basic Info panel.
-        Can be overridden by subclasses to highlight key component stats.
-        """
+        """Return the body rows under this component's Basic Info heading."""
+        return [self._basic_sidebar_health_row()] if self.is_destroyed else []
+
+    def _basic_sidebar_health_row(self) -> dict:
         if self.is_destroyed:
-            return [{
-                'type': 'label',
-                'text': f"• Destroyed Component: {self.DISPLAY_NAME}",
-                'object_id': '#sidebar_hit_points_critical_damage_label',
-                'height': 18,
-                'indent_level': 1
-            }]
-        return []
+            text = 'Destroyed'
+            style = '#sidebar_hit_points_critical_damage_label'
+        else:
+            text = f'HP: {self.current_hit_points}/{self.max_hit_points}'
+            style = '#sidebar_info_label'
+        return {'type': 'label', 'text': text, 'object_id': style, 'height': 18, 'indent_level': 1}
 
     @staticmethod
     def calc_hull_cost(*args, **kwargs) -> float:

@@ -98,7 +98,7 @@ class AntimatterStorage(UnitComponent):
             return data
         data.append({
             'type': 'label',
-            'text': f"• Antimatter: {self.current_amount:.1f}/{self.max_capacity:.1f}",
+            'text': f"{self.current_amount:.1f} / {self.max_capacity:.1f} AM",
             'object_id': '#sidebar_value_label',
             'height': 18,
             'indent_level': 1
@@ -185,7 +185,7 @@ class AntimatterHarvester(UnitComponent):
             obj_id = '#sidebar_status_idle_label'
         data.append({
             'type': 'label',
-            'text': f"• AM Harvest: {status_text} ({rate_text})",
+            'text': f"{status_text} ({rate_text})",
             'object_id': obj_id,
             'height': 18,
             'indent_level': 1
