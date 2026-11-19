@@ -2,19 +2,17 @@ from display_config import display_config_for
 import pygame
 import random
 import math
-from constants import DARK_GRAY, NEBULA_COLORS, STORM_COLORS, YELLOW, CYAN, PURPLE, RED, WHITE, SELECTION_HIGHLIGHT_COLOR, HOVER_HIGHLIGHT_COLOR, GRAY, HEX_JUMP_ORDER_LINE_COLOR, HYPERDRIVE_RANGE_HEX_FILL_COLOR, SENSOR_RANGE_HEX_FILL_COLOR, XP_JUMP_RANGE_BONUS, PlanetType, STORM_LIGHTNING_COLOR, SQRT3, WORMHOLE_LINE_COLOR, STAR_COLORS, DARK_RED, SYSTEM_FOG_OF_WAR_COLOR, HEX_GRID_COLOR
-
-from constants import HULL_BASE_ICON_SCALES
+from constants import DARK_GRAY, NEBULA_COLORS, STORM_COLORS, YELLOW, CYAN, PURPLE, RED, SELECTION_HIGHLIGHT_COLOR, HOVER_HIGHLIGHT_COLOR, GRAY, HEX_JUMP_ORDER_LINE_COLOR, HYPERDRIVE_RANGE_HEX_FILL_COLOR, SENSOR_RANGE_HEX_FILL_COLOR, XP_JUMP_RANGE_BONUS, PlanetType, STORM_LIGHTNING_COLOR, SQRT3, WORMHOLE_LINE_COLOR, STAR_COLORS, DARK_RED, SYSTEM_FOG_OF_WAR_COLOR, HEX_GRID_COLOR
 
 from hexgrid_utils import get_hex_vertices, hex_to_pixel, hex_distance
 from domain.celestials import Star, Planet, Wormhole, CelestialBody, Moon, ColonizableAsteroid, MetalAsteroid, AsteroidField, IceField, Nebula, Storm, Comet, DebrisField
 from domain.units import Unit
 from unit_orders.base import OrderType
 from galaxy import Hex
-from geometry import Position
 from rendering.planetary_intel import draw_ownership_ring
 from planetary_intel import displayed_owner
-from rendering.drawing_utils import darken_color, draw_selection_brackets, selection_color_for, station_icon_rect, wormhole_ring_color
+from rendering.drawing_utils import draw_selection_brackets, selection_color_for, wormhole_ring_color
+from rendering.system_unit_icons import SystemUnitIcons
 
 
 class SystemViewRenderer:
@@ -23,6 +21,7 @@ class SystemViewRenderer:
         self.screen = game_instance.screen
         self.overlay_surface = game_instance.overlay_surface
         self._circle_surface_cache = {}
+        self._unit_icons = SystemUnitIcons()
 
     def _system_zoom(self):
         return self.game.system_zoom
@@ -76,6 +75,7 @@ class SystemViewRenderer:
                         if name == system.name} if viewer else set()
 
         selection_bounds = []
+        current_viewer = getattr(self.game, 'current_player', None)
 
         # Determine long-range sensor coverage for the viewer in this system
         in_range_hexes = None
@@ -227,6 +227,8 @@ class SystemViewRenderer:
 
                 if body.is_solid:
                     ring = int(3 * scale_val) if isinstance(body, (Planet, Moon, ColonizableAsteroid)) else 0
+                    if wormhole_ring:
+                        ring = int(2 * scale_val)
                     solid_icon_radius = max(solid_icon_radius or 0, body_radius + ring)
 
                 if body in self.game.selected_objects:
@@ -243,9 +245,9 @@ class SystemViewRenderer:
                     elif isinstance(body, Storm):
                         selection_radius = 15 * scale_val
                     selection_bounds.append((body, (
-                        hex_center_pixel.x - selection_radius,
-                        hex_center_pixel.y - selection_radius,
-                        2 * selection_radius, 2 * selection_radius,
+                        hex_center_pixel.x - selection_radius - 2,
+                        hex_center_pixel.y - selection_radius - 2,
+                        2 * selection_radius + 4, 2 * selection_radius + 4,
                     )))
 
             # Draw Minefields
@@ -256,122 +258,17 @@ class SystemViewRenderer:
                 pygame.draw.circle(self.screen, mf_color, (int(hex_center_pixel.x), int(hex_center_pixel.y)), r, 1)
 
             # Draw units
-            visible_units = sorted(
-                (unit for unit in hex_obj.units if self.game.is_unit_visible(unit)),
-                key=lambda unit: HULL_BASE_ICON_SCALES[unit.hull_size],
-                reverse=True,
-            )
-            has_hidden_enemy = any(not self.game.is_unit_visible(u) for u in hex_obj.units)
-            has_presence = self.game.hex_has_presence(self.game.current_system_name, hex_coord)
-
-
-            num_units_in_hex = len(visible_units)
-
-            if num_units_in_hex > 0:
-                new_system_view_icon_base_size = 3.0 * scale_val
-                icon_draw_height = new_system_view_icon_base_size * 2 
-                icon_padding_x = 3.0 * scale_val
-                icon_padding_y = 3.0 * scale_val 
-                icon_slot_width = icon_draw_height + icon_padding_x
-                icon_slot_height = icon_draw_height + icon_padding_y
-                icons_per_row = 3
-
-                num_total_rows = (num_units_in_hex + icons_per_row - 1) // icons_per_row
-                total_block_visual_height = (num_total_rows * icon_draw_height) + ((num_total_rows - 1) * icon_padding_y if num_total_rows > 0 else 0)
-                
-                block_start_y = hex_center_pixel.y - (total_block_visual_height / 2.0)
-
-                for i, unit in enumerate(visible_units):
-                    if solid_icon_radius is None:
-                        row, column = divmod(i, icons_per_row)
-                        row_count = min(icons_per_row, num_units_in_hex - row * icons_per_row)
-                        icon_center_x = hex_center_pixel.x + (column - (row_count - 1) / 2) * icon_slot_width
-                        icon_center_y = block_start_y + row * icon_slot_height + icon_draw_height / 2
-                    else:
-                        ring, slot = divmod(i, 6)
-                        count = min(6, num_units_in_hex - ring * 6)
-                        angle = -math.pi / 2 + math.tau * slot / count
-                        radius = solid_icon_radius + (6 + 9 * ring) * scale_val
-                        icon_center_x = hex_center_pixel.x + radius * math.cos(angle)
-                        icon_center_y = hex_center_pixel.y + radius * math.sin(angle)
-
-                    unit_screen_x = icon_center_x
-                    
-                    if unit.hull_size.name == "STRIKECRAFT_WING":
-                        shape_type = 'strikecraft_wing'
-                    else:
-                        shape_type = 'triangle' if unit.engines_component else 'square'
-                    # Compress the sector-view size range to keep system slots readable.
-                    hull_scale = HULL_BASE_ICON_SCALES[unit.hull_size]
-                    current_icon_base_size = new_system_view_icon_base_size * (0.7 + 0.3 * hull_scale)
-
-                    if shape_type in ('triangle', 'strikecraft_wing'):
-                        unit_screen_y = icon_center_y + current_icon_base_size * 0.2 
-                    else: # square
-                        unit_screen_y = icon_center_y
-                    
-                    unit_color = unit.owner.color if unit.owner else WHITE
-                    interior_color = darken_color(unit_color)
-                
-                    if shape_type == 'strikecraft_wing':
-                        cx, cy = unit_screen_x, unit_screen_y
-                        r = current_icon_base_size
-                        
-                        # Define the vertices of the three smaller triangles
-                        t1_p1 = (cx, cy - r)
-                        t1_p2 = (cx - int(r * 0.4), cy - int(r * 0.2))
-                        t1_p3 = (cx + int(r * 0.4), cy - int(r * 0.2))
-                        
-                        t2_p1 = (cx - int(r * 0.4), cy - int(r * 0.2))
-                        t2_p2 = (cx - int(r * 0.8), cy + int(r * 0.6))
-                        t2_p3 = (cx, cy + int(r * 0.6))
-                        
-                        t3_p1 = (cx + int(r * 0.4), cy - int(r * 0.2))
-                        t3_p2 = (cx, cy + int(r * 0.6))
-                        t3_p3 = (cx + int(r * 0.8), cy + int(r * 0.6))
-                        
-                        t1 = [t1_p1, t1_p2, t1_p3]
-                        t2 = [t2_p1, t2_p2, t2_p3]
-                        t3 = [t3_p1, t3_p2, t3_p3]
-                        pygame.draw.polygon(self.screen, interior_color, t1)
-                        pygame.draw.polygon(self.screen, interior_color, t2)
-                        pygame.draw.polygon(self.screen, interior_color, t3)
-                        pygame.draw.polygon(self.screen, unit_color, t1, 1)
-                        pygame.draw.polygon(self.screen, unit_color, t2, 1)
-                        pygame.draw.polygon(self.screen, unit_color, t3, 1)
-                        
-                        main_shape_points = [t1_p1, t1_p2, t1_p3, t2_p1, t2_p2,
-                                             t2_p3, t3_p1, t3_p2, t3_p3]
-
-                    elif shape_type == 'triangle':
-                        p1 = (unit_screen_x, unit_screen_y - current_icon_base_size)
-                        p2 = (unit_screen_x - int(current_icon_base_size * 0.8), unit_screen_y + int(current_icon_base_size * 0.6))
-                        p3 = (unit_screen_x + int(current_icon_base_size * 0.8), unit_screen_y + int(current_icon_base_size * 0.6))
-                        main_shape_points = [p1, p2, p3]
-                        pygame.draw.polygon(self.screen, interior_color, main_shape_points)
-                        pygame.draw.polygon(self.screen, unit_color, main_shape_points, 1)
-                        
-                    else: # 'square'
-                        rect = station_icon_rect(Position(unit_screen_x, unit_screen_y), current_icon_base_size)
-                        main_shape_points = [rect.topleft, rect.topright, rect.bottomright, rect.bottomleft]
-                        pygame.draw.rect(self.screen, interior_color, rect)
-                        pygame.draw.rect(self.screen, unit_color, rect, 1)
-
-                    if unit in self.game.selected_objects:
-                        left = min(p[0] for p in main_shape_points)
-                        top = min(p[1] for p in main_shape_points)
-                        right = max(p[0] for p in main_shape_points)
-                        bottom = max(p[1] for p in main_shape_points)
-                        selection_bounds.append((unit, (left, top, right - left, bottom - top)))
-
-                    # Draw spy indicator if unit is infiltrated by current player
-                    current_viewer = getattr(self.game, 'current_player', None)
-                    if current_viewer and hasattr(unit, 'has_infiltrating_agent_from') and unit.has_infiltrating_agent_from(current_viewer):
-                        pygame.draw.circle(self.screen, (50, 220, 255), (int(unit_screen_x), int(unit_screen_y)), int(current_icon_base_size + 2), 1)
+            visible_units = [unit for unit in hex_obj.units if self.game.is_unit_visible(unit)]
+            if visible_units:
+                selection_bounds.extend(self._unit_icons.draw(
+                    self.screen, visible_units, center=hex_center_pixel,
+                    vertices=self._hex_vertices(q, r), scale=scale_val, solid_radius=solid_icon_radius,
+                    selected=self.game.selected_objects, viewer=current_viewer,
+                    text_scale=display_config_for(self.game).text_scale,
+                ))
 
             # Draw construction marker badge if hex contains active construction
             from domain.construction_job import get_sector_construction_jobs
-            current_viewer = getattr(self.game, 'current_player', None)
             sector_jobs = get_sector_construction_jobs(hex_obj, viewer=current_viewer)
             if sector_jobs:
                 from constants import CONSTRUCTOR_RANGE_RING_COLOR
@@ -430,11 +327,8 @@ class SystemViewRenderer:
         self._draw_system_view_order_lines(system)
 
         # Keep selection visible above environmental effects, range fills and orders.
-        for obj, (left, top, width, height) in selection_bounds:
-            draw_selection_brackets(
-                self.overlay_surface, selection_color_for(obj, self.game),
-                (left - 2, top - 2, width + 4, height + 4),
-            )
+        for obj, rect in selection_bounds:
+            draw_selection_brackets(self.overlay_surface, selection_color_for(obj, self.game), rect)
 
     def _draw_hyperdrive_jump_range_highlight(self, system):
         """Draws a hexgrid highlight showing inter-sector jump distance when a unit with Hyperdrive is selected
