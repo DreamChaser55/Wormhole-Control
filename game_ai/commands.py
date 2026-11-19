@@ -9,6 +9,7 @@ from game_logging import format_unit_for_log
 import traceback
 from typing import Any, Callable
 from resource_costs import ResourceCost, RESOURCE_NAMES, resource_balances, fortification_cost
+from wormhole_stabilization import SUPPORT_COMMANDS
 
 from .contracts import CommandBatch, ContractError
 from .command_spec import COMMAND_SPECS, validate_command, MAX_COMMANDS
@@ -1227,10 +1228,11 @@ class CommandGateway:
         if command.type == 'dismantle_unit':
             from unit_orders.dismantling import DismantleOrder
             return lambda unit: DismantleOrder(unit, {'target_unit_id': command.target_id}), command.type
-        if command.type == "stabilize_wormhole":
-            from unit_orders.wormhole_stabilizer import StabilizeWormholeOrder
+        if command.type in SUPPORT_COMMANDS:
+            from unit_orders.registry import ORDER_CLASS_REGISTRY
             self._body(command.target_id)
-            return lambda unit: StabilizeWormholeOrder(unit, {"target_id": command.target_id}), command.type
+            order_class = ORDER_CLASS_REGISTRY[SUPPORT_COMMANDS[command.type].order_type]
+            return lambda unit: order_class(unit, {"target_id": command.target_id}), command.type
         if command.type in {"recruit_troops", "bombard_planet", "invade_planet"}:
             from unit_orders.planetary import RecruitTroopsOrder, BombardPlanetOrder, InvadePlanetOrder
             self._require_colony_target(player, self._body(command.target_id), command.type)
@@ -2040,11 +2042,12 @@ class CommandGateway:
             if error:
                 raise _Rejected(error, "Utility approach unavailable: " + error.replace('_', ' ') + ".")
 
-        if command.type == "stabilize_wormhole":
+        if command.type in SUPPORT_COMMANDS:
             from wormhole_stabilization import blocker
-            error = blocker(self.game, unit.owner, unit, self._body(command.target_id))
+            mode = SUPPORT_COMMANDS[command.type]
+            error = blocker(self.game, unit.owner, unit, self._body(command.target_id), mode=mode)
             if error:
-                raise _Rejected(error, "Wormhole stabilization unavailable for this unit or route.")
+                raise _Rejected(error, f"Wormhole {mode.operation} unavailable for this unit or route.")
         elif command.type in {"recruit_troops", "bombard_planet", "invade_planet"}:
             from planetary_warfare import blocker
             body = self._body(command.target_id)

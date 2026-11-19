@@ -2,8 +2,9 @@
 from __future__ import annotations
 
 from order_history import public_reason
+from wormhole_stabilization import SUPPORT_COMMANDS, state_view as wormhole_support_state
 
-CONTINUOUS = {"resupply_nearby", "stabilize_wormhole", "patrol", "protect", "defend", "continuous_mine", "continuous_resupply", "continuous_trade", "continuous_antimatter_transport"}
+CONTINUOUS = {*SUPPORT_COMMANDS, "resupply_nearby", "patrol", "protect", "defend", "continuous_mine", "continuous_resupply", "continuous_trade", "continuous_antimatter_transport"}
 
 
 def enum_name(value):
@@ -277,9 +278,8 @@ def order_layers(unit, relation, visible_ids, body_ids):
         if kind == 'dismantle_unit' and not hidden:
             progress = dict(phase=order.phase, turns_completed=order.progress, turns_required=order.duration,
                             included_unit_ids=[m['unit_id'] for m in order.members])
-        if kind == "stabilize_wormhole" and not hidden:
-            from wormhole_stabilization import state_view
-            progress = state_view(unit, order=order)
+        if kind in SUPPORT_COMMANDS and not hidden:
+            progress = wormhole_support_state(unit, mode=SUPPORT_COMMANDS[kind], order=order)
         if kind == 'resupply_nearby' and active:
             progress = order.progress_view(unit.in_galaxy)
         if kind == 'continuous_mine' and not hidden:

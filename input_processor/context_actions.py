@@ -6,6 +6,7 @@ import pygame
 from geometry import Position
 from domain.units import Unit
 from domain.celestials import Planet, Moon, ColonizableAsteroid, MetalAsteroid, Comet, Wormhole, AsteroidField
+from wormhole_stabilization import SUPPORT_COMMANDS
 from events import (
     CancelOrdersEvent, IssueMoveOrderEvent, IssuePatrolOrderEvent, JumpInterhexEvent, JumpWormholeEvent,
     AttackUnitEvent, ColonizeEvent, ConstructEvent, RepairUnitEvent,
@@ -56,18 +57,24 @@ def handle_context_menu_action(game, action_id: str, target: typing.Any, *, loca
     if not isinstance(extracted_action_id, str):
         extracted_action_id = str(extracted_action_id)
 
+    wormhole_command = next((kind for kind in SUPPORT_COMMANDS
+                             if extracted_action_id == kind or extracted_action_id.startswith(f'{kind}_')), None)
     if extracted_action_id == 'dismantle_unit':
         if len(selected_units) == 1 and isinstance(target, Unit):
             from gui.dismantling_window import DismantlingWindow
             game.gui.dismantling_window = DismantlingWindow(game.gui, selected_units[0], target, shift_pressed)
-    elif extracted_action_id == 'stabilize_wormhole' or extracted_action_id.startswith('stabilize_wormhole_'):
+    elif wormhole_command:
         if len(selected_units) != 1:
             return
-        if extracted_action_id.startswith('stabilize_wormhole_'):
-            target = game.galaxy.wormholes.get(int(extracted_action_id.removeprefix('stabilize_wormhole_')))
+        if extracted_action_id != wormhole_command:
+            endpoint_id = extracted_action_id.removeprefix(f'{wormhole_command}_')
+            if not endpoint_id.isdecimal():
+                return
+            target = game.galaxy.wormholes.get(int(endpoint_id))
         if isinstance(target, Wormhole):
             from tactical_ui import issue
-            issue(game, {'type': 'stabilize_wormhole', 'unit_ids': [selected_units[0].id], 'target_id': target.id, 'queue': shift_pressed})
+            issue(game, {'type': wormhole_command, 'unit_ids': [selected_units[0].id],
+                         'target_id': target.id, 'queue': shift_pressed})
     elif extracted_action_id in ('load_colonists', 'recruit_troops', 'invade_planet', 'bombard_planet'):
         if len(selected_units) != 1 or not isinstance(target, (Planet, Moon, ColonizableAsteroid)):
             return

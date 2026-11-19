@@ -44,6 +44,7 @@ COMPONENT_SPECS = {
     'TroopTransportComponent': ComponentSpec('has_troop_transport_component', {'capacity': 'troop_capacity'}),
     'TitanComponent': ComponentSpec('has_titan_component'),
     'WormholeStabilizerComponent': ComponentSpec('has_wormhole_stabilizer_component'),
+    'WormholeDestabilizerComponent': ComponentSpec('has_wormhole_destabilizer_component'),
     'SiegeBatteryComponent': ComponentSpec('has_siege_battery_component'),
     'MarinesComponent': ComponentSpec('has_marines_component', {'marines_count': 'marines_count'}),
     'CloakingDevice': ComponentSpec('has_cloaking_device', {'device_type': 'cloaking_type', 'area_radius': 'cloaking_radius'}),

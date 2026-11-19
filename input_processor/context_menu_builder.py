@@ -16,6 +16,23 @@ from strikecraft_service import required as service_required
 logger = logging.getLogger(__name__)
 
 
+def _wormhole_support_options(game, player, actors, target, *, from_system=False):
+    from wormhole_stabilization import SUPPORT_COMMANDS, blocker
+    owned = [unit for unit in actors if isinstance(unit, Unit) and unit.owner == player]
+    if len(owned) != 1:
+        return []
+    unit = owned[0]
+    options = []
+    for command, mode in SUPPORT_COMMANDS.items():
+        if mode.component(unit) and blocker(game, player, unit, target, mode=mode) is None:
+            label = command.replace('_', ' ').title()
+            if from_system:
+                options.append((f'{label} to {target.exit_system_name}', f'{command}_{target.id}'))
+            else:
+                options.append((label, command))
+    return options
+
+
 def build_system_context_menu_options(game, target_hex_coord: HexCoord) -> typing.List[typing.Tuple[str, str]]:
     """Builds context menu options for a right-clicked hex coordinate in system view.
 
@@ -41,12 +58,9 @@ def build_system_context_menu_options(game, target_hex_coord: HexCoord) -> typin
                     break
 
     player = game.players[game.current_player_index]
-    owned = [u for u in actors if isinstance(u, Unit) and u.owner == player]
-    if len(owned) == 1 and owned[0].wormhole_stabilizer_component:
-        from wormhole_stabilization import blocker
-        for body in getattr(current_system.hexes.get(target_hex_coord), 'celestial_bodies', ()):
-            if isinstance(body, Wormhole) and blocker(game, player, owned[0], body) is None:
-                options.append((f"Stabilize Wormhole to {body.exit_system_name}", f"stabilize_wormhole_{body.id}"))
+    for body in getattr(current_system.hexes.get(target_hex_coord), 'celestial_bodies', ()):
+        if isinstance(body, Wormhole):
+            options.extend(_wormhole_support_options(game, player, actors, body, from_system=True))
     return options
 
 
@@ -370,10 +384,7 @@ def build_sector_context_menu_options(game, clicked_object, clicked_sector_coord
                     options.append(("Use Ability", ability_options))
 
             elif isinstance(target_object, Wormhole):
-                from wormhole_stabilization import blocker
-                owned = [a for a in actors if a.owner == current_player]
-                if len(owned) == 1 and owned[0].wormhole_stabilizer_component and blocker(game, current_player, owned[0], target_object) is None:
-                    options.append(("Stabilize Wormhole", "stabilize_wormhole"))
+                options.extend(_wormhole_support_options(game, current_player, actors, target_object))
                 if any(a.hyperdrive_component and a.hyperdrive_component.drive_type == HyperdriveType.ADVANCED and a.in_system == target_object.in_system for a in actors):
                     options.append(("Jump Wormhole", "jump_wormhole"))
 

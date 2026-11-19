@@ -6,6 +6,7 @@ from typing import Any, Iterable
 from .command_spec import COMMAND_SPECS
 from component_visibility import public_target_components
 from unit_targeting import operational_engines as has_operational_engines
+from wormhole_stabilization import SUPPORT_COMMANDS
 
 
 def is_colonizable_body(body: Any) -> bool:
@@ -99,18 +100,19 @@ def body_is_notable(player, body, snapshot):
             or body.id in getattr(player, 'planetary_intel', {}))
 
 
+def disclosed_body_systems(galaxy, player, snapshot, selected_units=()):
+    visible = [u for system in getattr(galaxy, "systems", {}).values()
+               for sector in system.hexes.values() for u in getattr(sector, "units", [])
+               if relation(player, u.owner) != "enemy" or u.id in snapshot.visible_enemy_unit_ids]
+    visible.extend(u for u in selected_units if relation(player, u.owner) in {"self", "ally"})
+    return detailed_system_names(galaxy, player, visible, snapshot.presence_hexes)
+
+
 def body_is_public(game, player, body, selected_units=()):
     from visibility import VisibilityService
     snapshot = VisibilityService.compute(game.galaxy, player, turn_number=getattr(game, 'turn_number', 1))
-    if body_is_notable(player, body, snapshot):
-        return True
-    units = [u for system in getattr(game.galaxy, "systems", {}).values()
-             for sector in system.hexes.values() for u in getattr(sector, "units", [])]
-    friendly = [u for u in [*units, *selected_units] if relation(player, u.owner) in {"self", "ally"}]
-    if body.in_system in detailed_system_names(game.galaxy, player, friendly, ()):
-        return True
-    visible = [u for u in units if relation(player, u.owner) != "enemy" or u.id in snapshot.visible_enemy_unit_ids]
-    return body.in_system in detailed_system_names(game.galaxy, player, visible, snapshot.presence_hexes)
+    return (body_is_notable(player, body, snapshot)
+            or body.in_system in disclosed_body_systems(game.galaxy, player, snapshot, selected_units))
 
 
 def capability_blocker(unit, command_type):
@@ -167,8 +169,7 @@ def supported_commands(unit: Any) -> list[str]:
         commands.extend(["construct", "dismantle_unit"])
     if getattr(unit, "troop_transport_component", None):
         commands.extend(["recruit_troops", "invade_planet"])
-    if getattr(unit, "wormhole_stabilizer_component", None):
-        commands.append("stabilize_wormhole")
+    commands.extend(kind for kind, mode in SUPPORT_COMMANDS.items() if mode.component(unit))
     if getattr(unit, "siege_battery_component", None):
         commands.append("bombard_planet")
     if getattr(unit, "repair_component", None):
@@ -646,12 +647,13 @@ def command_guidance(
     if cloak is not None:
         active = bool(getattr(cloak, "is_active", False))
         options["toggle_cloaking"] = {"current_state": "active" if active else "inactive", "resulting_state": "inactive" if active else "active", "available": not capability_blocker(unit, "toggle_cloaking")}
-    from wormhole_stabilization import command_options as stabilizer_options
-    stabilization = stabilizer_options(game, player, unit, exact_bodies)
-    if stabilization is not None:
-        options["stabilize_wormhole"] = stabilization
-        if any(item["blocker"] is None for item in stabilization["targets"]):
-            legal.add("stabilize_wormhole")
+    from wormhole_stabilization import command_options as support_options
+    for kind, mode in SUPPORT_COMMANDS.items():
+        support = support_options(game, player, unit, exact_bodies, mode=mode)
+        if support is not None:
+            options[kind] = support
+            if any(item["blocker"] is None for item in support["targets"]):
+                legal.add(kind)
     from planetary_warfare import command_options
     planetary = command_options(game, player, unit, exact_bodies)
     options.update(planetary)

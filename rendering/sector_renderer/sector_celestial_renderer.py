@@ -1,9 +1,10 @@
 from rendering.planetary_intel import draw_ownership_ring
+from rendering.drawing_utils import wormhole_ring_color
 import pygame
 from display_config import display_config_for
 import math
 import random
-from constants import SECTOR_CIRCLE_RADIUS_LOGICAL, STAR_RADIUS, PLANET_RADIUS, WORMHOLE_RADIUS, NEBULA_RADIUS, STORM_RADIUS, STORM_LIGHTNING_COLOR, STORM_COMPOSE_MAX_DIAMETER, NEBULA_COLORS, STORM_COLORS, WHITE, YELLOW, CYAN, PURPLE, RED, STAR_COLORS, MOON_RADIUS, ASTEROID_RADIUS, COMET_RADIUS, CELESTIAL_FIELD_RADIUS, ASTEROID_FIELD_RADIUS, ICE_FIELD_RADIUS, DEBRIS_FIELD_RADIUS, PlanetType, FIELD_DENSITY_PARTICLES, ASTEROID_FIELD_PARTICLES, ICE_FIELD_PARTICLES, DEBRIS_FIELD_PARTICLES, TURQUOISE
+from constants import SECTOR_CIRCLE_RADIUS_LOGICAL, STAR_RADIUS, PLANET_RADIUS, WORMHOLE_RADIUS, NEBULA_RADIUS, STORM_RADIUS, STORM_LIGHTNING_COLOR, STORM_COMPOSE_MAX_DIAMETER, NEBULA_COLORS, STORM_COLORS, WHITE, YELLOW, CYAN, PURPLE, STAR_COLORS, MOON_RADIUS, ASTEROID_RADIUS, COMET_RADIUS, CELESTIAL_FIELD_RADIUS, ASTEROID_FIELD_RADIUS, ICE_FIELD_RADIUS, DEBRIS_FIELD_RADIUS, PlanetType, FIELD_DENSITY_PARTICLES, ASTEROID_FIELD_PARTICLES, ICE_FIELD_PARTICLES, DEBRIS_FIELD_PARTICLES, TURQUOISE
 from domain.celestials import Star, Planet, Wormhole, Moon, ColonizableAsteroid, MetalAsteroid, AsteroidField, IceField, Nebula, Storm, Comet, DebrisField
 
 
@@ -371,11 +372,10 @@ class SectorCelestialRenderer:
         elif isinstance(obj, Wormhole):
             obj_radius_logical = WORMHOLE_RADIUS
             obj_color = PURPLE
-            from wormhole_stabilization import is_stabilized
-            stabilized = is_stabilized(self.game.galaxy, obj)
-            if stabilized or obj.stability < 100:
+            ring = wormhole_ring_color(self.game.galaxy, obj)
+            if ring:
                 pixel_radius = int(obj_radius_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
-                pygame.draw.circle(self.screen, (80, 230, 180) if stabilized else RED, (obj_pixel_pos.x, obj_pixel_pos.y), pixel_radius + 2, 1)
+                pygame.draw.circle(self.screen, ring, (obj_pixel_pos.x, obj_pixel_pos.y), pixel_radius + 2, 1)
 
         if should_draw_circle:
             pixel_radius = int(obj_radius_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)

@@ -8,6 +8,7 @@ from resource_costs import ResourceCost
 from constants import HullSize
 from titan_acquisition import capacity as titan_capacity
 from economy import recurring_economy, total_population
+from wormhole_stabilization import SUPPORT_COMMANDS, connection_stability, state_view as wormhole_support_state
 
 from .rules import (
     ability_states,
@@ -31,7 +32,7 @@ from component_visibility import public_components
 from order_history import history_view
 from turn_briefing import summary_view
 
-OBSERVATION_SCHEMA_VERSION = 53
+OBSERVATION_SCHEMA_VERSION = 54
 COMMAND_HELP = {name: spec.description for name, spec in COMMAND_SPECS.items()}
 
 
@@ -351,9 +352,10 @@ def _unit_view(
             }
     if relation == "enemy":
         data["capability_details"] = _combat_equipment_details(unit)
-    if relation in {"self", "ally"} and getattr(unit, "wormhole_stabilizer_component", None):
-        from wormhole_stabilization import state_view
-        data["wormhole_stabilizer"] = state_view(unit)
+    if relation in {"self", "ally"}:
+        for mode in SUPPORT_COMMANDS.values():
+            if mode.component(unit):
+                data[mode.capability] = wormhole_support_state(unit, mode=mode)
     if include_capabilities:
         legal, options, conditional = command_guidance(
             game,
@@ -431,11 +433,7 @@ def _body_view(
         data["density"] = _enum_value(body.density)
         data["max_hull_size"] = getattr(body.max_hull_size, "name", str(body.max_hull_size))
     if hasattr(body, "stability"):
-        from wormhole_stabilization import crossing_fuel_loss, effective_stability, is_stabilized
-        stability = effective_stability(galaxy, body)
-        data["effective_stability"] = stability
-        data["stabilized"] = is_stabilized(galaxy, body)
-        data["crossing_fuel_loss"] = crossing_fuel_loss(stability)
+        data.update(connection_stability(galaxy, body).public_fields())
     if hasattr(body, "exit_system_name"):
         data["exit_system_name"] = str(body.exit_system_name)
     is_solid = getattr(body, "is_solid", True)

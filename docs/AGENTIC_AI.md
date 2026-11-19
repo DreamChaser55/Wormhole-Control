@@ -1092,24 +1092,29 @@ Loading and previews never roll or replay planetary effects. See
 
 ## Wormhole stabilization contract
 
-The shared command contract exposes `stabilize_wormhole`, taking one
-owned `unit_ids` entry, a disclosed wormhole `target_id`, and `queue`. Coordinates
-are unused. Human controls commit through the same gateway.
+The shared command contract exposes `stabilize_wormhole` and
+`destabilize_wormhole`. Each accepts one owned `unit_ids` entry, a disclosed
+wormhole `target_id`, and optional `queue`. Human controls commit through the
+same gateway.
 
 Equipment, disclosure and approach feasibility follow the
 [shared validation contract](#shared-order-contract). Low fuel is legal and waits
 for resupply; issuing the order does not activate paid support.
 The continuous root exposes actual approach/maintaining/waiting/disabled progress
 and blocks following orders. Target references and derived geometry use normal
-recursive redaction. Owned/allied units expose `wormhole_stabilizer` capability
-and operating state; enemies expose only ordinary public equipment details.
+recursive redaction. Owned and allied units expose `wormhole_stabilizer` or
+`wormhole_destabilizer` capability and operating state. Enemy inspection uses
+ordinary public equipment details.
 
-Already-disclosed wormholes retain natural `stability` and add
-`effective_stability`, `stabilized` and `crossing_fuel_loss`. These public connection properties reveal
-no supporting unit IDs, counts or locations and disclose no additional bodies.
-The public Logistics catalogue includes the Tender and Station designs.
-See [stabilization rules](REFERENCE.md#wormhole-stabilization) for payment timing,
-all-player benefits, interruptions and automatic fuel recovery.
+Disclosed wormholes expose natural `stability`, `effective_stability`,
+`crossing_fuel_loss` and `stability_status`. Status is `natural`, `stabilized`,
+`destabilized` or `contested`. The `stabilized` flag is true in the `stabilized`
+state. These fields describe the connection's combined effect. Player-visible
+fuel estimates use natural stability for legs with undisclosed endpoints on
+both sides. Operator identities and operating details follow unit visibility.
+The public Logistics catalogue includes both Tenders and both Stations.
+See [wormhole stability rules](REFERENCE.md#wormhole-stabilization) for payment
+timing, cancellation between effects, interruptions and automatic fuel recovery.
 
 
 ## Fixed positional destinations

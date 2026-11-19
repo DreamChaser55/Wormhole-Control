@@ -30,7 +30,7 @@ def create(game, key, owner=0):
 def test_catalog_coverage_and_canonical_values():
     from scripts.generate_reference import component_rows
     from unit_components.enums import AbilityType
-    assert len(BUILTINS) == 83
+    assert len(BUILTINS) == 85
     assert validate_builtin_catalog(BUILTINS) == {}
     assert {a.value for a in AbilityType} == {a for t in BUILTINS.values() for a in t['abilities']}
     assert all(any(t[row['key']] for t in BUILTINS.values()) for row in component_rows())
@@ -349,6 +349,68 @@ def test_general_intelligence_performs_both_roles():
     assert hostile_agent not in friendly.infiltrating_agents
 
 
+@pytest.mark.parametrize('key,hull_used,credits,turns,fuel,mobile', [
+    ('WORMHOLE_DESTABILIZER_TENDER', 43, 1790, 19, 150, True),
+    ('WORMHOLE_DESTABILIZER_STATION', 42.5, 1775, 18, 400, False),
+])
+def test_destabilizer_designs_build_and_refit(key, hull_used, credits, turns, fuel, mobile):
+    from player_controller import PlayerController
+    from refit_validation import evaluate_refit
+    from resource_costs import resource_balances
+    from unit_orders.base import OrderStatus
+    from unit_orders.refit import RefitOrder
+
+    game = campaign()
+    builder = create(game, 'CONSTRUCTOR_MK1')
+    owner = builder.owner
+    owner.credits = owner.metal = owner.crystal = 10000
+    price = dict(credits=credits, metal=68, crystal=22)
+    for controller in PlayerController:
+        owner.controller = controller
+        observations = build_observation(game, owner)['action_catalogs']['construction_templates']
+        entry = next(design for design in observations if design['template_name'] == key)
+        assert (entry['hull_size'], entry['hull_used'], entry['turns']) == ('MEDIUM', hull_used, turns)
+        assert entry['category'] == 'Logistics'
+        assert entry['resource_cost'] == price
+        assert entry['sensors'] == {'short_range': 2500, 'long_range_hexes': 1}
+        assert entry['support']['wormhole_destabilizer_component']['stability_penalty'] == 30
+
+    before = resource_balances(owner)
+    result = issue(game, owner, Command('construct', (builder.id,), template_name=key,
+                                       position=(200, 100), system_name='Sol', hex_coord=(0, 0)))
+    assert result.accepted, result.errors
+    assert resource_balances(owner) == {resource: total - price[resource] for resource, total in before.items()}
+    constructor = builder.constructor_component
+    tank = builder.antimatter_component
+    tank.add(tank.max_capacity)
+    for _ in range(turns):
+        constructor.update(game.galaxy)
+    builder.commander_component.update()
+    built = next(unit for unit in game.galaxy.systems['Sol'].hexes[(0, 0)].units if unit.name == BUILTINS[key]['name'])
+    assert built.commander_component.current_order is None
+    assert built.wormhole_destabilizer_component.hull_cost == 15
+    assert built.wormhole_stabilizer_component is None and built.weapons_component is None
+    assert built.antimatter_component.max_capacity == fuel
+    if mobile:
+        assert built.engines_component.effective_speed == 100
+        assert built.hyperdrive_component.drive_type.name == 'ADVANCED'
+        assert built.hyperdrive_component.jump_range == 5
+    else:
+        assert built.engines_component is None and built.hyperdrive_component is None
+    assert evaluate_refit(built, 'REMOVE', 'AntimatterStorage').errors
+
+    for action in ('REMOVE', 'ADD'):
+        order = RefitOrder(builder, dict(target_unit_id=built.id, action=action,
+                                        component_type='WormholeDestabilizerComponent', component_config={}))
+        builder.commander_component.add_order(order)
+        assert order.status == OrderStatus.IN_PROGRESS
+        for _ in range(constructor.refit_time):
+            constructor.update(game.galaxy)
+        builder.commander_component.update()
+        assert order.status == OrderStatus.COMPLETED
+        assert bool(built.wormhole_destabilizer_component) == (action == 'ADD')
+
+
 def test_observation_catalog_deduplicates_builders_and_exposes_bomber_choices():
     game = campaign()
     create(game, 'SHIPYARD_MK1')
@@ -387,6 +449,8 @@ def test_catalog_window_filters_build_dispatch_and_stale_context(pygame_context)
         assert {
             'Small · Scout (982c / 37m / 13x)',
             'Medium · Wormhole Stabilizer Station (1775c / 68m / 22x)',
+            'Medium · Wormhole Destabilizer Tender (1790c / 68m / 22x)',
+            'Medium · Wormhole Destabilizer Station (1775c / 68m / 22x)',
             'Titan · Titan Citadel (41012c / 1101m / 351x)',
         } <= {item['text'] for item in window.list.item_list}
         window.show_entry(describe_template('FLEET_CARRIER', UNIT_TEMPLATES['FLEET_CARRIER']))

@@ -509,8 +509,8 @@ def reconcile(candidate):
                     or order.parameters.get('action') != job['action']
                     or order.parameters.get('component_type') != job['component_type']):
                 raise ValueError('Refit job does not match its owning order and payment')
-    from wormhole_stabilization import reconcile as reconcile_stabilizers
-    reconcile_stabilizers(candidate)
+    from wormhole_stabilization import reconcile as reconcile_wormhole_support
+    reconcile_wormhole_support(candidate)
     reconcile_links(galaxy)
     from tactical_abilities import start_owner_turn
     for index, player in enumerate(candidate.players):

@@ -24,6 +24,7 @@ from unit_components.abilities import AbilityComponent
 from unit_components.antimatter import AntimatterHarvester, AntimatterStorage
 from unit_components.base import UnitComponent
 from unit_components.titan import TitanComponent
+from unit_components.wormhole_destabilizer import WormholeDestabilizerComponent
 from unit_components.wormhole_stabilizer import WormholeStabilizerComponent
 from unit_components.civilian_habitat import CivilianHabitatComponent
 from unit_components.cloaking import CloakingDevice
@@ -186,6 +187,10 @@ class Unit(GameObject):
     @property
     def wormhole_stabilizer_component(self):
         return self.get_component(WormholeStabilizerComponent)
+
+    @property
+    def wormhole_destabilizer_component(self):
+        return self.get_component(WormholeDestabilizerComponent)
 
     @property
     def inhibitor_component(self) -> typing.Optional[HyperspaceInhibitionFieldEmitter]:

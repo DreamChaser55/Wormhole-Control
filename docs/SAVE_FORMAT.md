@@ -377,13 +377,13 @@ are unsupported under the Alpha policy.
 
 ## Wormhole support state
 
-The current format registers `WormholeStabilizerComponent` and `STABILIZE_WORMHOLE`.
-The component stores its last paid round and payer ID; the order stores its typed
-wormhole target, normal UUID/approach descendants, powered flag and phase.
-Coverage is derived from live eligible maintainers after references restore.
-Loading does not charge fuel, advance orders or modify natural wormhole stability.
-Invalid payment/state values reject the candidate; ineligible support reconciles
-to unpowered. Older saves require a new campaign.
+The current format registers `WormholeStabilizerComponent`,
+`WormholeDestabilizerComponent`, `STABILIZE_WORMHOLE` and `DESTABILIZE_WORMHOLE`.
+Each component stores its last paid round and payer ID. Its order stores a typed
+wormhole target, UUID, approach descendants, powered flag and phase. After reference
+restoration, the loader validates payment markers and unpowers ineligible orders.
+Live eligible orders supply the connection's effective stability. Fuel payment and
+order progression resume at the next applicable turn phase.
 
 
 ## Fixed destination validation

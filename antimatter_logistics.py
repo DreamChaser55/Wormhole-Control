@@ -41,9 +41,11 @@ def service_fuel_horizon(unit):
     if unit.is_disabled:
         return float('inf')
     upkeep = equipment_upkeep(unit)
-    from wormhole_stabilization import state_view, equipment_ready, STABILIZER_UPKEEP
-    if equipment_ready(unit) and state_view(unit)['phase'] in {'maintaining', 'waiting_for_antimatter'}:
-        upkeep += STABILIZER_UPKEEP
+    from wormhole_stabilization import current_order, state_view, equipment_ready, SUPPORT_UPKEEP
+    order = current_order(unit)
+    if order and equipment_ready(unit, order.support_mode):
+        if state_view(unit, mode=order.support_mode)['phase'] in {'maintaining', 'waiting_for_antimatter'}:
+            upkeep += SUPPORT_UPKEEP
     return unit.antimatter_component.current_amount / upkeep if upkeep > 0 else float('inf')
 
 
@@ -290,6 +292,11 @@ def estimate_approach(unit, galaxy, target, origin=None, *, approach_range=ANTIM
             )
             if not route:
                 return None
+            disclosed = None
+            if known_only:
+                from game_ai.rules import disclosed_body_systems
+                disclosed = disclosed_body_systems(galaxy, unit.owner, snapshot)
+            from wormhole_stabilization import crossing_fuel_loss, effective_stability
             for next_system in route[1:]:
                 from unit_orders.base import Order
 
@@ -303,9 +310,10 @@ def estimate_approach(unit, galaxy, target, origin=None, *, approach_range=ANTIM
                     return None
                 local(wormhole.in_hex, wormhole.position)
                 exit_wormhole = galaxy.wormholes[wormhole.exit_wormhole_id]
-                from wormhole_stabilization import crossing_fuel_loss, effective_stability
-                jump(get_hyperdrive_system_jump_cost(unit.hull_size)
-                     + crossing_fuel_loss(effective_stability(galaxy, wormhole)),
+                stability = wormhole.stability
+                if disclosed is None or system in disclosed or next_system in disclosed:
+                    stability = effective_stability(galaxy, wormhole)
+                jump(get_hyperdrive_system_jump_cost(unit.hull_size) + crossing_fuel_loss(stability),
                      next_system, exit_wormhole.in_hex)
                 system, coord, point = (
                     next_system,

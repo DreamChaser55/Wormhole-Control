@@ -6,6 +6,7 @@ import dataclasses
 
 from .base import UnitComponent
 from .titan import TitanComponent
+from .wormhole_destabilizer import WormholeDestabilizerComponent
 from .wormhole_stabilizer import WormholeStabilizerComponent
 from .antimatter import AntimatterStorage, AntimatterHarvester
 from .movement import Engines, Hyperdrive
@@ -373,6 +374,8 @@ def assemble_unit_from_template(template_name, template, owner, system_name, hex
         new_unit.add_component(TroopTransportComponent(new_unit, template.get("troop_capacity", TROOP_DEFAULT_CAPACITY)))
     if template.get("has_wormhole_stabilizer_component"):
         new_unit.add_component(WormholeStabilizerComponent(new_unit))
+    if template.get("has_wormhole_destabilizer_component"):
+        new_unit.add_component(WormholeDestabilizerComponent(new_unit))
     if template.get("has_titan_component", False):
         new_unit.add_component(TitanComponent(new_unit))
     if template.get("has_siege_battery_component"):
@@ -938,6 +941,7 @@ class Constructor(UnitComponent):
 COMPONENT_NAME_MAP = {
     "TitanComponent": TitanComponent,
     "WormholeStabilizerComponent": WormholeStabilizerComponent,
+    "WormholeDestabilizerComponent": WormholeDestabilizerComponent,
     "Engines": Engines,
     "Hyperdrive": Hyperdrive,
     "Weapons": Weapons,
@@ -1086,8 +1090,8 @@ def get_component_hull_cost(component_name: str, unit: 'Unit', config: Optional[
         return TroopTransportComponent.calc_hull_cost(config.get("capacity", TROOP_DEFAULT_CAPACITY))
     elif comp_cls == TitanComponent:
         return TitanComponent.calc_hull_cost()
-    elif comp_cls == WormholeStabilizerComponent:
-        return WormholeStabilizerComponent.calc_hull_cost()
+    elif comp_cls in (WormholeStabilizerComponent, WormholeDestabilizerComponent):
+        return comp_cls.calc_hull_cost()
     elif comp_cls == SiegeBatteryComponent:
         return SiegeBatteryComponent.calc_hull_cost()
     elif comp_cls == MarinesComponent:
@@ -1248,8 +1252,8 @@ def instantiate_component_for_unit(component_name: str, unit: 'Unit', config: Op
         return TroopTransportComponent(unit, config.get("capacity", TROOP_DEFAULT_CAPACITY))
     elif comp_cls == TitanComponent:
         return TitanComponent(unit)
-    elif comp_cls == WormholeStabilizerComponent:
-        return WormholeStabilizerComponent(unit)
+    elif comp_cls in (WormholeStabilizerComponent, WormholeDestabilizerComponent):
+        return comp_cls(unit, hull_cost=cost)
     elif comp_cls == SiegeBatteryComponent:
         return SiegeBatteryComponent(unit)
     elif comp_cls == MarinesComponent:

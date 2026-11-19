@@ -521,15 +521,15 @@ class TurnProcessor:
                             logger.debug(f"   {format_unit_for_log(unit)} completed wormhole jump from {origin_system.name} to {target_sys_name}, into hex {arrival_hex}")
                             
                             # Apply probabilistic damage for unstable wormholes (< 100 stability)
-                            from wormhole_stabilization import crossing_fuel_loss, effective_stability
-                            stability = effective_stability(self.game.galaxy, entry_wormhole)
-                            if stability < 100:
+                            from wormhole_stabilization import connection_stability
+                            route = connection_stability(self.game.galaxy, entry_wormhole)
+                            if route.effective_stability < 100:
                                 if am_comp is not None:
-                                    lost = min(am_comp.current_amount, crossing_fuel_loss(stability))
+                                    lost = min(am_comp.current_amount, route.crossing_fuel_loss)
                                     if lost > 0 and am_comp.consume(lost):
                                         unit_event(unit, 'hazard', 'Wormhole instability drained antimatter',
                                                    amount=lost, private=True)
-                                damage_chance = (100 - stability) / 100.0
+                                damage_chance = (100 - route.effective_stability) / 100.0
                                 if random.random() < damage_chance:
                                     # Calculate damage amount (10% to 25% of max hit points)
                                     damage_percentage = random.uniform(0.10, 0.25)

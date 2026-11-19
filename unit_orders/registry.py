@@ -1,4 +1,5 @@
 """Authoritative persistence order-class registry."""
+from .wormhole_destabilizer import DestabilizeWormholeOrder
 from .wormhole_stabilizer import StabilizeWormholeOrder
 from .planetary import RecruitTroopsOrder, BombardPlanetOrder, InvadePlanetOrder
 from .abilities import UseAbilityOrder
@@ -37,6 +38,7 @@ ORDER_CLASS_REGISTRY = {
     OrderType.RETURN_FOR_SERVICE: ReturnForServiceOrder,
     OrderType.DISMANTLE_UNIT: DismantleOrder,
     OrderType.STABILIZE_WORMHOLE: StabilizeWormholeOrder,
+    OrderType.DESTABILIZE_WORMHOLE: DestabilizeWormholeOrder,
     OrderType.RECRUIT_TROOPS: RecruitTroopsOrder,
     OrderType.BOMBARD_PLANET: BombardPlanetOrder,
     OrderType.INVADE_PLANET: InvadePlanetOrder,
@@ -84,6 +86,7 @@ ORDER_CLASS_REGISTRY = {
 
 __all__ = [
     "StabilizeWormholeOrder",
+    "DestabilizeWormholeOrder",
     "OrderStatus",
     "OrderType",
     "Order",

@@ -210,7 +210,7 @@ Requires the active player to be controlled by Codex. It returns a new opaque tu
 ```
 
 ```json
-{"data":{"turn_token":"opaque-value","observation":{"schema_version":53}}}
+{"data":{"turn_token":"opaque-value","observation":{"schema_version":54}}}
 ```
 
 Treat the observation as the only permitted source of game facts. Never infer hidden targets from saves, source files, logs, rendered pixels, or previous campaigns. IDs and available options in an old observation may be stale.
@@ -693,19 +693,20 @@ reload does not repeat payments or rolls.
 
 ## Wormhole stabilization
 
-Use `stabilize_wormhole` with one owned unit, `target_id` naming a disclosed
-wormhole, and optional `queue` (default false). Example command:
+Use `stabilize_wormhole` or `destabilize_wormhole` with one owned unit,
+`target_id` naming a disclosed wormhole, and optional `queue` (default false).
 
 ```json
-{"type":"stabilize_wormhole","unit_ids":[42],"target_id":17,"queue":false}
+{"type":"destabilize_wormhole","unit_ids":[42],"target_id":17,"queue":false}
 ```
 
-Observe command options before issuing: stations require local range; mobile
-units approach automatically. Support begins at End Turn, costs 5 AM per owner
-turn and makes both directions safe for everyone, including enemies. Fuel
-shortages wait. Cancel the continuous root to release queued work. Observations
-expose natural/effective stability and progress without hidden support identities.
-See [complete rules](REFERENCE.md#wormhole-stabilization).
+Check command options for eligible endpoints. Stations require local range and
+mobile units approach automatically. Each device consumes 5 AM per owner turn from
+End Turn. A destabilizer lowers stability by 30 points for all factions in both
+directions. Powered stabilizers and destabilizers cancel each other. Fuel shortages
+wait for resupply. Cancel the continuous order to release queued work. Read
+`stability_status`, `effective_stability` and `crossing_fuel_loss` on disclosed
+endpoints before routing a ship. See [complete rules](REFERENCE.md#wormhole-stabilization).
 
 
 ### Construction equipment overrides

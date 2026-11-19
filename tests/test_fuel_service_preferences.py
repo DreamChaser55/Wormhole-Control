@@ -16,12 +16,14 @@ from tests.support.commands import issue
 from turn_processor import TurnProcessor
 from unit_components.antimatter import AntimatterStorage, AntimatterHarvester
 from unit_components.movement import Engines
+from unit_components.wormhole_destabilizer import WormholeDestabilizerComponent
 from unit_components.wormhole_stabilizer import WormholeStabilizerComponent
+from unit_orders.wormhole_destabilizer import DestabilizeWormholeOrder
 from unit_orders.wormhole_stabilizer import StabilizeWormholeOrder
 from wormhole_stabilization import process_support
 
 
-def scenario(harvesting=True, amount=100):
+def scenario(harvesting=True, amount=100, *, destabilizer=False):
     game = campaign()
     game.galaxy.game = game
 
@@ -43,22 +45,25 @@ def scenario(harvesting=True, amount=100):
         source = vessel('Source depot', 600, 600, 1000)
     depot = vessel('Refinery', 164.25, 200, 1100)
     tender = vessel('Tender', 26.83, 150, 1400)
-    tender.add_component(WormholeStabilizerComponent(tender))
+    support_component = WormholeDestabilizerComponent if destabilizer else WormholeStabilizerComponent
+    tender.add_component(support_component(tender))
     entry, exit_ = Wormhole((0, 0), 'Sol', 'Beta'), Wormhole((0, 0), 'Beta', 'Sol')
     entry.position = Position(1400, 0)
     entry.exit_wormhole_id, exit_.exit_wormhole_id = exit_.id, entry.id
     for body in (entry, exit_):
         game.galaxy.systems[body.in_system].add_celestial_body(body)
         game.galaxy.wormholes[body.id] = body
-    tender.commander_component.add_order(StabilizeWormholeOrder(tender, {'target_id': entry.id}))
+    support_order = DestabilizeWormholeOrder if destabilizer else StabilizeWormholeOrder
+    tender.commander_component.add_order(support_order(tender, {'target_id': entry.id}))
     process_support(game, tender.owner)
     assert tender.antimatter_component.current_amount == pytest.approx(21.83)
     kind = 'continuous_resupply' if harvesting else 'continuous_antimatter_transport'
     return game, actor, source, depot, tender, kind
 
 
-def test_service_priority_chooses_low_fuel_stabilizer_and_preserves_donor_reserve():
-    game, actor, source, depot, tender, kind = scenario()
+@pytest.mark.parametrize('destabilizer', [False, True])
+def test_service_priority_chooses_low_fuel_wormhole_device_and_preserves_donor_reserve(destabilizer):
+    game, actor, source, depot, tender, kind = scenario(destabilizer=destabilizer)
     assert automatic_recipient(actor, source, game.galaxy, harvesting=True) is depot
     assert automatic_recipient(actor, source, game.galaxy, harvesting=True, priority='service_urgency') is tender
     command = Command(kind, (actor.id,), source_id=source.id, recipient_priority='service_urgency', minimum_load_fraction=.5)

@@ -86,11 +86,11 @@ changing the others. The table is generated from their runtime constants.
 <!-- BEGIN GENERATED: versions -->
 | Contract | Current version / identifier | Source |
 | --- | --- | --- |
-| Campaign save | 4.22 | [CURRENT_SAVE_VERSION](../save_manager.py) |
-| Observation | 53 | [OBSERVATION_SCHEMA_VERSION](../game_ai/observation.py) |
-| Command contract | 27 | [CONTRACT_VERSION](../game_ai/command_spec.py) |
-| Response schema | wormhole_control_turn_v19 | [TURN_PLAN_SCHEMA_NAME](../game_ai/schema.py) |
-| Prompt cache | wormhole-control-turn-v50 | [PROMPT_CACHE_KEY](../game_ai/adapters/openai_responses.py) |
+| Campaign save | 4.23 | [CURRENT_SAVE_VERSION](../save_manager.py) |
+| Observation | 54 | [OBSERVATION_SCHEMA_VERSION](../game_ai/observation.py) |
+| Command contract | 28 | [CONTRACT_VERSION](../game_ai/command_spec.py) |
+| Response schema | wormhole_control_turn_v20 | [TURN_PLAN_SCHEMA_NAME](../game_ai/schema.py) |
+| Prompt cache | wormhole-control-turn-v51 | [PROMPT_CACHE_KEY](../game_ai/adapters/openai_responses.py) |
 | Local socket protocol | 4 | [PROTOCOL_VERSION](../game_control_protocol.py) |
 | Constructor component | 5 | [Constructor.SCHEMA_VERSION](../unit_components/constructor.py) |
 | Commander component | 2 | [Commander.SCHEMA_VERSION](../unit_components/commander.py) |

@@ -49,7 +49,7 @@ def issue(game, player, *commands):
 
 
 def test_contract_v3_intelligence_shapes():
-    assert CONTRACT_VERSION == 27
+    assert CONTRACT_VERSION == 28
     sabotage = Command.from_dict(
         {
             "type": "sabotage",

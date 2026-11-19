@@ -6,7 +6,7 @@ from copy import deepcopy
 import math
 from construction_customization import TURRET_TYPES, DEFENSE_TYPES, validate_override_values
 
-CONTRACT_VERSION = 27
+CONTRACT_VERSION = 28
 MAX_COMMANDS = 40
 MAX_UNITS = 12
 MAX_WAYPOINTS = 16
@@ -36,7 +36,8 @@ def _spec(description, fields=(), required=None, **kwargs):
 COMMAND_SPECS = {
     "dismantle_unit": _spec("Dismantle an owned unit with a separate Constructor, or an already docked wing using its owning carrier. Includes docked craft, takes their summed half-build times, takes targets offline, discards cargo and pays half current-design value scaled by hull HP at completion. Bays finish prepaid work, then pause new production until resumed.", ("target_id",), single_unit=True),
     "set_wing_production_enabled": _spec("Enable or pause automatic new-wing construction. A wing design must also be explicitly selected; enabling alone does not select one. Paid work finishes; replenishment and selected equipment are preserved. Dismantling reserves its bay until finished or cancelled.", ("enabled",), queued=False, capability=("strikecraft_bay_component",), single_unit=True),
-    "stabilize_wormhole": _spec("Approach and continuously maintain a wormhole within 500 units for 5 AM per owner turn. Both directions become 100% stable for all ships, including enemies. Starts at End Turn; fuel shortages wait for resupply. Queued work is blocked until cancelled.", ("target_id",), single_unit=True, capability=("wormhole_stabilizer_component", "antimatter_component")),
+    "stabilize_wormhole": _spec("Maintain a wormhole within 500 units for 5 AM per owner turn. Ships approach automatically and stations must be in range. Both directions become 100% stable for everyone when uncontested. Powered destabilizers restore natural stability while both types pay upkeep. Starts at End Turn, waits for resupply, and blocks following orders until ended.", ("target_id",), single_unit=True, capability=("wormhole_stabilizer_component", "antimatter_component")),
+    "destabilize_wormhole": _spec("Maintain a wormhole within 500 units for 5 AM per owner turn. Ships approach automatically and stations must be in range. Lowers stability by 30 points to a floor of 0% for everyone in both directions. Powered stabilizers restore natural stability while both types pay upkeep. Starts at End Turn, waits for resupply, and blocks following orders until ended.", ("target_id",), single_unit=True, capability=("wormhole_destabilizer_component", "antimatter_component")),
     "recruit_troops": _spec("Approach an owned colony and recruit integer amount troops on End Turn, paying 2 credits and 0.2 population per troop; leave at least one population. Current or last-known ownership permits approach; effects wait for current contact.", ("target_id", "amount"), single_unit=True, capability=("troop_transport_component",)),
     "bombard_planet": _spec("Approach an enemy colony and bombard military defenses once per owner turn until readiness reaches 25%; each volley costs 10 AM. Current or last-known ownership permits approach; effects wait for current contact.", ("target_id",), single_unit=True, capability=("siege_battery_component",)),
     "invade_planet": _spec("Approach an enemy colony and make one assault with integer amount troops for 20 AM; survivors return aboard. Queue behind recruitment when needed. Current or last-known ownership permits approach; effects wait for current contact.", ("target_id", "amount"), single_unit=True, capability=("troop_transport_component",)),

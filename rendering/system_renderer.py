@@ -14,7 +14,7 @@ from galaxy import Hex
 from geometry import Position
 from rendering.planetary_intel import draw_ownership_ring
 from planetary_intel import displayed_owner
-from rendering.drawing_utils import darken_color, draw_selection_brackets, selection_color_for, station_icon_rect
+from rendering.drawing_utils import darken_color, draw_selection_brackets, selection_color_for, station_icon_rect, wormhole_ring_color
 
 
 class SystemViewRenderer:
@@ -162,6 +162,7 @@ class SystemViewRenderer:
                 body_color = DARK_GRAY
                 body_radius = int(3 * scale_val)
                 should_draw_circle = True
+                wormhole_ring = None
 
                 if isinstance(body, Star):
                     body_color = STAR_COLORS.get(body.star_type, YELLOW)
@@ -216,10 +217,10 @@ class SystemViewRenderer:
                 elif isinstance(body, Wormhole):
                     body_color = PURPLE
                     body_radius = int(4 * scale_val)
-                    from wormhole_stabilization import is_stabilized
-                    stabilized = is_stabilized(self.game.galaxy, body)
-                    if stabilized or body.stability < 100:
-                        pygame.draw.circle(self.screen, (80, 230, 180) if stabilized else RED, (hex_center_pixel.x, hex_center_pixel.y), body_radius + int(2 * scale_val), 1)
+                    wormhole_ring = wormhole_ring_color(self.game.galaxy, body)
+                    if wormhole_ring:
+                        pygame.draw.circle(self.screen, wormhole_ring, (hex_center_pixel.x, hex_center_pixel.y),
+                                           body_radius + int(2 * scale_val), 1)
 
                 if should_draw_circle:
                     pygame.draw.circle(self.screen, body_color, (hex_center_pixel.x, hex_center_pixel.y), body_radius)
@@ -233,7 +234,7 @@ class SystemViewRenderer:
                     selection_radius = body_radius
                     if isinstance(body, (Planet, Moon, ColonizableAsteroid)) and displayed_owner(self.game, body):
                         selection_radius += int(3 * scale_val)
-                    elif isinstance(body, Wormhole) and (body.stability < 100 or is_stabilized(self.game.galaxy, body)):
+                    elif wormhole_ring:
                         selection_radius += int(2 * scale_val)
                     elif isinstance(body, (AsteroidField, IceField, DebrisField)):
                         selection_radius = 10 * scale_val + max(1, int(scale_val))

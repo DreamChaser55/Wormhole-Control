@@ -2,9 +2,21 @@ import pygame
 import math
 from pygame import Color
 from geometry import Position
-from constants import SELECTION_HIGHLIGHT_COLOR
+from constants import ORANGE, RED, SELECTION_HIGHLIGHT_COLOR
 
 UNIT_ICON_INTERIOR_DARKEN_FACTOR = 0.35
+
+
+def wormhole_ring_color(galaxy, wormhole):
+    from wormhole_stabilization import connection_stability
+    route = connection_stability(galaxy, wormhole)
+    if route.status == 'stabilized':
+        return (80, 230, 180)
+    if route.status == 'contested':
+        return ORANGE
+    if route.status == 'destabilized' or route.effective_stability < 100:
+        return RED
+    return None
 
 
 def darken_color(color, factor: float = UNIT_ICON_INTERIOR_DARKEN_FACTOR):

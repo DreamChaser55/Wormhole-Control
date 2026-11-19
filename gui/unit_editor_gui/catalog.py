@@ -39,6 +39,7 @@ COMPONENT_ROWS: typing.List[typing.Dict] = [
     {"key": "has_strikecraft_bay",       "label": "Strikecraft Bay",    "cost_key": "strikecraft_bay_hull_cost",  "default_cost": 15.0, "is_dynamic": True},
     {"key": "has_inhibitor",             "label": "Inhibitor Field",    "cost_key": "inhibitor_hull_cost",        "default_cost": 2.0,  "is_dynamic": True},
     {"key": "has_wormhole_stabilizer_component", "label": "Wormhole Stabilizer", "cost_key": "wormhole_stabilizer_hull_cost", "default_cost": 15.0, "is_dynamic": False},
+    {"key": "has_wormhole_destabilizer_component", "label": "Wormhole Destabilizer", "cost_key": "wormhole_destabilizer_hull_cost", "default_cost": 15.0, "is_dynamic": False},
     {"key": "has_ability_component",     "label": "Abilities",          "cost_key": "ability_hull_cost",          "default_cost": 10.0, "is_dynamic": True},
     {"key": "has_sensors",               "label": "Sensors",            "cost_key": "sensors_hull_cost",          "default_cost": 2.0,  "is_dynamic": True},
     {"key": "has_minelayer_component",   "label": "Minelayer",          "cost_key": "minelayer_hull_cost",        "default_cost": 15.0, "is_dynamic": False},
@@ -79,7 +80,8 @@ def ability_button_text(
 
 COMPONENT_DESCRIPTIONS = {
     "has_titan_component": "Titan-only core. Canonical cost: 100 hull. Required for all five strategic Titan powers; ordinary component damage and repair apply.",
-    "has_wormhole_stabilizer_component": "Maintain one wormhole from within 500 units for 5 AM per owner turn, making both directions 100% stable for everyone, including enemies. Requires Medium or larger and Antimatter Storage. Ships approach automatically; stations must be in range. Begins at End Turn, waits on fuel shortage, and stops when cancelled. Queued work waits behind this continuous order.",
+    "has_wormhole_stabilizer_component": "Maintain one wormhole from within 500 units for 5 AM per owner turn. An uncontested stabilizer makes both directions 100% stable for every faction. Powered destabilizers cancel the effect. Requires Medium or larger and Antimatter Storage. Ships approach automatically and stations must be in range. Starts at End Turn, waits on fuel shortage, and holds following orders until ended.",
+    "has_wormhole_destabilizer_component": "Lower one wormhole's stability by 30 points in both directions for every faction. Powered stabilizers cancel the effect. Requires Medium or larger and Antimatter Storage. Ships approach automatically and stations must be within 500 units. Costs 5 AM per owner turn from End Turn. Resumes after resupply and holds following orders until ended.",
     "has_engine": "Sublight propulsion for movement within a sector. Destroyed Engines or non-positive effective speed prevent sublight movement; an operational Hyperdrive can still jump.",
     "has_antimatter_storage": "Stores antimatter (AM) fuel for movement, jumps and equipment. Storage alone does not generate fuel; replenish it by harvesting or transfer.",
     "has_antimatter_harvester": "Collects antimatter from stars and hydrogen nebulae using harvesting orders. Yield depends on the source; harvesting is not automatic fuel generation anywhere in space.",
