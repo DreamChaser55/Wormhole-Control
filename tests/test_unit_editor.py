@@ -1168,6 +1168,24 @@ def test_turret_drafts_require_explicit_add_and_correction(draft_editor):
     assert e._turrets[0].damage == .25 and e._turrets[0].cooldown == 0
 
 
+@pytest.mark.parametrize('hull, variant, has_tank, warns', [
+    (HullSize.MEDIUM, 'STANDARD', False, True),
+    (HullSize.MEDIUM, 'STANDARD', True, False),
+    (HullSize.STRIKECRAFT_WING, 'ANTI_STRIKECRAFT', False, False),
+])
+def test_weapon_fuel_warning_allows_saving_a_valid_design(draft_editor, hull, variant, has_tank, warns):
+    from custom_unit_templates import TurretConfig
+    from gui.unit_editor_gui.template_io import sync_widgets_from_template
+
+    components = ComponentConfig(has_weapon_bays=True, has_antimatter_storage=has_tank,
+                                 turrets=[TurretConfig('BEAM', 5, 150, 2, variant)])
+    sync_widgets_from_template(draft_editor, CustomUnitTemplate('Armed design', hull, components))
+
+    warning = 'Install Antimatter Storage to fire turrets.'
+    assert (warning in draft_editor._summary_box.html_text) is warns
+    assert draft_editor._save_button.is_enabled
+
+
 def test_capacity_excess_updates_and_troop_edits_refresh_immediately(draft_editor):
     from gui.unit_editor_gui.component_state import toggle_component
     e = draft_editor

@@ -190,6 +190,10 @@ do_nothing; their standing_order is an internal passive policy. Use cancel_order
 Internal suborders and stance engagements cannot be edited individually.
 attack closes until all target-eligible turrets are in range. It tracks moving
 targets before movement and can fire ready turrets from its new position the same turn.
+Each firing turret pays capability_details.weapons.antimatter_per_shot from the unit's
+current antimatter after movement. Budget fuel for both travel and salvos. Read
+firing_fuel_blocker for low fuel or unavailable storage. Attacks remain issuable while
+fuel-blocked and a valid engagement resumes firing after resupply or restored storage.
 Use that actor's command_options.attack/attack_long_range.target_ids, not another unit's
 target list. Check each turret's eligible_target_classes before assigning wing targets:
 an equipped standard ship turret does not automatically qualify to attack strikecraft.

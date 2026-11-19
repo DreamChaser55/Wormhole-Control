@@ -397,6 +397,40 @@ def test_run_does_not_reset_unready_turrets():
     assert not wing_order(bomber)
 
 
+@pytest.mark.parametrize('refuel', [True, False], ids=['resupplied', 'expires'])
+def test_attack_run_retries_when_all_ready_shots_are_fuel_blocked(refuel):
+    game, carrier, bomber, _, target, _ = scenario()
+    target.position = Position(300, 0)
+    weapons = bomber.weapons_component
+    turret, = weapons.turrets
+    tank = bomber.antimatter_component
+    tank.current_amount = 0.5
+    before = target.current_hit_points
+    assert issue(game, carrier, 'attack_run', target).accepted
+    run = wing_order(bomber)
+    next_round(game)
+
+    weapons.update(game.galaxy)
+
+    assert wing_order(bomber) is run and run.phase == 'release'
+    assert target.current_hit_points == before
+    assert tank.current_amount == 0.5
+    assert turret.current_cooldown == 0
+    if refuel:
+        tank.add(1)
+        next_round(game)
+        weapons.update(game.galaxy)
+        assert run.status.name == 'COMPLETED'
+        assert target.current_hit_points == before - 8
+        assert tank.current_amount == 0.5
+    else:
+        for _ in range(run.parameters['expires_round'] - game.turn_number):
+            next_round(game)
+            weapons.update(game.galaxy)
+        assert run.status.name == 'FAILED' and run.failure_reason == 'ability_expired'
+        assert target.current_hit_points == before
+
+
 def test_run_into_unreachable_magnetic_storm_fails_without_firing():
     from domain.celestials import Storm
     from constants import StormType

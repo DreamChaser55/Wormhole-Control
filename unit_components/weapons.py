@@ -8,7 +8,7 @@ from .base import UnitComponent
 from .enums import TurretType, TurretVariant, WingType
 from geometry import distance
 from constants import (
-    HullSize, XP_WEAPON_DAMAGE_BONUS
+    HullSize, TURRET_ANTIMATTER_COST_PER_SHOT, XP_WEAPON_DAMAGE_BONUS
 )
 
 if TYPE_CHECKING:
@@ -23,6 +23,12 @@ DMG_PER_POINT: float = 5.0             # hull points per unit of damage
 RANGE_PER_POINT: float = 100.0         # hull points per unit of range
 COOLDOWN_BONUS: float = 2.0            # hull points granted by short cooldown
 COMPONENT_TARGET_RANGE_MULTIPLIER: float = 0.5
+
+
+def _antimatter_per_shot(unit: 'Unit') -> float:
+    if unit.hull_size == HullSize.STRIKECRAFT_WING and unit.antimatter_component is None:
+        return 0.0
+    return TURRET_ANTIMATTER_COST_PER_SHOT
 
 
 def targeting_range(turret_range: float, target_component_type: Optional[type] = None) -> float:
@@ -101,52 +107,53 @@ class Turret:
         turret.__dict__.update(values, parent_unit=unit, target=None, target_component_type=None)
         return turret
 
-    def fire(self) -> None:
-        """
-        Fires at the turret's current target and resets the cooldown.
-        Damage is amplified if the target is marked by Designate Target.
-        The parent unit earns XP equal to the actual damage dealt.
-        """
-        if self.target:
-            # Apply damage amplification from Designate Target (stacks additively)
-            effective_damage = self.damage
-            if self.target.damage_amplification > 0.0:
-                effective_damage = self.damage * (1.0 + self.target.damage_amplification)
+    def fire(self) -> bool:
+        """Pay for and resolve a shot, returning whether the turret fired."""
+        target = self.target
+        if target is None or target.current_hit_points <= 0:
+            return False
 
-            # Apply XP weapon damage bonus from the firing unit
-            effective_damage *= self.parent_unit.xp_multiplier(XP_WEAPON_DAMAGE_BONUS)
+        # Apply damage amplification from Designate Target (stacks additively)
+        effective_damage = self.damage
+        if target.damage_amplification > 0.0:
+            effective_damage = self.damage * (1.0 + target.damage_amplification)
 
-            # Apply Orbital Defense attack bonus if within active friendly aura
-            if hasattr(self.parent_unit, 'get_orbital_defense_buffs'):
-                od_atk_bonus, _ = self.parent_unit.get_orbital_defense_buffs()
-                if od_atk_bonus > 0.0:
-                    effective_damage *= (1.0 + od_atk_bonus)
+        # Apply XP weapon damage bonus from the firing unit
+        effective_damage *= self.parent_unit.xp_multiplier(XP_WEAPON_DAMAGE_BONUS)
 
-            # Apply weapons sabotage damage reduction
-            if hasattr(self.parent_unit, 'is_sabotaged'):
-                from .enums import SabotageType
-                if self.parent_unit.is_sabotaged(SabotageType.WEAPONS):
-                    effective_damage *= 0.5
+        # Apply Orbital Defense attack bonus if within active friendly aura
+        if hasattr(self.parent_unit, 'get_orbital_defense_buffs'):
+            od_atk_bonus, _ = self.parent_unit.get_orbital_defense_buffs()
+            if od_atk_bonus > 0.0:
+                effective_damage *= (1.0 + od_atk_bonus)
 
-            # Anti-strikecraft damage reduced to 25% against other targets
-            if self.variant == TurretVariant.ANTI_STRIKECRAFT and self.target.hull_size != HullSize.STRIKECRAFT_WING:
-                effective_damage *= 0.25
+        # Apply weapons sabotage damage reduction
+        if hasattr(self.parent_unit, 'is_sabotaged'):
+            from .enums import SabotageType
+            if self.parent_unit.is_sabotaged(SabotageType.WEAPONS):
+                effective_damage *= 0.5
 
-            from strikecraft_abilities import outgoing_multiplier
-            effective_damage *= outgoing_multiplier(self.parent_unit, self.target, self)
+        # Anti-strikecraft damage reduced to 25% against other targets
+        if self.variant == TurretVariant.ANTI_STRIKECRAFT and target.hull_size != HullSize.STRIKECRAFT_WING:
+            effective_damage *= 0.25
 
-            # Record target HP before damage to compute actual damage dealt for XP
-            hp_before = self.target.current_hit_points
+        from strikecraft_abilities import outgoing_multiplier
+        from tactical_abilities import combat_hit
+        damage = int(effective_damage * outgoing_multiplier(self.parent_unit, target, self))
+        hp_before = target.current_hit_points
+        cost = _antimatter_per_shot(self.parent_unit)
+        storage = self.parent_unit.antimatter_component
+        if cost > 0 and (storage is None or not storage.consume(cost)):
+            return False
 
-            from tactical_abilities import combat_hit
-            combat_hit(self.target, int(effective_damage), self.turret_type, component_type=self.target_component_type, attacker=self.parent_unit)
+        combat_hit(target, damage, self.turret_type, component_type=self.target_component_type, attacker=self.parent_unit)
 
-            # Award XP based on actual HP lost (overkill damage does not grant bonus XP)
-            xp_earned = max(0, hp_before - self.target.current_hit_points)
-            if xp_earned > 0:
-                self.parent_unit.gain_experience(xp_earned)
-
+        # Award XP based on actual HP lost (overkill damage does not grant bonus XP)
+        xp_earned = max(0, hp_before - target.current_hit_points)
+        if xp_earned > 0:
+            self.parent_unit.gain_experience(xp_earned)
         self.current_cooldown = self.effective_cooldown
+        return True
 
     def update(self) -> None:
         """
@@ -209,8 +216,30 @@ class Weapons(UnitComponent):
         # Canonical catalog costs must not depend on Python's sum() algorithm.
         return math.fsum(Weapons.calc_turret_hull_cost(t) for t in turrets)
 
+    def firing_fuel(self) -> tuple[float, Optional[str]]:
+        """Return the price of one shot and the current fuel blocker, if any."""
+        from antimatter_logistics import work_fuel_blocker
+        cost = _antimatter_per_shot(self.unit)
+        return cost, work_fuel_blocker(self.unit, cost) if cost > 0 else None
+
+    def _firing_fuel_sidebar_data(self, game_state: 'Game', *, show_cost: bool) -> list[dict]:
+        from component_visibility import unit_details_are_public_in_game
+        if not self.turrets or not unit_details_are_public_in_game(self.unit, game_state):
+            return []
+        cost, blocker = self.firing_fuel()
+        rows = []
+        if show_cost:
+            rows.append((f"{cost:g} AM per shot", '#sidebar_info_label'))
+        if blocker:
+            reason = ("Insufficient antimatter to fire" if blocker == 'insufficient_antimatter'
+                      else "Antimatter Storage unavailable")
+            rows.append((reason, '#sidebar_status_charging_label'))
+        return [{'type': 'label', 'text': text, 'object_id': style, 'height': 18, 'indent_level': 1}
+                for text, style in rows]
+
     def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
         data = super().get_sidebar_data(game_state)
+        data.extend(self._firing_fuel_sidebar_data(game_state, show_cost=True))
         from component_visibility import unit_details_are_public_in_game
         show_targets = unit_details_are_public_in_game(self.unit, game_state)
         xp = self.unit.experience_points
@@ -296,6 +325,7 @@ class Weapons(UnitComponent):
             })
             return data
 
+        data.extend(self._firing_fuel_sidebar_data(game_state, show_cost=False))
         xp_dmg_mult = self.unit.xp_multiplier(XP_WEAPON_DAMAGE_BONUS)
         for turret in self.turrets:
             variant_str = turret.variant.name.replace('_', ' ').title()
@@ -388,6 +418,8 @@ class Weapons(UnitComponent):
                 turret.target = None
                 turret.target_component_type = None
 
+        attempted_shot = False
+        fired_shot = False
         for turret in self.turrets:
             if turret.target:
                 from domain.players import are_enemies
@@ -418,9 +450,15 @@ class Weapons(UnitComponent):
 
                 if target_in_same_system and target_in_same_hex and target_in_range:
                     if turret.current_cooldown <= 0:
-                        turret.fire()
+                        attempted_shot = True
+                        if turret.fire():
+                            fired_shot = True
 
-        if run and run.status.name == 'IN_PROGRESS' and run.phase == 'release':
+        # A release with ready but entirely unfunded turrets can retry until expiry.
+        if (
+            run and run.status.name == 'IN_PROGRESS' and run.phase == 'release'
+            and (fired_shot or not attempted_shot)
+        ):
             run.finish_salvo()
 
     def set_target(self, target_unit: 'Unit', target_component_type: Optional[type] = None) -> None:

@@ -85,6 +85,8 @@ def update_summary(editor) -> None:
                 comp_lines.append(f"    type={c.hyperdrive_type}  jump_range={c.hyperdrive_jump_range}")
             elif key == "has_weapon_bays":
                 if editor._turrets:
+                    if editor._hull_size != HullSize.STRIKECRAFT_WING and not c.has_antimatter_storage:
+                        comp_lines.append("    <font color='#FFCC66'>Install Antimatter Storage to fire turrets.</font>")
                     for t in editor._turrets:
                         disp_range = t.range * 3.0 if t.variant == "LONG_RANGE" else t.range
                         disp_cooldown = t.cooldown * 3 if t.variant == "LONG_RANGE" else t.cooldown

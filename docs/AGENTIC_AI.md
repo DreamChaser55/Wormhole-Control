@@ -624,6 +624,14 @@ position alongside base `cooldown` and `cooldown_remaining`. Already-exposed
 celestial bodies carry numeric `environmental_effects`; no extra bodies or enemy
 equipment are revealed. These fields follow the [environmental rules](REFERENCE.md#environmental-fields).
 
+Owned and allied `capability_details.weapons` includes `antimatter_per_shot`
+and `firing_fuel_blocker`. The blocker is `insufficient_antimatter` when the
+tank falls below the shot cost, `antimatter_storage_unavailable` when storage is
+missing or destroyed, and null when fuel permits a shot. Tankless strikecraft
+report a zero cost and a null blocker. Shots draw from live fuel after movement.
+Players can issue and queue attacks before fuel is available. See the
+[turret firing rules](REFERENCE.md#weapons-and-damage).
+
 ## Commands
 
 ### Construct customization and combat inspection

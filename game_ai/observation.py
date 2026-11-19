@@ -31,7 +31,7 @@ from component_visibility import public_components
 from order_history import history_view
 from turn_briefing import summary_view
 
-OBSERVATION_SCHEMA_VERSION = 52
+OBSERVATION_SCHEMA_VERSION = 53
 COMMAND_HELP = {name: spec.description for name, spec in COMMAND_SPECS.items()}
 
 
@@ -471,8 +471,8 @@ def _minefield_view(minefield: Any, viewer: Any) -> dict[str, Any]:
     }
 
 
-def _combat_equipment_details(unit: Any) -> dict[str, Any]:
-    """Only human-inspectable combat equipment; no provenance, targets or orders."""
+def _combat_equipment_details(unit: Any, *, include_firing_fuel: bool = False) -> dict[str, Any]:
+    """Serialize combat equipment, with fuel details for owned and allied units."""
     from constants import HullSize
     details = {}
     weapons = getattr(unit, "weapons_component", None)
@@ -483,6 +483,9 @@ def _combat_equipment_details(unit: Any) -> dict[str, Any]:
              "effective_cooldown": t.effective_cooldown,
              "eligible_target_classes": [enum_name(h) for h in HullSize if weapons.turret_accepts_hull(t, h)]}
             for t in weapons.turrets]}
+        if include_firing_fuel:
+            cost, blocker = weapons.firing_fuel()
+            details["weapons"].update(antimatter_per_shot=cost, firing_fuel_blocker=blocker)
     from unit_components.defenses import Defenses
     defenses = next((c for c in public_components(unit, enemy=True) if isinstance(c, Defenses)), None)
     if defenses is not None:
@@ -534,7 +537,7 @@ def _capability_details(unit: Any, game: Any) -> dict[str, Any]:
         from environmental_effects import sensor_radius
         details["sensors"]["effective_short_range_radius"] = sensor_radius(unit)
         details["sensors"]["effective_long_range_hexes"] = long_range_sensor_hexes(unit)
-    details.update(_combat_equipment_details(unit))
+    details.update(_combat_equipment_details(unit, include_firing_fuel=True))
     cloak = getattr(unit, "cloaking_component", None)
     if cloak is not None:
         details["cloaking"] = {"type": enum_name(cloak.device_type), "active": cloak.is_active,

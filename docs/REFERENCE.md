@@ -413,6 +413,7 @@ overflow cost calculations show an unavailable preview. Over-capacity designs sh
 minimum without increasing the entered capacity; wing long-range Sensors remain locked
 to zero. Turrets enter the design only through **Add Turret**. Invalid turret drafts
 block that action and saving until corrected.
+The Design Summary warns when an armed ship or station has no Antimatter Storage.
 
 The retrofit editor uses the same numeric feedback and keeps confirmation disabled
 for invalid input. Saving and refitting recheck the draft before publishing or charging,
@@ -1076,6 +1077,15 @@ turrets specialize in wings with faster tracking and fire. **Long Range** turret
 trade slower firing for reach. Combat XP improves weapon damage, defenses,
 sublight speed and jump range.
 
+Each turret spends **1 AM per shot** from its unit's tank, even if defenses absorb
+all damage. Tankless strikecraft fire for free. Strikecraft with a tank and temporary
+Missile Batteries platforms pay from their own storage.
+
+During End Turn, fire uses the fuel available after movement. Ready turrets fire in
+installed order, so a low tank can fund part of a volley. Units that pay for shots
+need a working tank with at least 1 AM. A still-valid attack can fire on the next
+eligible owner turn after refueling or restoring storage.
+
 Non-positive damage has no effect. Cover, defenses and damage reduction can fully
 absorb a positive hit, including rounding it to zero; there is no one-HP minimum.
 Damage reduction is limited to 0–100% and cannot heal a ship. Shields are mitigation,
@@ -1307,7 +1317,8 @@ start. Tracking Lock and Flak Barrage require an anti-strikecraft turret.
   explicit work but preserving stance. Bombers follow the moving target at +50%
   speed and release one double-damage salvo from ready turrets, no earlier than
   the caster owner's next turn. Runs require continued visibility and normal
-  weapon range, cooldowns and clear firing paths. Stop, replacement orders and
+  weapon range, cooldowns and clear firing paths. If fuel blocks every attempted
+  shot, the bomber retries within the run's duration. Stop, replacement orders and
   Emergency Recovery abort without refunds. Queued follow-ups resume afterward.
   Disabled or recovering bombers are ineligible; targeting lists affected wings
   and the work being replaced.

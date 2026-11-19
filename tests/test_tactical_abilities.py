@@ -598,11 +598,12 @@ def test_actual_sensor_radius_is_shared_with_ai_and_cooldown_resets():
     caster.add_component(Weapons(caster))
     for base, expected in [(0, 0), (1, 1), (3, 1), (6, 4)]:
         turret = Turret(TurretType.BEAM, damage=10, range=500, cooldown=base, parent_unit=caster)
-        turret.parent_unit = caster
         turret.current_cooldown = 8
         assert turret.effective_cooldown == expected
+        assert not turret.fire()
         assert turret.current_cooldown == 8
-        turret.fire()
+        turret.target = enemy
+        assert turret.fire()
         assert turret.current_cooldown == expected
 
 
