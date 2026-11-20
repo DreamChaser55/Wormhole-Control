@@ -30,12 +30,6 @@ The gateway recorded no live terminal AI failure or partial commit. The round-69
 
 ## Confirmed findings
 
-### Medium · A destination in the wormhole exit sector gets unnecessary egress waypoints
-
-In round 40, I sent Artillery Frigate 40 from Rigel to `[1000, -500]` in Procyon `[2, -3]`, the sector where the wormhole arrives. After the transit waypoint at `[0, 0]`, the plan sent the ship out to `[-636.91, 1764.57]`, then to `[1677.22, -838.61]`, and then back inside the field to the requested point. Siege Frigate 48 reproduced the route pattern in round 60 with a different exit heading. The wormhole blocks jumps within its field and permits sublight travel there.
-
-The artillery route initially quoted 51 owner turns and 84 AM. Just before crossing, it quoted 31 turns and 55 AM. After the crossing consumed one turn and 25 AM, the forecast dropped to 12 turns and 12 AM while the active waypoint was still 1,876 units away and the frigate moved at 100 units per turn. I switched to combat at that point, so the discrepancy is in the planned route and forecast. Plan a collision-checked local leg from the exit when the destination is in that sector. Use the same geometry for the active route and its estimate. [Round 40 route](saves/pt26/r040-artillery-departure.json.gz) · [Pre-crossing](saves/pt26/r060-start.json.gz) · [Post-crossing](saves/pt26/r061-start.json.gz) · [Route planner](unit_orders/movement.py#L890)
-
 ### Medium · Jump failure loses the actionable fuel reason
 
 Luna's Colonizer 32 loaded 10 colonists on round 59 and set out for Asteroid 20. The debug log identifies insufficient antimatter at its attempted jump on round 74. The saved order history records only `execution_failed`. The movement order maps the drive's generic error state to that code. At round 100 the AI remembered the stalled mission and had an objective to refuel the colonizer, which still had 5.75 AM and its 10 passengers.

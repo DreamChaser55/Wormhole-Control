@@ -761,23 +761,43 @@ class MoveOrder(Order):
                 self.handle_inhibited_waypoint(waypoint_hex, waypoint_pos, is_final_destination=is_final, system_name=system_name, galaxy_ref=galaxy_ref)
                 logger.debug(f"[{format_unit_for_log(self.unit)}] MOVE(id:{self.local_order_id}): plan_route->plan_hex_jump_sequence: Added waypoint {i+1}/{len(waypoints)} at hex {waypoint_hex}.")
 
-    def _plan_initial_inhibition_escape(self, galaxy_ref: 'Galaxy') -> None:
-        """Leave the starting field before an intra-system sector jump."""
-        current_system = self.unit.in_system
-        current_hex = self.unit.in_hex
-        current_position = self.unit.position
-        current_hex_obj = galaxy_ref.systems[current_system].hexes.get(current_hex)
+    def _plan_inhibition_escape(self, galaxy_ref, system_name, coord, position):
+        """Leave an inhibition field before an intra-system sector jump."""
+        current_hex_obj = galaxy_ref.systems[system_name].hexes.get(coord)
         if current_hex_obj:
             for zone in current_hex_obj.get_all_inhibition_zones():
-                if is_point_in_circle(current_position, zone):
-                    escape_pos = get_closest_point_on_circle_edge(current_position, zone)
-                    logger.debug(f"[{format_unit_for_log(self.unit)}] MOVE(id:{self.local_order_id}): plan_route: Start position {current_position} is inhibited. Planning escape move to {escape_pos}.")
+                if is_point_in_circle(position, zone):
+                    edge = get_closest_point_on_circle_edge(position, zone)
+                    logger.debug(f"[{format_unit_for_log(self.unit)}] MOVE(id:{self.local_order_id}): plan_route: Position {position} is inhibited. Planning escape move to {edge}.")
                     self.add_sub_order(ReachWaypointOrder(self.unit, {
-                        "destination_system_name": current_system,
-                        "destination_hex_coord": current_hex,
-                        "destination_position": escape_pos
+                        "destination_system_name": system_name,
+                        "destination_hex_coord": coord,
+                        "destination_position": edge,
                     }, parent_order=self))
                     break
+
+    def _plan_local_leg(self, galaxy_ref, system_name, coord, start, destination):
+        if distance(start, destination) < 0.01:
+            return
+        engines = self.unit.engines_component
+        if not engines or not engines.is_operational:
+            self.fail("engines_unavailable")
+            if engines:
+                engines.clear_move_target(self.local_order_id)
+            return
+        obstacles = get_hex_collision_obstacles(galaxy_ref, system_name, coord, self.unit)
+        boundary = Circle(Position(0, 0), SECTOR_CIRCLE_RADIUS_LOGICAL)
+        try:
+            waypoints = compute_avoidance_waypoints(start, destination, obstacles, boundary=boundary)
+        except NoSafePathError:
+            self.fail("path_unavailable")
+            return
+        for position in [*waypoints, destination]:
+            self.add_sub_order(ReachWaypointOrder(self.unit, {
+                "destination_system_name": system_name,
+                "destination_hex_coord": coord,
+                "destination_position": position,
+            }, parent_order=self))
 
     def plan_route(self, galaxy_ref: 'Galaxy') -> None:
         """Prepare child movement legs from the unit's current location; return None.
@@ -786,7 +806,7 @@ class MoveOrder(Order):
         parameters. Resolve unit/celestial approach targets before planning local
         avoidance, hex jumps or hull-compatible wormhole legs. Update approach
         parameters and append ReachWaypoint children; do not displace the unit or
-        pay movement fuel here. Inhibited wormhole exits may draw random headings.
+        pay movement fuel here.
 
         An already-reached destination completes the order. Missing targets,
         capabilities or safe routes fail it; some failures also show GUI warnings.
@@ -872,7 +892,7 @@ class MoveOrder(Order):
 
                 # First, navigate to the entry wormhole.
                 if current_hex != direct_wormhole.in_hex:
-                    self._plan_initial_inhibition_escape(galaxy_ref)
+                    self._plan_inhibition_escape(galaxy_ref, current_system, current_hex, current_position)
                     self.plan_hex_jump_sequence(current_hex, direct_wormhole.in_hex, direct_wormhole.position, current_system, galaxy_ref)
                 else:
                     self.add_sub_order(ReachWaypointOrder(self.unit, {
@@ -890,33 +910,12 @@ class MoveOrder(Order):
                 }, parent_order=self))
                 logger.debug(f"[{format_unit_for_log(self.unit)}] MOVE(id:{self.local_order_id}): plan_route: Added sub-order to jump through direct wormhole to {dest_system}.")
 
-                # If the destination wormhole exit is inhibited, we immediately schedule a sub-light escape
-                # maneuver to a random safe point outside the inhibitor field.
-                arrival_pos = exit_wh.position
-                arrival_hex_obj = galaxy_ref.systems[dest_system].hexes[exit_wh.in_hex]
-                if arrival_hex_obj:
-                    for zone in arrival_hex_obj.get_all_inhibition_zones():
-                        if is_point_in_circle(arrival_pos, zone):
-                            angle = random.uniform(0, 2 * math.pi)
-                            safe_distance = zone.radius + 1.0
-                            safe_pos_x = arrival_pos.x + safe_distance * math.cos(angle)
-                            safe_pos_y = arrival_pos.y + safe_distance * math.sin(angle)
-                            safe_pos = Position(safe_pos_x, safe_pos_y)
+                if exit_wh.in_hex == dest_hex:
+                    self._plan_local_leg(galaxy_ref, dest_system, dest_hex, exit_wh.position, dest_position)
+                    return
 
-                            self.add_sub_order(ReachWaypointOrder(self.unit, {
-                                "destination_system_name": dest_system,
-                                "destination_hex_coord": exit_wh.in_hex,
-                                "destination_position": safe_pos
-                            }, parent_order=self))
-                            logger.debug(f"[{format_unit_for_log(self.unit)}] MOVE(id:{self.local_order_id}): plan_route: Wormhole exit is inhibited. Adding sub-light move to safe position: {safe_pos}.")
-                            arrival_pos = safe_pos
-                            break
-
-                # Finally, navigate from the exit wormhole to the final destination.
-                if exit_wh.in_hex != dest_hex:
-                    self.plan_hex_jump_sequence(exit_wh.in_hex, dest_hex, dest_position, dest_system, galaxy_ref)
-                elif distance(arrival_pos, dest_position) >= 0.01:
-                    self.handle_inhibited_waypoint(dest_hex, dest_position, is_final_destination=True, system_name=dest_system, galaxy_ref=galaxy_ref)
+                self._plan_inhibition_escape(galaxy_ref, dest_system, exit_wh.in_hex, exit_wh.position)
+                self.plan_hex_jump_sequence(exit_wh.in_hex, dest_hex, dest_position, dest_system, galaxy_ref)
 
 
             else:
@@ -948,6 +947,7 @@ class MoveOrder(Order):
                 logger.debug(f"  [plan_route] Path has {len(path_to_destination) - 1} legs.")
 
                 current_leg_arrival_hex = current_hex
+                current_leg_arrival_pos = current_position
 
                 for i in range(len(path_to_destination) - 1):
                     leg_origin_system = path_to_destination[i]
@@ -970,8 +970,7 @@ class MoveOrder(Order):
 
                     # Navigate from the last leg's entry point to this leg's entry wormhole position.
                     if current_leg_arrival_hex != wormhole_for_leg.in_hex:
-                        if i == 0:
-                            self._plan_initial_inhibition_escape(galaxy_ref)
+                        self._plan_inhibition_escape(galaxy_ref, leg_origin_system, current_leg_arrival_hex, current_leg_arrival_pos)
                         self.plan_hex_jump_sequence(current_leg_arrival_hex, wormhole_for_leg.in_hex, wormhole_for_leg.position, leg_origin_system, galaxy_ref)
                     else:
                         self.add_sub_order(ReachWaypointOrder(self.unit, {
@@ -989,70 +988,26 @@ class MoveOrder(Order):
                     }, parent_order=self))
                     logger.debug(f"[{format_unit_for_log(self.unit)}] MOVE(id:{self.local_order_id}): plan_route: Leg {i+1} - Added sub-order to jump {leg_origin_system} -> {leg_destination_system}.")
 
-                    # Handle case where the intermediate leg exit is blocked by an inhibitor field.
-                    arrival_pos_leg = exit_wormhole_for_leg.position
-                    arrival_hex_obj_leg = galaxy_ref.systems[leg_destination_system].hexes[exit_wormhole_for_leg.in_hex]
-                    if arrival_hex_obj_leg:
-                        for zone in arrival_hex_obj_leg.get_all_inhibition_zones():
-                            if is_point_in_circle(arrival_pos_leg, zone):
-                                angle = random.uniform(0, 2 * math.pi)
-                                safe_distance = zone.radius + 1.0
-                                safe_pos_x = arrival_pos_leg.x + safe_distance * math.cos(angle)
-                                safe_pos_y = arrival_pos_leg.y + safe_distance * math.sin(angle)
-                                safe_pos = Position(safe_pos_x, safe_pos_y)
-
-                                self.add_sub_order(ReachWaypointOrder(self.unit, {
-                                    "destination_system_name": leg_destination_system,
-                                    "destination_hex_coord": exit_wormhole_for_leg.in_hex,
-                                    "destination_position": safe_pos
-                                }, parent_order=self))
-                                logger.debug(f"[{format_unit_for_log(self.unit)}] MOVE(id:{self.local_order_id}): plan_route: Leg {i+1} exit is inhibited. Adding sub-light move out of inhibition zone to safe position: {safe_pos}.")
-                                break
+                    if leg_destination_system == dest_system and exit_wormhole_for_leg.in_hex == dest_hex:
+                        self._plan_local_leg(galaxy_ref, dest_system, dest_hex, exit_wormhole_for_leg.position, dest_position)
+                        return
 
                     current_leg_arrival_hex = exit_wormhole_for_leg.in_hex
+                    current_leg_arrival_pos = exit_wormhole_for_leg.position
 
                 # Plan the final leg within the destination system.
+                self._plan_inhibition_escape(galaxy_ref, dest_system, current_leg_arrival_hex, current_leg_arrival_pos)
                 self.plan_hex_jump_sequence(current_leg_arrival_hex, dest_hex, dest_position, dest_system, galaxy_ref)
 
 
         # Intra-system travel: Jump to a different hex in the same system.
         elif current_hex != dest_hex:
-            self._plan_initial_inhibition_escape(galaxy_ref)
+            self._plan_inhibition_escape(galaxy_ref, current_system, current_hex, current_position)
             self.plan_hex_jump_sequence(current_hex, dest_hex, dest_position, current_system, galaxy_ref)
         
         # Intra-hex travel: Move directly using sub-light engines.
         else:
-            engines = self.unit.engines_component
-            if not engines or not engines.is_operational:
-                self.fail("engines_unavailable")
-                if engines:
-                    engines.clear_move_target(self.local_order_id)
-                reason = "no engines" if not engines else "engines are destroyed or offline"
-                logger.debug(f"[{format_unit_for_log(self.unit)}] MOVE(id:{self.local_order_id}): plan_route: FAILED (cannot plan final sub-light movement leg, {reason}).")
-                return
-            
-            obstacles = get_hex_collision_obstacles(galaxy_ref, dest_system, dest_hex, unit=self.unit)
-            try:
-                avoidance_wps = compute_avoidance_waypoints(current_position, dest_position, obstacles, margin=NAVIGATION_CLEARANCE, boundary=Circle(Position(0, 0), SECTOR_CIRCLE_RADIUS_LOGICAL))
-            except NoSafePathError:
-                self.fail("path_unavailable")
-                return
-            if avoidance_wps:
-                logger.debug(f"[{format_unit_for_log(self.unit)}] MOVE(id:{self.local_order_id}): plan_route: Direct sub-light path intersects celestial body. Adding {len(avoidance_wps)} avoidance waypoint(s).")
-                for wp in avoidance_wps:
-                    self.add_sub_order(ReachWaypointOrder(self.unit, {
-                        "destination_system_name": dest_system,
-                        "destination_hex_coord": dest_hex,
-                        "destination_position": wp
-                    }, parent_order=self))
-
-            sub_order_params = {
-                "destination_system_name": dest_system,
-                "destination_hex_coord": dest_hex,
-                "destination_position": dest_position
-            }
-            final_move_sub_order = ReachWaypointOrder(self.unit, sub_order_params, parent_order=self)
-            self.add_sub_order(final_move_sub_order)
+            self._plan_local_leg(galaxy_ref, dest_system, dest_hex, current_position, dest_position)
 
 
 def calculate_required_antimatter(
@@ -1132,21 +1087,15 @@ def calculate_required_antimatter(
                 return _sublight_cost(adjusted_pos, target_p)
         return 0.0
 
-    total_antimatter = 0.0
+    def _escape_cost(system_name, coord, start):
+        system = galaxy_ref.systems.get(system_name)
+        sector = system.hexes.get(coord) if system else None
+        for zone in sector.get_all_inhibition_zones() if sector else ():
+            if is_point_in_circle(start, zone):
+                return _sublight_cost(start, get_closest_point_on_circle_edge(start, zone))
+        return 0.0
 
-    # Account for departure escape cost if origin is currently inhibited and we are jumping out
-    if curr_system != destination_system_name or curr_hex != destination_hex_coord:
-        origin_sys_obj = galaxy_ref.systems.get(curr_system) if hasattr(galaxy_ref, 'systems') and galaxy_ref.systems else None
-        if origin_sys_obj:
-            origin_hex_obj = origin_sys_obj.hexes.get(curr_hex) if hasattr(origin_sys_obj, 'hexes') and origin_sys_obj.hexes else None
-            if origin_hex_obj:
-                zones = origin_hex_obj.get_all_inhibition_zones() if hasattr(origin_hex_obj, 'get_all_inhibition_zones') else []
-                for zone in zones:
-                    if is_point_in_circle(curr_pos, zone):
-                        escape_pos = get_closest_point_on_circle_edge(curr_pos, zone)
-                        total_antimatter += _sublight_cost(curr_pos, escape_pos)
-                        curr_pos = escape_pos
-                        break
+    total_antimatter = 0.0
 
     # Inter-system movement
     if curr_system != destination_system_name:
@@ -1174,6 +1123,7 @@ def calculate_required_antimatter(
 
             # Navigate to entry wormhole position/hex
             if curr_leg_arrival_hex != wh_for_leg.in_hex:
+                total_antimatter += _escape_cost(leg_origin, curr_leg_arrival_hex, curr_leg_pos)
                 total_antimatter += _hex_jump_cost_seq(curr_leg_arrival_hex, wh_for_leg.in_hex)
                 total_antimatter += _get_landing_sublight_cost(leg_origin, wh_for_leg.in_hex, wh_for_leg.position)
             else:
@@ -1185,31 +1135,27 @@ def calculate_required_antimatter(
             curr_leg_arrival_hex = exit_wh.in_hex
             curr_leg_pos = exit_wh.position
 
-            # Handle inhibited wormhole exit
-            dest_sys_obj = galaxy_ref.systems.get(leg_dest) if hasattr(galaxy_ref, 'systems') and galaxy_ref.systems else None
-            if dest_sys_obj:
-                exit_hex_obj = dest_sys_obj.hexes.get(exit_wh.in_hex) if hasattr(dest_sys_obj, 'hexes') and dest_sys_obj.hexes else None
-                if exit_hex_obj:
-                    zones = exit_hex_obj.get_all_inhibition_zones() if hasattr(exit_hex_obj, 'get_all_inhibition_zones') else []
-                    for zone in zones:
-                        if is_point_in_circle(curr_leg_pos, zone):
-                            safe_distance = zone.radius + 1.0
-                            turns = math.ceil(safe_distance / effective_speed) if effective_speed > 0 else 0
-                            total_antimatter += turns * sublight_cost_per_turn
-                            curr_leg_pos = Position(curr_leg_pos.x + safe_distance, curr_leg_pos.y)
-                            break
-
         # Final leg in destination system
         if curr_leg_arrival_hex != destination_hex_coord:
+            total_antimatter += _escape_cost(destination_system_name, curr_leg_arrival_hex, curr_leg_pos)
             total_antimatter += _hex_jump_cost_seq(curr_leg_arrival_hex, destination_hex_coord)
             if destination_position:
                 total_antimatter += _get_landing_sublight_cost(destination_system_name, destination_hex_coord, destination_position)
-        else:
-            if destination_position:
-                total_antimatter += _sublight_cost(curr_leg_pos, destination_position)
+        elif destination_position and distance(curr_leg_pos, destination_position) >= 0.01:
+            obstacles = get_hex_collision_obstacles(galaxy_ref, destination_system_name, destination_hex_coord, unit)
+            boundary = Circle(Position(0, 0), SECTOR_CIRCLE_RADIUS_LOGICAL)
+            try:
+                waypoints = compute_avoidance_waypoints(curr_leg_pos, destination_position, obstacles, boundary=boundary)
+            except NoSafePathError:
+                # The movement order handles blocked routes.
+                waypoints = []
+            for end in [*waypoints, destination_position]:
+                total_antimatter += _sublight_cost(curr_leg_pos, end)
+                curr_leg_pos = end
 
     # Intra-system movement
     elif curr_hex != destination_hex_coord:
+        total_antimatter += _escape_cost(curr_system, curr_hex, curr_pos)
         total_antimatter += _hex_jump_cost_seq(curr_hex, destination_hex_coord)
         if destination_position:
             total_antimatter += _get_landing_sublight_cost(curr_system, destination_hex_coord, destination_position)

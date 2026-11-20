@@ -175,6 +175,49 @@ def test_starting_at_entry_center_transits_without_sublight_escape(multihop):
     assert unit.antimatter_component.current_amount == fuel - get_hyperdrive_system_jump_cost(unit.hull_size)
 
 
+@pytest.mark.parametrize('multihop', [False, True])
+@pytest.mark.parametrize('obstructed', [False, True])
+def test_exit_sector_uses_local_route_and_reports_its_remaining_cost(multihop, obstructed):
+    from domain.celestials import Moon
+    from unit_orders.movement import calculate_required_antimatter
+
+    world = _world(multihop=multihop)
+    game, unit = world.game, world.unit
+    unit.position = world.entry.position
+    destination_system = world.target.in_system
+    destination = Position(1000, -500)
+    if obstructed:
+        moon = Moon((0, 0), destination_system)
+        moon.position = Position(500, -250)
+        game.galaxy.systems[destination_system].add_celestial_body(moon)
+
+    fuel = unit.antimatter_component.current_amount
+    quoted_fuel = calculate_required_antimatter(unit, game.galaxy, destination_system, (0, 0), destination)
+    move = Command('move', (unit.id,), system_name=destination_system, hex_coord=(0, 0),
+                   position=(destination.x, destination.y))
+    assert issue(game, unit.owner, move).accepted
+    initial = public_journey_progress(game, unit.owner, unit)
+    assert initial['estimated_remaining_antimatter'] == pytest.approx(quoted_fuel)
+    total_turns = initial['estimated_remaining_owner_turns']
+    saw_arrival = False
+    processor = TurnProcessor(game)
+    for elapsed in range(1, total_turns + 1):
+        unit.commander_component.prepare_for_movement()
+        processor._process_movement(unit.owner)
+        unit.update()
+        if unit.in_system == destination_system and not saw_arrival:
+            saw_arrival = True
+            journey = public_journey_progress(game, unit.owner, unit)
+            assert journey['estimated_remaining_owner_turns'] == total_turns - elapsed
+            assert journey['estimated_remaining_antimatter'] == pytest.approx(
+                quoted_fuel - (fuel - unit.antimatter_component.current_amount))
+            assert (journey['route_leg']['position'] == [1000, -500]) is not obstructed
+
+    assert saw_arrival
+    assert unit.position == destination
+    assert unit.antimatter_component.current_amount == pytest.approx(fuel - quoted_fuel)
+
+
 def _origin_zone(world, body, kind):
     sector = world.game.galaxy.systems['Sol'].hexes[(0, 0)]
     if kind == 'natural':

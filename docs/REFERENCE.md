@@ -975,8 +975,9 @@ drives also using wormholes between systems. Natural and artificial inhibition
 fields block intra-system jump entry and exit; plan approach legs outside their
 boundaries. A ship already in its selected entry wormhole's sector approaches
 the entrance locally and traverses it without first leaving its natural inhibition
-field. Reaching an entry in another sector still requires escaping any inhibition
-at the starting position. In Sector View, jump-denial perimeters are drawn as red
+field. After transit, a destination in the exit sector uses a local sublight route
+from the exit. Jumping to another sector still requires clearing inhibition first.
+In Sector View, jump-denial perimeters are drawn as red
 outlined circles.
 
 **Interdiction Frigate** and **Interdiction Station** are lightly armed Medium

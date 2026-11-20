@@ -159,7 +159,8 @@ class JourneyEstimate:
     readiness_fuel: float = 0.0
 
 
-def estimate_approach(unit, galaxy, target, origin=None, *, approach_range=ANTIMATTER_TRANSFER_RANGE, known_only=False):
+def estimate_approach(unit, galaxy, target, origin=None, *, approach_range=ANTIMATTER_TRANSFER_RANGE,
+                      known_only=False, remaining_local_waypoints=()):
     """Estimate a deterministic feasible approach without orders, IDs or mutations.
 
     Uses navigation's topology, jump waypoints, collision avoidance and fuel costs.
@@ -278,6 +279,10 @@ def estimate_approach(unit, galaxy, target, origin=None, *, approach_range=ANTIM
         sublight(destination)
 
     try:
+        if remaining_local_waypoints:
+            for waypoint in remaining_local_waypoints:
+                sublight(waypoint)
+            return result()
         if (
             system == target.in_system
             and coord == target.in_hex
@@ -320,7 +325,6 @@ def estimate_approach(unit, galaxy, target, origin=None, *, approach_range=ANTIM
                     exit_wormhole.in_hex,
                     exit_wormhole.position,
                 )
-                escape()
         endpoint = position_at_distance_from_target(
             point, target.position, approach_range - 5
         )

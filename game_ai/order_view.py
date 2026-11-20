@@ -117,7 +117,13 @@ def journey_progress(unit, order, known_targets, known_body_ids=None):
     if final is not None:
         target = SimpleNamespace(position=final, in_system=root_params['destination_system_name'],
                                  in_hex=root_params['destination_hex_coord'])
-        estimate = estimate_approach(unit, galaxy, target, approach_range=5.0, known_only=True)
+        local_waypoints = ()
+        if final_local and all(child.parameters.get('destination_system_name') == unit.in_system
+                               and child.parameters.get('destination_hex_coord') == unit.in_hex
+                               for child in moves[0].sub_orders):
+            local_waypoints = tuple(child.parameters['destination_position'] for child in moves[0].sub_orders)
+        estimate = estimate_approach(unit, galaxy, target, approach_range=5.0, known_only=True,
+                                     remaining_local_waypoints=local_waypoints)
     turns = min(10000, estimate.turns) if estimate else None
     from custom_unit_templates import (get_sublight_antimatter_cost_per_turn,
                                       get_hyperdrive_hex_jump_cost, get_hyperdrive_system_jump_cost)
