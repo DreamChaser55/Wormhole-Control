@@ -26,7 +26,7 @@ I completed **100 full rounds, 200 resolved player turns**, and saved at the sta
 | Output tokens | 72,121 |
 | Total reported tokens | 6,759,803 |
 
-The gateway recorded no live terminal AI failure or partial commit. The round-69 reload canceled one planning attempt that is absent from the telemetry. Many zero-command turns let active construction and travel continue. Luna established a colony, fortified two worlds, used reconnaissance and perimeter defense, pursued the scout, and adapted to bombers with Tracking Lock and Flak Barrage. [Telemetry](saves/ai_telemetry.jsonl) · [AI memory](saves/agent_memory/2dc33dae/d5fdf1b8/memory.md)
+The gateway recorded no live terminal AI failure or partial commit. The round-69 reload canceled one planning attempt. Many zero-command turns let active construction and travel continue. Luna established a colony, fortified two worlds, used reconnaissance and perimeter defense, pursued the scout, and adapted to bombers with Tracking Lock and Flak Barrage. [Telemetry](saves/ai_telemetry.jsonl) · [AI memory](saves/agent_memory/2dc33dae/d5fdf1b8/memory.md)
 
 ## Verification
 

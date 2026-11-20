@@ -184,7 +184,8 @@ count. Loss entries use `friendly_and_allied_losses` or `enemy_losses` according
 the viewer's relationship at the time. An empty entries list means no important events.
 
 The engine collects committed events from just before the player's previous End
-Turn resolution through the next owner-turn opening effects. It freezes the report
+Turn resolution through the next owner-turn opening effects. Immediate fortification
+upgrades during planning are retained for that report. The engine freezes the report
 before presentation and AI scheduling. Observations, semantic repairs and manual
 retries reuse that report without consuming it. A separate `construction_progress` list appears in the summary while owned
 ship, station or wing builds are underway. It reports their current completed

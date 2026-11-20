@@ -187,9 +187,9 @@ pending changes. If saving fails, the previous preference remains active and the
 dialog stays open with an error.
 
 The report's window begins immediately before the previous **End Turn** resolves
-and ends after the next turn's opening effects. Your actions while issuing orders
-are excluded. On a player's first turn, it covers events since campaign setup;
-starting ships and colonies are not announcements.
+and ends after the next turn's opening effects. Immediate fortification upgrades
+issued during planning carry forward into that report. On a player's first turn,
+the briefing covers events since campaign setup and omits starting ships and colonies.
 
 The briefing groups combat and hazards, **Friendly and allied losses**,
 **Enemy losses**, captures, your completed
