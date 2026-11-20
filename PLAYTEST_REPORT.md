@@ -30,12 +30,6 @@ The gateway recorded no live terminal AI failure or partial commit. The round-69
 
 ## Confirmed findings
 
-### Medium · Paid fortifications are missing from the next owner briefing
-
-I upgraded Rigel Planet 3 in round 1 and Moon 11 in round 73. Both upgrades applied. The Moon 11 upgrade debited exactly 250 credits, 25 metal, and 5 crystal. A two-upgrade batch in the same round correctly rejected with `cooldown_active` and applied zero operations. Neither the round-2 nor the round-74 opening briefing showed the upgrade, although the reference specifies a private upgrade report.
-
-The general briefing window opens at End Turn. The upgrade calls the recorder during planning, when the owner's window is closed. Retain immediate private upgrade events for the next opening briefing and add a regression that issues the upgrade before End Turn. [Round 1 after orders](saves/pt26/r001-after.json.gz) · [Round 2 briefing](saves/pt26/r002-start.json.gz) · [Round 73 upgrade](saves/pt26/r073-fortification-retest.json.gz) · [Round 74 briefing](saves/pt26/r074-start.json.gz) · [Briefing recorder](turn_briefing.py#L133) · [Upgrade rule](docs/REFERENCE.md#planetary-warfare)
-
 ### Low · The socket accepts movement for a launched wing before the required observation
 
 In round 64, the Escort Carrier's options advertised `requires_observation_after: true`. Launch plus Move in the same batch correctly rejected with `unit_unavailable` and applied zero operations. I then launched the Long Range Bomber Wing in one batch and immediately submitted a separate Move using its previously advertised bay ID and the same turn token. The bridge accepted the Move without an intervening observation. The next observation showed the wing deployed with the Move active.

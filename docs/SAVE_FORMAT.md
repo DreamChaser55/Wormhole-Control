@@ -313,6 +313,7 @@ and prices when they start. No new retrofit AI or socket command is introduced.
 The current save requires each player's `briefing` state: initialization/collection flags,
 reporting boundary, event sequence, bounded pending entries and omission count,
 economic baseline, discovery keys, frozen current report and human acknowledgement.
+Pending entries may include private fortification upgrades committed during planning.
 The current report contains its start/end rounds, grouped entries, net economy
 changes and omission count. Reports and pending collections are limited to 128
 entries and 32,000 serialized characters including reserved report overhead.

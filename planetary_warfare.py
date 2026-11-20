@@ -185,7 +185,9 @@ def upgrade(game, player, body):
         raise ValueError('insufficient_resources')
     body.fortification_level += 1
     body.last_defense_upgrade_round = game.turn_number
-    _record(game, body, 'development', f'Fortifications upgraded to level {body.fortification_level}', private=True)
+    from turn_briefing import record
+    record(game, player, 'development', f'Fortifications upgraded to level {body.fortification_level}',
+           subject=body, during_planning=True)
     dirty(game)
 
 

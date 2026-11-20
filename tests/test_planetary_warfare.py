@@ -214,6 +214,34 @@ def test_upgrade_batch_is_atomic_and_does_not_overdraw():
     assert game.players[0].credits == 150
 
 
+def test_planning_upgrade_survives_reload_and_appears_in_next_owner_briefing():
+    from turn_briefing import initialize_campaign, summary_view
+    from turn_processor import TurnProcessor
+
+    game = campaign()
+    body = world(game)
+    world(game, owner=1, sector=(1, 0))
+    initialize_campaign(game)
+    owner = game.players[0]
+    opening = summary_view(owner)
+    command = dict(type='upgrade_planetary_defenses', unit_ids=[], target_id=body.id)
+    assert not issue(game, command, command).accepted
+    assert issue(game, command).accepted
+    assert summary_view(owner) == opening
+    assert deserialize_game_state(game, json.loads(json.dumps(serialize_game_state(game))))
+
+    processor = TurnProcessor(game)
+    processor.end_turn()
+    detail = 'Fortifications upgraded to level 1'
+    assert all(row['detail'] != detail for row in summary_view(game.players[1])['entries'])
+    processor.end_turn()
+    rows = [row for row in summary_view(game.players[0])['entries'] if row['detail'] == detail]
+    assert [(row['subject_id'], row['count']) for row in rows] == [(body.id, 1)]
+    processor.end_turn()
+    processor.end_turn()
+    assert all(row['detail'] != detail for row in summary_view(game.players[0])['entries'])
+
+
 def test_save_roundtrip_preserves_roll_and_active_orders_without_replay():
     game = campaign()
     body = world(game, owner=1)

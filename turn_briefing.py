@@ -131,9 +131,10 @@ def _bound(state):
 
 
 def record(game, player, category, detail, *, subject=None, subject_id=None,
-           name="", system_name="", hex_coord=None, amount=0, once=False, unit_owner=None):
+           name="", system_name="", hex_coord=None, amount=0, once=False, unit_owner=None,
+           during_planning=False):
     state = _state(player)
-    if not _live(game) or state is None or not state.collecting:
+    if not _live(game) or state is None or not (state.collecting or during_planning and state.initialized):
         return
     if subject is not None:
         subject_id, name = subject.id, str(subject.name)
@@ -301,11 +302,12 @@ def begin_window(game, player):
         found = _discoveries(game, player)
         state.seen = {"known": sorted(k for k in found if not k.startswith("presence:")),
                       "presence": sorted(k for k in found if k.startswith("presence:"))}
+    if state.collecting:
+        state.pending, state.omitted_count = [], 0
     state.initialized, state.collecting = True, True
     state.from_turn = int(game.turn_number)
     state.baseline = economy_snapshot(game, player)
     state.busy_unit_ids = [unit.id for unit in _owned_units(game, player) if _has_orders(unit)]
-    state.pending, state.omitted_count = [], 0
 
 
 def finish_window(game, player):
@@ -472,7 +474,7 @@ def state_from_dict(raw):
         raise ValueError("Briefing event outside report window")
     if any(entry.turn < max(1, raw["from_turn"]) for entry in pending):
         raise ValueError("Briefing event before collection window")
-    if not raw["collecting"] and (pending or raw["omitted_count"] or busy):
-        raise ValueError("Closed briefing has pending events")
+    if not raw["collecting"] and (busy or any(entry.turn < current.to_turn for entry in pending)):
+        raise ValueError("Invalid planning-period briefing state")
     return BriefingState(**{**raw, "baseline": baseline, "seen": copy.deepcopy(seen), 'fuel_waits': dict(waits),
                             "current": current, "pending": pending})
