@@ -64,6 +64,17 @@ def test_forecast_evaluation_scores_memory_facts_not_just_legal_commands():
     assert not score_plan(case, TurnPlan((), CommandBatch(), {})).passed
 
 
+def test_reuse_evaluation_requires_loading_before_queued_settlement():
+    from game_ai.evaluation import colony_reuse_case, score_plan
+
+    case = colony_reuse_case()
+    load = Command('load_colonists', (101,), target_id=201, amount=10)
+    settle = Command('colonize', (101,), target_id=202, queue=True)
+    assert score_plan(case, TurnPlan((), CommandBatch((load, settle)), {})).passed
+    assert not score_plan(case, TurnPlan((), CommandBatch((settle,)), {})).passed
+    assert not score_plan(case, TurnPlan((), CommandBatch((settle, load)), {})).passed
+
+
 @pytest.mark.parametrize('population, recommended, retained', [(10.1, 0, 10), (50, 25, 25), (0.1, 0, 0.1)])
 def test_current_source_exposes_growth_tradeoff_without_mutation(population, recommended, retained):
     game = campaign()

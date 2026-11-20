@@ -298,6 +298,8 @@ important events before planning and when accepted memory is saved.
 Planning instructions require objectives and commitments to match accepted orders, compare mission value with remaining
 travel before replacement, and consult terminal history before repeating failures.
 Zero-command plans are valid when useful work should continue.
+An empty hold reports `settlement_blocker` next to `population_cargo` and lists
+the conditional load-then-queue sequence when a donor and destination are available.
 Colonist-loading options separate `current_population` from advisory retained
 population, recommended load, growth and `hypothetical_next_maximum_load`. That
 scenario names its hypothetical load amount, resulting population and recovery
@@ -818,6 +820,8 @@ same loop. Use one outer `asyncio.run()` for that complete evaluation lifecycle.
 `colony_opening_case` reproduces the zero-cargo opening decision, and
 `compare_reasoning_efforts` runs the same fixed cases at Low, Medium, and High
 without changing production settings.
+`colony_reuse_case` scores the load-then-queue sequence for a ship that just settled
+its first colony and has an empty hold again.
 `colony_load_forecast_case` contrasts a completed 25-colonist load, actual current
 population 25.25 and a hypothetical next-load reserve of 12. Its score checks
 memory content as well as commands; omitted factual memory or a false residue

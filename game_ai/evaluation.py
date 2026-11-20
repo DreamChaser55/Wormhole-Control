@@ -184,6 +184,7 @@ async def compare_gateway_reasoning_efforts(
 def colony_opening_case() -> EvaluationCase:
     """Minimal regression fixture for the observed zero-cargo colony opening."""
     from .observation import OBSERVATION_SCHEMA_VERSION
+    from .colony_planning import add_empty_hold_guidance
 
     observation = {
         "schema_version": OBSERVATION_SCHEMA_VERSION,
@@ -275,12 +276,41 @@ def colony_opening_case() -> EvaluationCase:
             ],
         },
     }
+    unit = observation['units'][0]
+    add_empty_hold_guidance(unit['capability_details']['colony'], unit['conditional_commands'])
     return EvaluationCase(
         "colony-opening-repair",
         PlanningRequest("evaluation", "colony-agent", "AI", 1, observation, {}),
         required_command_types=frozenset({"load_colonists"}),
         maximum_commands=6,
     )
+
+
+def colony_reuse_case() -> EvaluationCase:
+    """An empty Colonizer has completed a colony and can start a second expedition."""
+    observation = colony_opening_case().request.observation
+    observation['turn_number'] = 31
+    observation['order_history'] = {'events': [{
+        'event_id': 1, 'turn': 30, 'player_id': 1, 'unit_id': 101, 'order_id': 'first-colony',
+        'type': 'colonize', 'outcome': 'completed', 'reason': 'completed',
+    }]}
+
+    def check_sequence(plan):
+        loaded = False
+        for command in plan.batch.commands:
+            if command.unit_ids != (101,):
+                continue
+            if command.type == 'load_colonists' and command.target_id == 201 and 0 < (command.amount or 0) <= 30:
+                loaded = True
+            if command.type == 'colonize' and command.target_id == 202:
+                return () if loaded and command.queue else ('Load this Colonizer first, then queue settlement.',)
+        return ('Use the listed donor and settlement target for the empty Colonizer.',)
+
+    request = PlanningRequest('evaluation', 'colony-reuse-agent', 'AI', 31, observation,
+                              {'objectives': ['Settle Frontier using the Colonizer that just finished its first colony.']})
+    return EvaluationCase('colony-reuse-after-settlement', request,
+                          required_command_types=frozenset({'load_colonists', 'colonize'}),
+                          maximum_commands=6, plan_checks=check_sequence)
 
 
 def colony_opening_gateway_case() -> GatewayEvaluationCase:
@@ -393,6 +423,10 @@ def colony_load_forecast_case() -> EvaluationCase:
     observation['action_catalogs']['colonist_sources'][0]['available_population'] = source['population']
     actor = observation['units'][0]
     actor['capability_details']['colony']['population_cargo'] = 25
+    actor['capability_details']['colony'].pop('settlement_blocker', None)
+    actor['capability_details']['colony'].pop('settlement_sequence', None)
+    actor['legal_commands'].append('colonize')
+    actor['conditional_commands'] = []
     actor['command_options']['load_colonists']['targets'] = [{
         'target_id': source['id'], 'maximum_amount': 13.25,
         'population_advice': colonist_load_advice(

@@ -555,6 +555,11 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
         )
         self.assertEqual(unit_view["command_options"]["colonize"]["target_ids"], [target.id])
         self.assertEqual(unit_view["conditional_commands"][0]["type"], "colonize")
+        cargo = unit_view['capability_details']['colony']
+        self.assertEqual(cargo['settlement_blocker'], 'colonists_required')
+        self.assertEqual(cargo['settlement_sequence'], [
+            {'type': 'load_colonists'}, {'type': 'colonize', 'queue': True},
+        ])
 
     def test_hybrid_observation_summarizes_remote_neutral_bodies(self):
         from domain.celestials import Moon, Planet, Star

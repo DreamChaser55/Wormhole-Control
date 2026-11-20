@@ -4,6 +4,15 @@ import math
 from unit_components.colony import exportable_population, loading_reserve
 
 
+def add_empty_hold_guidance(cargo, conditional_commands):
+    if cargo['population_cargo'] > 0:
+        return
+    cargo['settlement_blocker'] = 'colonists_required'
+    if any(row['type'] == 'colonize' and row['requires_prior_command'] == 'load_colonists'
+           for row in conditional_commands):
+        cargo['settlement_sequence'] = [{'type': 'load_colonists'}, {'type': 'colonize', 'queue': True}]
+
+
 def colonist_load_advice(body, maximum_amount):
     population = max(0.0, float(body.population))
     capacity = max(0.0, float(body.max_population))

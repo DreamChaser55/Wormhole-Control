@@ -38,7 +38,9 @@ Assign each planned Colonizer a distinct reachable colony target and a populatio
 plan; count current and queued missions before ordering more. If those targets are already
 covered, use available builders for reconnaissance, military protection, or needed logistics.
 Before reusing a Colonizer, compare load_colonists.targets[].population_advice with the
-expedition's value. Prefer recommended_amount and recommended_retained_population:
+expedition's value. An empty hold after settlement needs a new load. Follow the sequence
+beside population_cargo: preserve an existing load or issue load_colonists with a positive
+amount before queuing colonize for that same unit. Prefer recommended_amount and recommended_retained_population:
 retain at least half a mature donor when possible. Colonist loading must leave at least
 minimum_retained_population on the source. current_population is the actual current state.
 hypothetical_next_maximum_load is a forecast for a POSSIBLE NEXT load, never a report of

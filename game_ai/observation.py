@@ -32,7 +32,7 @@ from component_visibility import public_components
 from order_history import history_view
 from turn_briefing import summary_view
 
-OBSERVATION_SCHEMA_VERSION = 55
+OBSERVATION_SCHEMA_VERSION = 56
 COMMAND_HELP = {name: spec.description for name, spec in COMMAND_SPECS.items()}
 
 
@@ -369,6 +369,10 @@ def _unit_view(
         data["command_options"] = options
         data["conditional_commands"] = conditional
         data["ability_states"] = ability_states(unit)
+        colony = data.get('capability_details', {}).get('colony')
+        if colony is not None:
+            from .colony_planning import add_empty_hold_guidance
+            add_empty_hold_guidance(colony, conditional)
     return data
 
 
