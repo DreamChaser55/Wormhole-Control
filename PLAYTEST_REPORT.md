@@ -30,10 +30,6 @@ The gateway recorded no live terminal AI failure or partial commit. The round-69
 
 ## Confirmed findings
 
-### Low · Canceled planning is absent from attempt telemetry
-
-In round 69, a short wait returned `ready: false` with Luna in `planning`. I saved, returned to the menu, and reloaded the same round with Luna active. The replacement plan completed and the next observation advanced to round 70 once. The campaign telemetry contains a single accepted row for round 69 and no record of the retired plan. The docs describe an entry for every attempt. Record cancellations with elapsed time and unavailable usage so an interrupted turn can be reconstructed. [CLI trace](saves/pt26/cli.jsonl) · [Telemetry](saves/ai_telemetry.jsonl) · [Failure behavior](docs/AGENTIC_AI.md#failure-behavior)
-
 ### Low · Completed recruitment still advertises a pending action
 
 The round-92 briefing and order history recorded 35 troops recruited on round 91. Troop Transport 47 had the 35 troops aboard and the same root reported `status: completed` and `active: false`, but the progress phase said `awaiting_owner_turn_resolution`. The root cleared in round 93. Derive the phase from terminal status before checking for approach or resolution so a planner can immediately recognize the transport as available. [Round 92 observation](saves/pt26/r092-start.json.gz) · [Order view](game_ai/order_view.py#L305)

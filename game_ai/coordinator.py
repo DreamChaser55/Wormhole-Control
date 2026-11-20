@@ -198,11 +198,11 @@ class AgentTurnCoordinator:
             self._set_phase("requesting")
         if not future.done():
             return
+        if future.cancelled():
+            self.reset()
+            return
         self._future = None
         self._handle = None
-        if future.cancelled():
-            self._discard_stale_result()
-            return
         try:
             result = future.result()
         except PlanningRetirementError as exc:
@@ -217,6 +217,8 @@ class AgentTurnCoordinator:
             self._handle_provider_error(exc)
             return
         if not self._turn_is_current():
+            if handle is not None:
+                self._record_cancelled_attempt(handle)
             self._discard_stale_result()
             return
         self._apply_result(result)
@@ -226,6 +228,7 @@ class AgentTurnCoordinator:
         self._generation += 1
         if self._handle is not None:
             self._runtime.cancel(self._handle)
+            self._record_cancelled_attempt(self._handle)
         self._handle = None
         self._future = None
         self._request = None
@@ -589,6 +592,36 @@ class AgentTurnCoordinator:
             record["attempt_index"],
             record["errors"],
         )
+
+    def _record_cancelled_attempt(self, handle: PlanningHandle) -> None:
+        request, config = handle.request, handle.config
+        now = self._clock()
+        started = self._attempt_started if self._attempt_started is not None else now
+        record = {
+            "campaign_id": request.campaign_id,
+            "agent_id": request.agent_id,
+            "turn": request.turn_number,
+            "attempt_index": self._repair_attempts_used,
+            "is_repair": self._repair_attempts_used > 0,
+            "provider": self.provider.__class__.__name__,
+            "provider_started": handle.started.is_set(),
+            "model": config.model,
+            "reasoning_effort": config.reasoning_effort,
+            "response_id": None,
+            "usage": {},
+            "prompt_metrics": {},
+            "latency_seconds": round(max(0.0, now - started), 3),
+            "status": "cancelled",
+            "commands": 0,
+            "command_summaries": [],
+            "applied_operations": 0,
+            "errors": [],
+            "error_details": [],
+            "will_retry": False,
+        }
+        self._append_telemetry(record)
+        logger.info("AI attempt completed: turn=%s attempt=%s status=cancelled",
+                    request.turn_number, record["attempt_index"])
 
     @staticmethod
     def _append_telemetry(record: dict[str, Any]) -> None:

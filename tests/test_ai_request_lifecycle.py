@@ -1,5 +1,6 @@
 """Exercise running requests, actual async SDK transport and process teardown offline."""
 import asyncio
+import json
 import os
 from pathlib import Path
 import subprocess
@@ -125,6 +126,30 @@ def test_reset_cancels_running_io_and_replacement_uses_same_worker(make_coordina
     coordinator.shutdown()
     assert not worker.is_alive() and provider.close_count == 1
     assert not coordinator.start_current_turn()
+
+
+def test_retired_attempt_is_recorded_once_with_submitted_identity(make_coordinator, monkeypatch, tmp_path):
+    monkeypatch.setattr('save_manager.SAVES_DIR', tmp_path)
+    provider = RunningProvider()
+    coordinator, game, gateway = make_coordinator(provider)
+    now = [12.0]
+    coordinator._clock = lambda: now[0]
+    handle = begin(coordinator, provider)
+    original = handle.request
+    game.turn_number += 1
+    game.campaign_id = 'replacement'
+    now[0] += 1.375
+    coordinator.update()
+    coordinator.reset()
+    assert handle.finished.wait(2)
+    path = tmp_path / 'ai_telemetry.jsonl'
+    [row] = [json.loads(line) for line in path.read_text(encoding='utf-8').splitlines()]
+    assert (row['campaign_id'], row['agent_id'], row['turn']) == (
+        original.campaign_id, original.agent_id, original.turn_number)
+    assert (row['attempt_index'], row['status'], row['latency_seconds']) == (0, 'cancelled', 1.375)
+    assert row['provider_started'] and row['response_id'] is None and row['usage'] == {}
+    assert row['commands'] == row['applied_operations'] == 0
+    gateway.apply_batch.assert_not_called()
 
 
 def test_repeated_resets_keep_only_latest_pending_request_and_show_cancelling(make_coordinator):

@@ -786,6 +786,9 @@ hidden target and defers cancellation/history to the first gameplay validation.
 - Every attempt appends bounded telemetry to ignored
   `saves/ai_telemetry.jsonl`, including attempt index, model, reasoning, token
   use, latency, command summaries, errors, and whether another retry followed.
+  Retired attempts record `cancelled` under the submitted campaign, agent and
+  round. Their latency measures time from submission to cancellation, with empty
+  usage and a `provider_started` flag for requests retired before provider I/O.
   Command summaries allowlist construction/wing template and overrides, wing slot,
   ability, and requested colonist/troop amount where applicable. They exclude
   messages, renamed unit text, prompts, memory and raw model output.
