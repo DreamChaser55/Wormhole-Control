@@ -1095,7 +1095,11 @@ consumes invasion randomness.
 Currently known colony observations include `planetary_defenses` with `next_upgrade_resources`; own/allied ships include
 `troop_cargo`. Enemy cargo remains private. Command options expose costs, ranges,
 amount limits, blockers, probabilities and casualty outcomes. Recheck these before
-issuing an order; arrival can change odds. Recruitment is private to the owner;
+issuing an order; arrival can change odds. Each target's `mission_quote` estimates
+travel owner turns, travel AM, action AM, total AM and the shortfall from the
+current position and fuel. Arrival AM is null when current fuel cannot cover travel.
+The quote is null when a route cannot be estimated. Earlier queued work and future
+transfers can change the estimate. Recruitment is private to the owner;
 combat and capture briefings disclose only authorized participants' information.
 
 After ordinary unit updates and cleanup, a snapshot resolves recruitment,

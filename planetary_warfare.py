@@ -14,6 +14,7 @@ from planetary_balance import (
 
 KINDS = ('recruit_troops', 'bombard_planet', 'invade_planet')
 BODY_FIELDS = ('fortification_level', 'defense_readiness', 'last_hostile_action_round', 'last_defense_upgrade_round')
+ACTION_ANTIMATTER = {'recruit_troops': 0, 'bombard_planet': SIEGE_AM_COST, 'invade_planet': INVASION_AM_COST}
 
 
 def initialize_body(body):
@@ -53,7 +54,29 @@ def assault_preview(body, amount):
                 defeat_casualties=math.ceil(amount * DEFEAT_LOSSES), antimatter_cost=INVASION_AM_COST)
 
 
-def command_options(game, player, unit, bodies):
+def action_range(kind):
+    return SIEGE_RANGE if kind == 'bombard_planet' else INVASION_RANGE
+
+
+def mission_fuel_quote(unit, galaxy, body, kind):
+    from antimatter_logistics import estimate_approach
+
+    estimate = estimate_approach(unit, galaxy, body, approach_range=body.collision_radius + action_range(kind),
+                                 known_only=True)
+    if estimate is None:
+        return None
+    tank = unit.antimatter_component
+    available = tank.current_amount if tank and not tank.is_destroyed else 0.0
+    action = ACTION_ANTIMATTER[kind]
+    remaining = available - estimate.fuel
+    return {'travel_owner_turns': min(10000, estimate.turns),
+            'travel_antimatter': round(estimate.fuel, 2), 'action_antimatter': action,
+            'arrival_antimatter': round(remaining, 2) if remaining >= 0 else None,
+            'total_antimatter': round(estimate.fuel + action, 2),
+            'antimatter_shortfall': round(max(0, action - remaining), 2)}
+
+
+def command_options(game, player, unit, bodies, *, include_mission_quote=True):
     """Bounded choices used by observations and human dialogs."""
     options = {}
     transport = getattr(unit, 'troop_transport_component', None)
@@ -70,7 +93,7 @@ def command_options(game, player, unit, bodies):
                 continue
             current = ownership_view(game, player, body, snapshot).status == 'current'
             amount = None
-            item = {'target_id': body.id, 'distance_from_surface': SIEGE_RANGE if kind == 'bombard_planet' else INVASION_RANGE}
+            item = {'target_id': body.id, 'distance_from_surface': action_range(kind)}
             if kind == 'recruit_troops':
                 limit = max(0, min(transport.capacity - transport.troops, int(player.credits // TROOP_CREDIT_COST)))
                 if current:
@@ -88,6 +111,8 @@ def command_options(game, player, unit, bodies):
                 item.update(antimatter_cost=SIEGE_AM_COST, defense_damage=SIEGE_DAMAGE,
                             minimum_readiness=MIN_READINESS, collateral_per_damage=COLLATERAL_PER_DAMAGE)
             item['blocker'] = blocker(game, player, kind, body, unit, amount, snapshot=snapshot)
+            if include_mission_quote and len(targets) < 32:
+                item['mission_quote'] = mission_fuel_quote(unit, game.galaxy, body, kind)
             targets.append(item)
         options[kind] = {'targets': targets[:32], 'omitted_count': max(0, len(targets) - 32)}
     return options
@@ -104,7 +129,7 @@ def exact_body(game, player, target_id):
 
 def in_range(unit, body, kind):
     from geometry import distance
-    limit = SIEGE_RANGE if kind == 'bombard_planet' else INVASION_RANGE
+    limit = action_range(kind)
     return (unit.in_system == body.in_system and unit.in_hex == body.in_hex
             and distance(unit.position, body.position) <= body.collision_radius + limit + 0.01)
 
@@ -162,7 +187,7 @@ def blocker(game, player, kind, body, unit=None, amount=None, *, resources=True,
         if tank is None or tank.is_destroyed:
             return 'capability_unavailable'
         available = tank.current_amount if fuel is None else fuel
-        cost = SIEGE_AM_COST if kind == 'bombard_planet' else INVASION_AM_COST
+        cost = ACTION_ANTIMATTER[kind]
         if resources and available < cost:
             return 'insufficient_resources'
     return None

@@ -412,7 +412,8 @@ def build_sector_context_menu_options(game, clicked_object, clicked_sector_coord
                     if ownership.status != 'unknown':
                         if unit.owner == current_player:
                             from planetary_warfare import command_options
-                            for kind, info in command_options(game, current_player, unit, [target_object]).items():
+                            for kind, info in command_options(game, current_player, unit, [target_object],
+                                                              include_mission_quote=False).items():
                                 if info["targets"]:
                                     options.append(({"recruit_troops": "Recruit Troops...", "invade_planet": "Invade Colony...", "bombard_planet": "Bombard Defenses"}[kind], kind))
                         from unit_components.colony import exportable_population

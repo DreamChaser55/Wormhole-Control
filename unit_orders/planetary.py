@@ -1,7 +1,6 @@
 """Approach-only orders; the planetary turn phase owns all economic/combat effects."""
 from .base import Order, OrderStatus, OrderType, OrderTargetField
 from .movement import MoveOrder
-from planetary_balance import INVASION_RANGE, SIEGE_RANGE
 
 
 class PlanetaryOrder(Order):
@@ -19,7 +18,7 @@ class PlanetaryOrder(Order):
         super().fail(reason)
 
     def _prepare(self, galaxy):
-        from planetary_warfare import exact_body, blocker, in_range
+        from planetary_warfare import action_range, exact_body, blocker, in_range
         game = self.unit.game
         target = exact_body(game, self.unit.owner, self.parameters.get('target_id'))
         # Future queued recruitment may satisfy cargo/resources; execution rechecks.
@@ -32,7 +31,7 @@ class PlanetaryOrder(Order):
             return
         if not in_range(self.unit, target, self.KIND.lower()) and not self.has_active_sub_orders():
             self.add_sub_order(MoveOrder.for_celestial_approach(
-                self.unit, target, SIEGE_RANGE if self.KIND == 'BOMBARD_PLANET' else INVASION_RANGE,
+                self.unit, target, action_range(self.KIND.lower()),
                 parent_order=self))
 
     def execute(self, galaxy_ref):

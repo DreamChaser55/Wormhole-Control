@@ -7,7 +7,7 @@ import pygame_gui
 from pygame_gui.elements import UIWindow, UILabel, UITextBox, UITextEntryLine, UIButton
 
 from display_config import display_config_for
-from planetary_warfare import assault_preview, blocker, command_options, exact_body
+from planetary_warfare import action_range, assault_preview, blocker, command_options, exact_body, mission_fuel_quote
 from planetary_intel import current_ownership
 from unit_components.colony import exportable_population, loading_reserve
 
@@ -39,7 +39,7 @@ class PlanetaryWindow:
             maximum = self._load_limit(body)
             self.amount.set_text(f'{min(25, maximum):g}' if maximum > 0 else '')
         else:
-            choices = command_options(self.game, unit.owner, unit, [body])[kind]['targets']
+            choices = command_options(self.game, unit.owner, unit, [body], include_mission_quote=False)[kind]['targets']
             self.amount.set_text(str(max(1, choices[0]['max_amount'] if choices else unit.troop_transport_component.troops)))
         self.preview = UITextBox('', pygame.Rect(pad, pad+2*row+12, w-2*pad, h-4*row-3*pad-18), gui.manager, container=self.window)
         button_y = h-row-pad
@@ -108,10 +108,21 @@ class PlanetaryWindow:
             odds = f'<b>{preview["success_probability"]:.1%}</b>' if current else 'Unknown until sensor contact returns'
             text = (f'Success chance: {odds}<br>'
                     f'Losses on success: {preview["success_casualties"]} troops; on defeat: {preview["defeat_casualties"]}.<br>'
-                    f'Antimatter: {preview["antimatter_cost"]:g}. Survivors return aboard.<br>'
+                    'Survivors return aboard.<br>'
                     'Odds are recomputed at arrival; defenses may change. Hostile ships do not block landing.')
-        from planetary_balance import INVASION_RANGE
-        text += f'<br><br>Approaches within {INVASION_RANGE:g} of the surface; resolves at End Turn. One planetary action per ship per round.'
+        text += f'<br><br>Approaches within {action_range(self.kind):g} of the surface and resolves at End Turn. One planetary action per ship per round.'
+        quote = mission_fuel_quote(self.unit, self.game.galaxy, body, self.kind)
+        if quote is not None:
+            text += (f'<br><br>Estimated travel: {quote["travel_owner_turns"]:g} owner turns, '
+                     f'{quote["travel_antimatter"]:g} AM. Action: {quote["action_antimatter"]:g} AM. '
+                     f'Total: {quote["total_antimatter"]:g} AM.')
+            if quote['arrival_antimatter'] is not None:
+                text += f'<br>Estimated fuel on arrival: {quote["arrival_antimatter"]:g} AM.'
+            if quote['antimatter_shortfall'] > 0:
+                text += f'<br>Estimated resupply needed: {quote["antimatter_shortfall"]:g} AM.'
+            text += '<br>Estimates use the current position and equipment.'
+        elif self.kind == 'invade_planet':
+            text += f'<br>Action fuel: {preview["antimatter_cost"]:g} AM. Travel estimate unavailable.'
         from planetary_intel import ownership_view
         view = ownership_view(self.game, self.unit.owner, body)
         if view.status == 'last_known':

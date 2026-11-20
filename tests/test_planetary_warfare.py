@@ -79,6 +79,29 @@ def test_defense_and_upgrade_track(cls):
     assert defense_view(body)['next_upgrade_cost'] is None
 
 
+@pytest.mark.parametrize('kind,action_am', [('recruit_troops', 0), ('bombard_planet', 10), ('invade_planet', 20)])
+def test_planetary_target_quotes_travel_and_action_fuel_together(kind, action_am):
+    from planetary_warfare import action_range
+    from unit_components.sensors import Sensors
+
+    game = campaign()
+    body = world(game, owner=int(kind != 'recruit_troops'))
+    unit = vessel(game, body, siege=kind == 'bombard_planet', troops=5 if kind == 'invade_planet' else 0)
+    unit.position = body.position + Position(body.collision_radius + action_range(kind) + 320, 0)
+    unit.add_component(Sensors(unit, short_range_radius=4000))
+
+    def quote(fuel):
+        unit.antimatter_component.current_amount = fuel
+        observation = build_observation(game, unit.owner)
+        row = next(actor for actor in observation['units'] if actor['id'] == unit.id)
+        return row['command_options'][kind]['targets'][0]['mission_quote']
+
+    assert quote(100) == {'travel_owner_turns': 4, 'travel_antimatter': 4, 'action_antimatter': action_am,
+                          'arrival_antimatter': 96, 'total_antimatter': 4 + action_am, 'antimatter_shortfall': 0}
+    short = quote(3)
+    assert short['arrival_antimatter'] is None and short['antimatter_shortfall'] == 1 + action_am
+
+
 def test_recruitment_is_deferred_and_population_and_cargo_are_conserved():
     game = campaign()
     body = world(game)

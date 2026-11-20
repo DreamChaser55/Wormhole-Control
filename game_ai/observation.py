@@ -32,7 +32,7 @@ from component_visibility import public_components
 from order_history import history_view
 from turn_briefing import summary_view
 
-OBSERVATION_SCHEMA_VERSION = 57
+OBSERVATION_SCHEMA_VERSION = 58
 COMMAND_HELP = {name: spec.description for name, spec in COMMAND_SPECS.items()}
 
 

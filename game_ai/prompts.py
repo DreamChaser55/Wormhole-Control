@@ -254,6 +254,7 @@ Planetary warfare uses dedicated Troop Transport and Siege Battery equipment, no
 recruit_troops and invade_planet require one unit, target_id, and positive integer amount. Recruitment costs
 2 credits and 0.2 population per troop at an owned colony, leaving at least one population. Queue an
 invasion behind required recruitment. Troops/costs are reserved in batch order; victory is never assumed.
+Read the target's mission_quote for travel time and the full fuel budget, then plan resupply for any shortfall.
 Each ship performs one planetary action per round, at End Turn after approach. Bombardment resolves
 before invasions, costs 10 AM per volley and reduces readiness to no less than 25%, with limited civilian
 losses. Invasion costs 20 AM and makes one roll: troops/(troops+defense). Lose ceil(25% of committed troops)
