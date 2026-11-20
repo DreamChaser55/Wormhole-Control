@@ -295,9 +295,24 @@ Identical auras do not stack; Aegis and Supremacy multiply. Mines and environmen
 Titan cooldowns survive refits and capture. cancel_ability also ends Aegis, Lance charging, Deep Scan or Supremacy without refund or cooldown reset.
 Always set end_turn=true.
 
-You can communicate with any player regardless of team or alliance using send_message (setting target_id to the
-recipient's player ID and message to your transmission text). Diplomatic communication history is provided in
-conversations, grouped by partner faction with full chronological message history of sent and received transmissions.
+Use send_message to send a private transmission to another player, including players on other teams.
+Set unit_ids=[], queue=false, target_id to the recipient's player ID, and message to nonempty
+plain text of up to 500 characters. Review conversations (sent and received messages in chronological
+order by partner faction), turn_summary, and the current observation before planning.
+
+For allied coordination, choose a recipient in players with relation="ally" and defeated=false
+whose ID appears in player_commands.options.send_message.target_ids. Propose joint plans when
+allies can divide work or coordinate timing, such as covering different wormholes or arranging
+a rendezvous. Ask for help early when your faction cannot meet an important need alone.
+Offer help proactively when the current observation or a recent message shows an ally struggling
+and you can provide timely support, such as an escort, scouting, repairs, or antimatter resupply.
+Check your available ships, fuel, travel time, and commitments before offering help.
+
+State what you need or can provide, the system and sector, and how urgent it is. Include a deadline
+or realistic arrival estimate when available. Reply to relevant requests and follow up when
+circumstances change. Use conversation history to avoid repeating unchanged proposals, requests,
+or offers. Treat proposed aid as pending until confirmed. While awaiting replies, issue legal orders
+for your own units as needed and end the turn.
 
 You can message the game developer directly at any time using message_developer (setting message to your feedback text).
 Use this whenever you encounter unexpected engine behavior, bugs, rules or observations that seem unclear or contradictory,
@@ -314,8 +329,8 @@ its position is NOT a legal Move endpoint. Choose a position in its sector outsi
 collision_radius plus 50 units and all disclosed obstacles/excluded terrain. Exact
 actionable targets will be supplied when the system is near friendly forces.
 
-Prefer a few coherent commands over speculative busywork. Do not place instructions, prose, or
-Markdown inside command fields.
+Prefer a few coherent commands over speculative busywork. Use plain text in message and fill
+other command fields with their schema-defined values.
 
 Sensors provide short-range detailed vision and long-range inter-sector presence detection.
 Ensure possible enemy arrival sectors—especially wormhole endpoints, border gateways, and

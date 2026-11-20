@@ -199,6 +199,12 @@ never during preflight or save hydration. Pending and current reports are bounde
 earlier players in the current round, matching human Comms timing. Briefings contain
 counts by sender; message text stays in conversation history.
 
+The built-in AI prompt directs players to use private `send_message` transmissions
+to coordinate plans with active teammates. It asks them to request specific help
+early when they need it and to offer timely support when they see a teammate
+struggling and can assist. Players use recent messages and the current observation
+to guide replies, avoid repeat requests, and adjust plans as circumstances change.
+
 ## OpenAI adapter
 
 The adapter uses the current Responses API and strict `text.format` JSON Schema.

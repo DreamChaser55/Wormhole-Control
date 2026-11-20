@@ -155,6 +155,11 @@ class TestContracts(unittest.TestCase):
             "long-range sensor units",
             "Exploit multiple available metal asteroids and crystal comets concurrently",
             "parallel continuous_mine orders",
+            'relation="ally" and defeated=false',
+            "player_commands.options.send_message.target_ids",
+            "Propose joint plans",
+            "Ask for help early",
+            "Offer help proactively",
         ):
             self.assertIn(phrase, SYSTEM_INSTRUCTIONS)
 

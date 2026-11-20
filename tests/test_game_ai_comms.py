@@ -28,6 +28,8 @@ class TestGameAIComms(unittest.TestCase):
 
 
     def test_observation_conversations(self):
+        self.player0.team_id = self.player1.team_id
+
         # Transmissions on Turn 1
         self.game.turn_number = 1
         self.game.send_message(self.player0, self.player1.id, "Hello AI from Turn 1")
@@ -55,6 +57,12 @@ class TestGameAIComms(unittest.TestCase):
         self.assertEqual(p0_conv["messages"][0]["sender_id"], self.player0.id)
         self.assertEqual(p0_conv["messages"][1]["text"], "Greetings human commander")
         self.assertEqual(p0_conv["messages"][1]["sender_id"], self.player1.id)
+
+        third_party_observation = build_observation(self.game, self.player2)
+        self.assertEqual(
+            [conv["partner_id"] for conv in third_party_observation["conversations"]],
+            [self.player1.id],
+        )
 
         # Check command_reference includes send_message
         self.assertIn("send_message", obs["command_catalog"]["commands"])
