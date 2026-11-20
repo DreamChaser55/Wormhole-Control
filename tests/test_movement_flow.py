@@ -430,8 +430,8 @@ def test_integration_multi_system_movement():
     with patch("unit_orders.movement.find_intersystem_path", return_value=["Sol", "Vega", "Sirius"]):
         commander.add_order(move_order)
     
-    # We expect 5 sub-orders (including the final arrival waypoint check in Sirius)
-    assert len(move_order.sub_orders) == 5
+    # The final crossing itself reaches the requested destination in Sirius.
+    assert len(move_order.sub_orders) == 4
     assert move_order.sub_orders[0].parameters["destination_system_name"] == "Sol"
     assert move_order.sub_orders[0].parameters["destination_hex_coord"] == (1, 1)
     assert move_order.sub_orders[1].parameters["destination_system_name"] == "Vega"
@@ -440,8 +440,6 @@ def test_integration_multi_system_movement():
     assert move_order.sub_orders[2].parameters["destination_hex_coord"] == (1, 1)
     assert move_order.sub_orders[3].parameters["destination_system_name"] == "Sirius"
     assert move_order.sub_orders[3].parameters["destination_hex_coord"] == (-2, 2)
-    assert move_order.sub_orders[4].parameters["destination_system_name"] == "Sirius"
-    assert move_order.sub_orders[4].parameters["destination_hex_coord"] == (-2, 2)
     
     tp = TurnProcessor(game)
     
