@@ -343,12 +343,8 @@ class AgentTurnCoordinator:
             turn=int(getattr(self.game, "turn_number", 1)),
         )
         memory.apply_patch({'lessons': self._rejection_lessons}, turn=int(getattr(self.game, "turn_number", 1)))
-        receipt = (
-            "; ".join(command_result.receipts)
-            if command_result.receipts
-            else "No commands issued."
-        )
-        memory.add_receipt(receipt, turn=int(getattr(self.game, "turn_number", 1)))
+        memory.add_receipts(command_result.receipts or ("No commands issued.",),
+                            turn=int(getattr(self.game, "turn_number", 1)))
         player.ai_memory = memory.to_dict()
         player.last_ai_report = {
             "plan": list(result.plan.plan),

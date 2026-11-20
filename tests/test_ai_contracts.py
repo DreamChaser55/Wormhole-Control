@@ -215,9 +215,10 @@ class TestMemory(unittest.TestCase):
 
     def test_receipts_markdown_formatting_multiline(self):
         memory = AgentMemory()
-        memory.add_receipt("Move Scout.; Colonize Planet 1.; Build Ship.", turn=1)
+        memory.add_receipts(("Move Scout.", "Colonize Planet 1.", "Sent transmission: 'Stay back; we are scouting.'."), turn=1)
         memory.add_receipt("No commands issued.", turn=2)
-        memory.add_receipt("Attack Enemy A.; Defend Base.", turn=3)
+        memory.add_receipts(("Attack Enemy A.", "Defend Base."), turn=3)
+        memory = AgentMemory.from_dict(memory.to_dict())
 
         markdown = memory.to_markdown(
             player_name="Player 2",
@@ -230,7 +231,7 @@ class TestMemory(unittest.TestCase):
             "- Turn 1:\n"
             "  - Move Scout.\n"
             "  - Colonize Planet 1.\n"
-            "  - Build Ship.\n"
+            "  - Sent transmission: 'Stay back; we are scouting.'.\n"
             "- Turn 2:\n"
             "  - No commands issued.\n"
             "- Turn 3:\n"
@@ -254,7 +255,7 @@ class TestMemory(unittest.TestCase):
             campaign_id="test-campaign",
             agent_id="test-agent",
         )
-        self.assertIn("## Recent receipts\n\n- Direct Action 1\n- Direct Action 2", markdown_custom)
+        self.assertIn("## Recent receipts\n\n- Direct Action 1; Direct Action 2", markdown_custom)
 
     def test_receipts_individual_turns_retained_in_full(self):
         memory = AgentMemory()
@@ -263,9 +264,8 @@ class TestMemory(unittest.TestCase):
         long_receipt = "; ".join(actions)
         self.assertGreater(len(long_receipt), 800)
 
-        memory.add_receipt(long_receipt, turn=16)
-        self.assertEqual(len(memory.receipts), 1)
-        self.assertEqual(memory.receipts[0], f"Turn 16: {long_receipt}")
+        memory.add_receipts(actions, turn=16)
+        self.assertEqual(memory.receipts, [f"Turn 16: {action}" for action in actions])
 
         markdown = memory.to_markdown(
             player_name="Player 1",

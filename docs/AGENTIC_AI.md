@@ -270,7 +270,7 @@ Memory contains separately bounded strategy, objectives, commitments, beliefs,
 important events in previous turns, lessons and misc sections, plus recent execution receipts.
 The `important_events` list holds up to 16 dated facts worth keeping beyond the current briefing. The 8,000-character
 combined cap applies only to those receipts, not to the entire memory. Individual turn
-receipts are retained whole, dropping the oldest turns in their entirety when the
+receipts keep each action separate and drop the oldest turns in their entirety when the
 total limit is exceeded. Text and list counts are bounded before serialization.
 Save JSON and memory sidecars use atomic replacement.
 

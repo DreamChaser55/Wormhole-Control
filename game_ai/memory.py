@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from itertools import groupby
 from pathlib import Path
 import re
-from typing import Any, Mapping
+from typing import Any, Iterable, Mapping
 from persistence_paths import validate_identity, sidecar_paths
 
 
@@ -63,12 +64,12 @@ class AgentMemory:
         self.updated_turn = max(0, int(turn))
 
     def add_receipt(self, text: str, *, turn: int) -> None:
-        clean = text.strip() if isinstance(text, str) else ""
-        if clean:
-            self.receipts = _bound_receipts(
-                self.receipts + [f"Turn {turn}: {clean}"],
-                MAX_RECEIPTS_TOTAL_CHARS,
-            )
+        self.add_receipts((text,), turn=turn)
+
+    def add_receipts(self, receipts: Iterable[str], *, turn: int) -> None:
+        actions = [f"Turn {turn}: {text.strip()}" for text in receipts if isinstance(text, str) and text.strip()]
+        if actions:
+            self.receipts = _bound_receipts([*self.receipts, *actions])
             self.updated_turn = max(0, int(turn))
 
     def to_dict(self) -> dict[str, Any]:
@@ -89,7 +90,7 @@ class AgentMemory:
         sections = [
             f"# {player_name} — Agent Memory",
             "",
-            "> Generated from the save file. Editing this sidecar does not alter the campaign.",
+            "> Derived export of current agent memory.",
             "",
             f"- Campaign: {campaign_id}",
             f"- Agent: {agent_id}",
@@ -113,8 +114,12 @@ class AgentMemory:
 
         sections.extend(["", "## Recent receipts", ""])
         receipt_lines: list[str] = []
-        for receipt in self.receipts:
-            receipt_lines.extend(_format_receipt_entry(receipt))
+        for turn, receipts in groupby(self.receipts, key=_receipt_turn):
+            if turn:
+                receipt_lines.append(f"- {turn}:")
+                receipt_lines.extend(f"  - {receipt.split(': ', 1)[1]}" for receipt in receipts)
+            else:
+                receipt_lines.extend(f"- {receipt}" for receipt in receipts)
         sections.extend(receipt_lines or ["- None recorded."])
         return "\n".join(sections) + "\n"
 
@@ -241,23 +246,13 @@ def _bound_receipts(
     while total_chars > max_total_chars and result:
         removed = result.pop(0)
         total_chars -= len(removed)
+        turn = _receipt_turn(removed)
+        while turn is not None and result and _receipt_turn(result[0]) == turn:
+            total_chars -= len(result.pop(0))
     return result
 
 
-def _format_receipt_entry(entry: str) -> list[str]:
-    clean = entry.strip() if isinstance(entry, str) else ""
-    if not clean:
-        return []
-    if clean.startswith("Turn ") and ": " in clean:
-        turn_label, rest = clean.split(": ", 1)
-        actions = [act.strip() for act in rest.split(";") if act.strip()]
-        if not actions:
-            return [f"- {turn_label}:", "  - No commands issued."]
-        return [f"- {turn_label}:"] + [f"  - {act}" for act in actions]
-    actions = [act.strip() for act in clean.split(";") if act.strip()]
-    if not actions:
-        return []
-    if len(actions) == 1:
-        return [f"- {actions[0]}"]
-    return [f"- {act}" for act in actions]
+def _receipt_turn(entry: str) -> str | None:
+    label, separator, _ = entry.partition(": ")
+    return label if separator and label.startswith("Turn ") else None
 

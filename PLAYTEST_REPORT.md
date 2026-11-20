@@ -30,10 +30,6 @@ The gateway recorded no live terminal AI failure or partial commit. The round-69
 
 ## Confirmed findings
 
-### Low · A transmission can render as several AI memory receipts
-
-Luna sent one reply in round 4. Comms and telemetry showed one transmission. The memory sidecar displayed it as two action bullets, breaking at a semicolon inside the quoted message. The coordinator joins receipt strings with that punctuation and the Markdown renderer splits on it. Pass individual receipts to the renderer so message punctuation survives. The sidecar header also says it was generated from a save file even when the coordinator refreshes it during live play. Describe it as an export of current agent memory. [Comms export](saves/comms/2dc33dae/comms.md) · [Round 69 checkpoint with the original receipt](saves/pt26-active-ai-r069.json) · [Receipt assembly](game_ai/coordinator.py#L346) · [Markdown formatter](game_ai/memory.py#L247)
-
 ### Low · Canceled planning is absent from attempt telemetry
 
 In round 69, a short wait returned `ready: false` with Luna in `planning`. I saved, returned to the menu, and reloaded the same round with Luna active. The replacement plan completed and the next observation advanced to round 70 once. The campaign telemetry contains a single accepted row for round 69 and no record of the retired plan. The docs describe an entry for every attempt. Record cancellations with elapsed time and unavailable usage so an interrupted turn can be reconstructed. [CLI trace](saves/pt26/cli.jsonl) · [Telemetry](saves/ai_telemetry.jsonl) · [Failure behavior](docs/AGENTIC_AI.md#failure-behavior)
