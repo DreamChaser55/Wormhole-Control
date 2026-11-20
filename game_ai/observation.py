@@ -568,8 +568,10 @@ def _capability_details(unit: Any, game: Any) -> dict[str, Any]:
     details["support_ranges"] = ranges
     colony = getattr(unit, "colony_component", None)
     if colony is not None:
+        population = getattr(colony, "population_cargo", 0.0)
         details["colony"] = {
-            "population_cargo": _rounded(getattr(colony, "population_cargo", 0)),
+            # Preserve positive cargo below display precision for settlement guidance.
+            "population_cargo": _rounded(population) or population,
             "maximum_cargo": _rounded(getattr(colony, "max_cargo", 0)),
         }
     mining = getattr(unit, "mining_component", None)

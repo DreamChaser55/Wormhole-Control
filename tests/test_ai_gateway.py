@@ -560,6 +560,12 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
         self.assertEqual(cargo['settlement_sequence'], [
             {'type': 'load_colonists'}, {'type': 'colonize', 'queue': True},
         ])
+        units[0].colony_component.population_cargo = 0.001
+        with patch('visibility.VisibilityService.compute', return_value=snapshot):
+            loaded = build_observation(game, player)['units'][0]
+        self.assertIn('colonize', loaded['legal_commands'])
+        self.assertGreater(loaded['capability_details']['colony']['population_cargo'], 0)
+        self.assertNotIn('settlement_blocker', loaded['capability_details']['colony'])
 
     def test_hybrid_observation_summarizes_remote_neutral_bodies(self):
         from domain.celestials import Moon, Planet, Star
