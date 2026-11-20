@@ -204,6 +204,8 @@ to coordinate plans with active teammates. It asks them to request specific help
 early when they need it and to offer timely support when they see a teammate
 struggling and can assist. Players use recent messages and the current observation
 to guide replies, avoid repeat requests, and adjust plans as circumstances change.
+For rivals, the prompt asks for a concrete purpose for the exchange and keeps
+locations, production, readiness and supply details private by default.
 
 ## OpenAI adapter
 
