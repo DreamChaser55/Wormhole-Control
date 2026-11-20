@@ -117,6 +117,7 @@ class Order:
         self._outcome_recorded = False
         self._issuing_player = None
         self.failure_reason = None
+        self.jump_fuel_failure = None
         self._charged_credits = 0
         self._charged_metal = 0
         self._charged_crystal = 0
@@ -226,6 +227,7 @@ class Order:
                 current_sub_order.update(galaxy_ref=galaxy_ref)
 
             if current_sub_order.status == OrderStatus.FAILED:
+                self.jump_fuel_failure = current_sub_order.jump_fuel_failure
                 self.fail(current_sub_order.failure_reason or "suborder_failed")
                 for sub in list(self.sub_orders):
                     sub.cancel()

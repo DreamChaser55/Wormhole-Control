@@ -30,12 +30,6 @@ The gateway recorded no live terminal AI failure or partial commit. The round-69
 
 ## Confirmed findings
 
-### Medium · Jump failure loses the actionable fuel reason
-
-Luna's Colonizer 32 loaded 10 colonists on round 59 and set out for Asteroid 20. The debug log identifies insufficient antimatter at its attempted jump on round 74. The saved order history records only `execution_failed`. The movement order maps the drive's generic error state to that code. At round 100 the AI remembered the stalled mission and had an objective to refuel the colonizer, which still had 5.75 AM and its 10 passengers.
-
-Carry the bounded fuel failure code from the jump attempt to the parent order and the next briefing. Include the next jump's cost and shortfall in the planner's recovery context so it can arrange a transfer. [Launcher stderr, lines 107277 and 107286](saves/control_stderr.log) · [Final order history](saves/pt26-final-r101.json) · [Waypoint completion check](unit_orders/movement.py#L219)
-
 ### Medium · Paid fortifications are missing from the next owner briefing
 
 I upgraded Rigel Planet 3 in round 1 and Moon 11 in round 73. Both upgrades applied. The Moon 11 upgrade debited exactly 250 credits, 25 metal, and 5 crystal. A two-upgrade batch in the same round correctly rejected with `cooldown_active` and applied zero operations. Neither the round-2 nor the round-74 opening briefing showed the upgrade, although the reference specifies a private upgrade report.

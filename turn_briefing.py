@@ -198,14 +198,16 @@ def unit_event(unit, category, detail, *, amount=0, private=False, component_typ
                unit_owner=owner)
 
 
-def order_outcome(order, outcome, reason):
+def order_outcome(order, outcome, reason, *, jump_fuel_failure=None):
     player = getattr(order, "_issuing_player", None)
     if player is None or reason in {"unit_destroyed", "ownership_lost"}:
         return
     if outcome == "failed" or (outcome == "cancelled" and reason != "cancelled"):
-        record(_game(order.unit), player, "problem",
-               f"{order.order_type.name.replace('_', ' ').title()} {outcome}: {reason.replace('_', ' ')}",
-               subject=order.unit)
+        detail = f"{order.order_type.name.replace('_', ' ').title()} {outcome}: {reason.replace('_', ' ')}"
+        if jump_fuel_failure:
+            detail += (f" (jump requires {jump_fuel_failure['required_antimatter']:g} AM, "
+                       f"short by {jump_fuel_failure['shortfall_antimatter']:g} AM)")
+        record(_game(order.unit), player, "problem", detail, subject=order.unit)
     elif outcome == "completed" and order.order_type.name in {
         "INFILTRATE_UNIT", "INFILTRATE_PLANET", "RELOCATE_AGENT", "SABOTAGE",
         "ELIMINATE_AGENT", "EXTRACT_AGENT",

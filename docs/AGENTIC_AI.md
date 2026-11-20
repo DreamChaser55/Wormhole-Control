@@ -592,7 +592,10 @@ operation outcome counts without prompts, raw observations, analysis or secrets.
 
 `order_history.py` records explicit-root completed/failed/cancelled outcomes exactly once,
 including synchronous outcomes, later-turn failures, replacement, destruction and capture.
-Child failure codes reach the root. Destruction/capture recording does not invoke refunds.
+Child failure codes reach the root. Failed jump payments record a bounded reason and
+`jump_fuel_failure` with required AM, usable AM and the shortfall at the attempt.
+Use those facts with current storage and transfer options to recover the mission.
+Destruction/capture recording does not invoke refunds.
 Issuance receipts are separate from terminal outcomes. Each player (regardless of controller)
 retains at most 128 events and 32,000 serialized characters, dropping oldest whole events.
 Monotonic event IDs and retention metadata identify duplicates and missing history. An

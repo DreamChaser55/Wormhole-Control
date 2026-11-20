@@ -84,6 +84,37 @@ def test_unpaid_movement_preserves_location_and_has_no_success_effects(mode, pro
         assert unit.hyperdrive_component.jump_status == JumpStatus.ERROR
         order.check_completion_conditions()
         assert order.status == OrderStatus.FAILED
+        assert order.failure_reason == {
+            'destroyed': 'storage_unavailable', 'missing': 'storage_unavailable',
+            'insufficient': 'insufficient_antimatter', 'refused': 'antimatter_payment_failed',
+        }[problem]
+
+
+@pytest.mark.parametrize('mode', ['hex_jump', 'system_jump'])
+def test_failed_jump_reports_shortfall_on_parent_order_and_private_briefing(mode):
+    from turn_briefing import begin_window, finish_window, initialize_campaign, summary_view
+    from unit_orders.movement import MoveOrder
+
+    game, unit, waypoint, cost = moving_campaign(mode)
+    root = MoveOrder(unit, waypoint.parameters.copy())
+    unit.commander_component.clear_explicit_orders()
+    unit.commander_component.add_order(root)
+    unit.antimatter_component.current_amount = cost - 0.5
+    initialize_campaign(game)
+    begin_window(game, unit.owner)
+
+    TurnProcessor(game)._process_movement(unit.owner)
+    unit.update()
+    finish_window(game, unit.owner)
+    assert root.status == OrderStatus.FAILED
+    event = next(row for row in unit.owner.order_history if row['order_id'] == root.public_id)
+    assert event['reason'] == 'insufficient_antimatter'
+    assert event['jump_fuel_failure'] == {'required_antimatter': cost,
+                                          'available_antimatter': cost - 0.5,
+                                          'shortfall_antimatter': 0.5}
+    expected = f'Move failed: insufficient antimatter (jump requires {cost:g} AM, short by 0.5 AM)'
+    assert any(row['detail'] == expected for row in summary_view(unit.owner)['entries'])
+    assert all(entry.detail != expected for entry in game.players[1].briefing.pending)
 
 
 @pytest.mark.parametrize('mode', MODES)

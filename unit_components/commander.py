@@ -444,6 +444,10 @@ class Commander(UnitComponent):
                 break
             current = child
 
+    def get_active_order(self, local_order_id: int) -> Optional[Order]:
+        return next((order for order in self._active_front_chain()
+                     if order.local_order_id == local_order_id), None)
+
     def is_order_on_active_front_chain(self, target: Optional[Order]) -> bool:
         """Return whether ``target`` is the active root/front-child path.
 

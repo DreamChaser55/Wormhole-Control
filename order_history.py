@@ -4,13 +4,14 @@ import math
 
 MAX_EVENTS = 128
 MAX_CHARACTERS = 32_000
+JUMP_FUEL_REASONS = frozenset({'storage_unavailable', 'insufficient_antimatter', 'antimatter_payment_failed'})
 PUBLIC_REASONS = frozenset({"wing_service_required", "wing_endurance_expired", "completed", "failed", "cancelled", "execution_failed", "suborder_failed",
     "invalid_relation", "target_not_disabled", "engines_unavailable", "hyperdrive_unavailable", "sector_unreachable", "system_unreachable",
     "carrier_out_of_sector", "carrier_unavailable", "bay_unavailable", "unsafe_placement", "jump_inhibited", "invalid_destination", "out_of_range", "capture_resisted",
     "ability_interrupted", "titan_limit_reached", "firing_blocked", "invalid_target", "link_occupied", "link_cycle",
     "unit_destroyed", "unit_dismantled", "dismantling_conflict", "target_out_of_range", "ownership_lost", "target_unavailable", "target_not_visible", "capability_unavailable",
     "assault_repulsed", "insufficient_troops", "cooldown_active", "insufficient_resources", "insufficient_population", "insufficient_capacity", "invalid_parameters",
-    "path_unavailable", "hazard_blocked", "construction_unavailable", "refit_unavailable", "ability_unavailable", "ability_expired"})
+    "path_unavailable", "hazard_blocked", "construction_unavailable", "refit_unavailable", "ability_unavailable", "ability_expired"}) | JUMP_FUEL_REASONS
 
 
 def public_reason(reason, fallback="execution_failed"):
@@ -27,6 +28,15 @@ def loading_outcome_view(value):
         return None
     return {key: value[key] for key in keys}
 
+
+
+def _jump_fuel_failure_view(value):
+    fields = ('required_antimatter', 'available_antimatter', 'shortfall_antimatter')
+    if not isinstance(value, dict) or not all(
+        type(value.get(key)) in (int, float) and 0 <= value[key] <= 1e9 for key in fields
+    ):
+        return None
+    return {key: round(value[key], 2) for key in fields}
 
 
 def bounded_history(events):
@@ -47,6 +57,10 @@ def bounded_history(events):
             facts = loading_outcome_view(event.get('loading_outcome'))
             if facts is not None:
                 item['loading_outcome'] = facts
+        if item.get('outcome') == 'failed' and item.get('reason') in JUMP_FUEL_REASONS:
+            facts = _jump_fuel_failure_view(event.get('jump_fuel_failure'))
+            if facts is not None:
+                item['jump_fuel_failure'] = facts
         cleaned.append(item)
     cleaned = sorted(cleaned, key=lambda e: e["event_id"])[-MAX_EVENTS:]
     while cleaned and len(json.dumps(cleaned, ensure_ascii=False)) > MAX_CHARACTERS:
@@ -75,9 +89,13 @@ def record_outcome(order, outcome=None, reason=None):
         facts = loading_outcome_view(getattr(order, 'loading_outcome', None))
         if facts is not None:
             event['loading_outcome'] = facts
+    if outcome == 'failed' and event['reason'] in JUMP_FUEL_REASONS:
+        facts = _jump_fuel_failure_view(getattr(order, 'jump_fuel_failure', None))
+        if facts is not None:
+            event['jump_fuel_failure'] = facts
     owner.order_history = bounded_history([*getattr(owner, "order_history", []), event])
     from turn_briefing import order_outcome
-    order_outcome(order, outcome, event["reason"])
+    order_outcome(order, outcome, event["reason"], jump_fuel_failure=event.get('jump_fuel_failure'))
 
 
 def interrupt_unit_orders(unit, reason):

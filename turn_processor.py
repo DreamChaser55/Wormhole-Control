@@ -226,7 +226,7 @@ class TurnProcessor:
 
             logger.debug(f"Finished End of Round {turn_num} processing.")
 
-    def _pay_movement_fuel(self, unit, cost, *, sublight=False):
+    def _pay_movement_fuel(self, unit, cost, *, sublight=False, jump_order_id=None):
         """Pay one movement attempt before displacement; return whether it may proceed.
 
         Tankless wings deliberately fly without fuel. Other positive-cost travel
@@ -243,14 +243,21 @@ class TurnProcessor:
             movement_fuel_state(unit)
             return True
         if storage is None or storage.is_destroyed:
-            reason = "antimatter storage unavailable"
+            code, reason = "storage_unavailable", "antimatter storage unavailable"
         elif storage.current_amount < cost:
-            reason = "insufficient antimatter"
+            code, reason = "insufficient_antimatter", "insufficient antimatter"
         elif storage.consume(cost):
             movement_fuel_state(unit)
             return True
         else:
-            reason = "antimatter payment failed"
+            code, reason = "antimatter_payment_failed", "antimatter payment failed"
+        if jump_order_id is not None and unit.commander_component:
+            order = unit.commander_component.get_active_order(jump_order_id)
+            if order is not None:
+                available = 0.0 if storage is None or storage.is_destroyed else storage.current_amount
+                order.failure_reason = code
+                order.jump_fuel_failure = {'required_antimatter': cost, 'available_antimatter': available,
+                                           'shortfall_antimatter': max(0.0, cost - available)}
         action = "Movement" if sublight else "Jump"
         movement_fuel_state(unit, f"{action} blocked: {reason}")
         logger.debug("%s %s blocked: %s", format_unit_for_log(unit), action.lower(), reason)
@@ -505,7 +512,7 @@ class TurnProcessor:
                         sys_jump_cost = get_hyperdrive_system_jump_cost(unit.hull_size)
                         am_comp = unit.antimatter_component
                         fuel_before = am_comp.current_amount if am_comp is not None else None
-                        if not self._pay_movement_fuel(unit, sys_jump_cost):
+                        if not self._pay_movement_fuel(unit, sys_jump_cost, jump_order_id=expected_order_id):
                             hd_comp.jump_status = JumpStatus.ERROR
                             hd_comp.clear_jump_target(expected_order_id)
                             continue
@@ -643,7 +650,7 @@ class TurnProcessor:
                     hex_jump_cost = get_hyperdrive_hex_jump_cost(unit.hull_size)
                     am_comp = unit.antimatter_component
                     fuel_before = am_comp.current_amount if am_comp is not None else None
-                    if not self._pay_movement_fuel(unit, hex_jump_cost):
+                    if not self._pay_movement_fuel(unit, hex_jump_cost, jump_order_id=expected_order_id):
                         hd_comp.jump_status = JumpStatus.ERROR
                         hd_comp.clear_jump_target(expected_order_id)
                         continue

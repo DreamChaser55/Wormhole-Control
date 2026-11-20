@@ -222,7 +222,7 @@ class ReachWaypointOrder(Order):
                 self.unit.engines_component.clear_move_target(self.local_order_id)
             self.unit.hyperdrive_component.clear_jump_target(self.local_order_id)
             self.unit.hyperdrive_component.jump_status = JumpStatus.READY
-            self.fail("execution_failed")
+            self.fail(self.failure_reason or "execution_failed")
             logger.debug(f"[{format_unit_for_log(self.unit)}] ReachWaypointOrder.check_completion_conditions: {self.order_type.name} (id:{self.local_order_id}): FAILED (hyperdrive reported ERROR state).")
             return
 

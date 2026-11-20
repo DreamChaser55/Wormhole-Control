@@ -217,9 +217,10 @@ exit exists, retaining the hidden ship and remaining queue. Mines check final po
 after movement on the ship owner's turn, including stationary ships.
 Patrol accepts 1-16 complete waypoints, returns to its captured start, and repeats. queue=true
 never extends a patrol. Use append_patrol_waypoints with its observed public order_id to extend it.
-Issuance receipts mean a command was applied, not that the order completed. Consult order_history
-and current observations for synchronous as well as later failures before reissuing work;
-compare the failure reason with current options and equipment. Launch with deploy_unit
+Issuance receipts mean a command was applied. Consult order_history and current observations
+for synchronous and later terminal outcomes before reissuing work. A failed jump may report
+jump_fuel_failure with its required and available AM and the shortfall at the attempt.
+Check current storage and fuel transfer options before reissuing. Launch with deploy_unit
 or deploy_all_wings in a separate batch; only after an observation confirms a craft is
 deployed may that craft receive new orders or stance changes. Never combine launching a
 docked craft and commanding it in one batch, and never relaunch a servicing wing this turn.

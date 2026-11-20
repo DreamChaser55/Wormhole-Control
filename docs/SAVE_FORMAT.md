@@ -123,6 +123,8 @@ bounded outcome history remain persistent.
 Completed colonist-load events can include numeric `loading_outcome` facts
 (`requested_amount`, `loaded_amount`, `retained_population`). These are execution
 snapshots, with no source references or subsequent live population updates.
+Failed jump payments may retain `jump_fuel_failure` containing required, available
+and shortfall antimatter at execution. Older history entries omit this field.
 Briefing state includes bounded private `fuel_waits` by owned unit ID, retaining
 the last movement fuel/storage problem across windows and loading. Only a changed
 problem or recovery records another event; observations do not advance this state.
