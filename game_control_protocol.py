@@ -145,7 +145,7 @@ class ControlService:
         self._token_identity: tuple[Any, ...] | None = None
         self._token_value: str | None = None
         self._requires_observation = False
-        self._unobserved_created_ids = set()
+        self._unobserved_ids = set()
         self._server: _ThreadingControlServer | None = None
         self._thread: threading.Thread | None = None
 
@@ -336,7 +336,7 @@ class ControlService:
         for index, raw in enumerate(raw_commands):
             try:
                 command = Command.from_dict(raw)
-                if command.target_id in self._unobserved_created_ids or any(uid in self._unobserved_created_ids for uid in command.unit_ids):
+                if command.target_id in self._unobserved_ids or any(uid in self._unobserved_ids for uid in command.unit_ids):
                     errors.append({'command_index': index, 'code': 'target_unavailable', 'message': 'The target is unavailable.'})
                 commands.append(command)
             except ContractError as exc:
@@ -347,12 +347,14 @@ class ControlService:
                 data={"accepted": False, "applied_count": 0, "failure_stage": "preflight", "retryable": True,
                       "receipts": [], "operation_results": [], "may_have_partial_effects": False,
                       "requires_observation": False, "turn_token": self._turn_token(player)})
-        from campaign_graph import iter_objects
+        from campaign_graph import is_deployed, iter_objects
         galaxy = getattr(self.game, 'galaxy', None)
-        before_ids = {obj.id for obj, _ in iter_objects(galaxy)} if galaxy else set()
+        before = {obj.id: container for obj, container in iter_objects(galaxy)}
         result = CommandGateway(self.game).apply_batch(player, CommandBatch(tuple(commands), end_turn=False))
-        if galaxy:
-            self._unobserved_created_ids.update({obj.id for obj, _ in iter_objects(galaxy)} - before_ids)
+        for obj, _ in iter_objects(galaxy):
+            if (obj.id not in before or
+                    hasattr(before[obj.id], 'docked_units') and is_deployed(obj, galaxy)):
+                self._unobserved_ids.add(obj.id)
         if result.requires_observation:
             self._requires_observation = True
             self._token_value = secrets.token_urlsafe(24)
@@ -515,7 +517,7 @@ class ControlService:
             if not path.is_file() or not self.game.load_game(str(path)):
                 raise ProtocolError("load_failed", "The selected save could not be loaded.")
             self._requires_observation = False
-            self._unobserved_created_ids.clear()
+            self._unobserved_ids.clear()
             return self._success(action, request_id, {'loaded': True})
         player = getattr(self.game, 'current_player', None)
         if not getattr(self.game, 'game_started', False) or player is None:
@@ -525,7 +527,7 @@ class ControlService:
         if action == 'return_to_menu':
             self.game.quit_to_main_menu()
             self._requires_observation = False
-            self._unobserved_created_ids.clear()
+            self._unobserved_ids.clear()
             return self._success(action, request_id, {'returned_to_menu': True})
         path = self._save_path(payload.get('save_name'))
         overwrite = payload.get('overwrite', False)
@@ -569,7 +571,7 @@ class ControlService:
 
     def _observation_data(self, player: Any) -> dict[str, Any]:
         observation = build_observation(self.game, player)
-        self._unobserved_created_ids.clear()
+        self._unobserved_ids.clear()
         self._requires_observation = False
         return {"turn_token": self._turn_token(player), "observation": observation}
 

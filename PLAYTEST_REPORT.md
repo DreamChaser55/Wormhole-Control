@@ -30,12 +30,6 @@ The gateway recorded no live terminal AI failure or partial commit. The round-69
 
 ## Confirmed findings
 
-### Low · The socket accepts movement for a launched wing before the required observation
-
-In round 64, the Escort Carrier's options advertised `requires_observation_after: true`. Launch plus Move in the same batch correctly rejected with `unit_unavailable` and applied zero operations. I then launched the Long Range Bomber Wing in one batch and immediately submitted a separate Move using its previously advertised bay ID and the same turn token. The bridge accepted the Move without an intervening observation. The next observation showed the wing deployed with the Move active.
-
-The bridge records newly created IDs, while launch changes the containment of an existing ID. Track stored-to-deployed transitions as well, or narrow the advertised contract if the observation is intended as guidance. The earlier round-47 launch-plus-rename probe exercised a separate path because renaming explicitly supports stored craft. [CLI trace](saves/pt26/cli.jsonl) · [Round 64 deployed observation](saves/pt26/r064-bomber-deployed.json.gz) · [Bridge command handler](game_control_protocol.py#L327) · [Deployment contract](docs/AGENTIC_AI.md#commit-guarantees-and-lifecycle-feedback)
-
 ### Low · A transmission can render as several AI memory receipts
 
 Luna sent one reply in round 4. Comms and telemetry showed one transmission. The memory sidecar displayed it as two action bullets, breaking at a semicolon inside the quoted message. The coordinator joins receipt strings with that punctuation and the Markdown renderer splits on it. Pass individual receipts to the renderer so message punctuation survives. The sidecar header also says it was generated from a save file even when the coordinator refreshes it during live play. Describe it as an export of current agent memory. [Comms export](saves/comms/2dc33dae/comms.md) · [Round 69 checkpoint with the original receipt](saves/pt26-active-ai-r069.json) · [Receipt assembly](game_ai/coordinator.py#L346) · [Markdown formatter](game_ai/memory.py#L247)

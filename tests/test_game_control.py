@@ -447,6 +447,52 @@ class ControlCliTests(unittest.TestCase):
         self.assertIn("Transport \u2013 \u0394 \\ud800", diagnostics)
 
 
+@pytest.mark.parametrize('launch_all', [False, True])
+def test_launched_wing_requires_an_observation_before_follow_up_orders(launch_all):
+    from campaign_graph import is_deployed
+    from constants import HullSize
+    from tests.support.campaigns import campaign, ship
+    from unit_components.movement import Engines
+    from unit_components.strikecraft import StrikecraftBayComponent, StrikecraftWingComponent
+
+    game = campaign()
+    game.galaxy.game = game
+    game.current_player = game.players[0]
+    game.current_player.controller = PlayerController.CODEX
+    carrier = ship(game, 'Carrier')
+    bay = StrikecraftBayComponent(carrier, max_slots=2)
+    carrier.add_component(bay)
+    wing = ship(game, 'Wing', hull=HullSize.STRIKECRAFT_WING)
+    wing.add_component(Engines(wing, speed=40))
+    wing.add_component(StrikecraftWingComponent(wing))
+    assert bay.dock(wing, game.galaxy)
+    wing.strikecraft_wing_component.recovery_ready_round = game.turn_number
+
+    service = ControlService(game, port=0)
+    token = service._dispatch('observe', 'before-launch', _request('observe'))['data']['turn_token']
+    launch = {'type': 'deploy_all_wings' if launch_all else 'deploy_unit', 'unit_ids': [carrier.id]}
+    if not launch_all:
+        launch['target_id'] = wing.id
+    move = {'type': 'move', 'unit_ids': [wing.id], 'system_name': 'Sol', 'hex_coord': [0, 0],
+            'position': [500, 500]}
+
+    def command(request_id, *commands):
+        return service._dispatch('command', request_id, _request('command', request_id, turn_token=token,
+                                                               commands=list(commands)))
+
+    assert not command('combined', launch, move)['ok']
+    assert not is_deployed(wing, game.galaxy)
+    assert command('launch', launch)['ok']
+    assert is_deployed(wing, game.galaxy)
+    blocked = command('before-observation', move)
+    assert not blocked['ok'] and blocked['data']['applied_count'] == 0
+    assert wing.commander_component.current_order is None
+    observed = service._dispatch('observe', 'after-launch', _request('observe'))
+    token = observed['data']['turn_token']
+    assert command('after-observation', move)['ok']
+    assert wing.commander_component.current_order is not None
+
+
 @pytest.fixture
 def cli_stub_server():
     """Answer real CLI connections without launching a campaign or AI provider."""
