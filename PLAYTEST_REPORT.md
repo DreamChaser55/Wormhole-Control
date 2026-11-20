@@ -30,7 +30,6 @@ The gateway recorded no live terminal AI failure or partial commit. The round-69
 
 ## Gameplay and AI improvements
 
-- **Reduce repeated prompt detail on quiet turns.** The median attempt used 67,637 input tokens, including 31,136 uncached tokens. Compacted changing context grew from about 53,000 characters in the first request to a peak of 145,000 on this two-system map. Keep the cacheable catalog, and measure reducing repeated option and estimate rows when the active orders and contacts have changed little. [Telemetry](saves/ai_telemetry.jsonl)
 - **Make debug logs easier to scan.** The full launcher stderr reached 23.4 MB. About 97% of its logged records came from DEBUG pathfinding, and the rotating game log reached its three-backup limit. Separate route previews from actual movement traces so turn resolution and AI events are easier to find during long runs. [Launcher stderr](saves/control_stderr.log) · [Logging reference](docs/DEVELOPMENT.md#unit-references-in-logs)
 
 ## Verification

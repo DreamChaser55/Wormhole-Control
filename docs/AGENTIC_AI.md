@@ -339,11 +339,20 @@ offline inspection, and `planning_context(request, compact=False)` provides the
 unfactored planning representation. Dismantling options omit target previews whose
 executor lacks the required capability; hardware/schema discovery remains available.
 
+On quiet turns with an empty briefing and no current enemy contacts, the provider
+can omit alternate travel estimates for units with healthy active work. It keeps
+active journeys, current and queued targets, repair and refueling quotes, and all
+action choices and legality. Idle units, resource-stalled units, and repair requests
+keep full detail. `planning_context(request, trim_quiet=False)` retains all quotes
+for comparisons with the same catalog and value deduplication.
+
 Telemetry records `prompt_metrics`: original/compact section character counts,
 stable catalog size, dynamic size and serialized/content input sizes. These are
 JSON character counts, not token estimates.
 `shared_value_savings_chars` reports the reduction from repeated values, and
 `dynamic_shared_values_chars` accounts for the changing message's reference table.
+`quiet_quote_rows_omitted` counts alternate approach and planetary travel quotes
+left out of the changing message.
 Provider usage includes
 `cached_input_tokens` and `uncached_input_tokens` when cache details are returned.
 Neither metric set logs prompt contents. Run `python scripts/benchmark_observations.py`

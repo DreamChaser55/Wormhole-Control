@@ -1,10 +1,11 @@
 """Compact planning preserves disclosed information and reduces real payloads."""
 from copy import deepcopy
 import json
+from dataclasses import replace
 
 import pytest
 
-from game_ai.adapters.base import PlanningRequest
+from game_ai.adapters.base import PlanningRequest, RepairContext
 from game_ai.observation import build_observation
 from game_ai.prompt_context import planning_context, expand_shared_values
 from game_settings import GameSettings, PlayerConfig
@@ -36,6 +37,41 @@ def test_compact_messages_restore_identical_catalogs_and_tactical_information(pr
     observation['turn_number'] += 1
     later, _ = planning_context(request)
     assert later[0] == compact[0]
+
+
+def test_quiet_prompt_trims_only_alternate_quotes_for_healthy_busy_units():
+    options = {'colonize': {'target_ids': [10, 11, 12], 'approach_quotes': {
+        str(i): {'estimated_owner_turns': i, 'estimated_antimatter': 1.5 * i} for i in (10, 11, 12)}},
+        'give_antimatter': {'target_ids': [20], 'approach_quotes': {'20': {'estimated_owner_turns': 2}}}}
+    active = {'status': 'in_progress', 'active': True, 'target_id': 10,
+              'progress': {'journey': {'estimated_remaining_owner_turns': 6}}}
+    units = [
+        {'id': 1, 'relation': 'self', 'current_order': active, 'queued_orders': [{'target_id': 11}]},
+        {'id': 2, 'relation': 'self', 'current_order': active},
+        {'id': 3, 'relation': 'self', 'current_order': None},
+    ]
+    for unit in units:
+        unit['command_options'] = deepcopy(options)
+    observation = {'units': units, 'turn_summary': {'from_turn': 6, 'entries': []},
+                   'logistics': {'fuel_needs': [{'unit_id': 2}]}}
+    request = PlanningRequest('quiet', 'agent', 'One', 7, observation, {})
+    baseline, _ = planning_context(request, trim_quiet=False)
+    messages, metrics = planning_context(request)
+    assert messages[0] == baseline[0]
+    assert metrics['quiet_quote_rows_omitted'] == 1
+    projected = expand_shared_values(json.loads(messages[-1]['content']))['observation']['units']
+    busy, stalled, idle = projected
+    assert busy['current_order'] == active
+    assert busy['command_options']['colonize']['target_ids'] == [10, 11, 12]
+    assert set(busy['command_options']['colonize']['approach_quotes']) == {'10', '11'}
+    assert busy['command_options']['give_antimatter'] == options['give_antimatter']
+    assert stalled == units[1] and idle == units[2]
+    assert units[0]['command_options'] == options
+    repaired, _ = planning_context(replace(request, repair_context=RepairContext(None, ())))
+    assert expand_shared_values(json.loads(repaired[-1]['content']))['observation']['units'] == units
+    observation['undetailed_enemy_presence'] = [{'system_name': 'Sol', 'hex_coord': [1, 0]}]
+    _, contacted = planning_context(request)
+    assert contacted['quiet_quote_rows_omitted'] == 0
 
 
 def test_carrier_dismantling_omits_ship_targets_without_constructor_capability():

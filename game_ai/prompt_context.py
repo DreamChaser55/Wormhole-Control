@@ -1,4 +1,4 @@
-"""Lossless planning-only catalogue references and payload-free size metrics."""
+"""Planning catalogue references, quiet-turn quotes and payload-free size metrics."""
 from copy import deepcopy
 from collections import Counter
 import json
@@ -17,6 +17,8 @@ CONTEXT_INSTRUCTIONS = (
     "exact JSON value in that same message's shared_values; follow references "
     "recursively. These references deduplicate data, including command options and rules; "
     "they do not change command fields, visibility, availability, or order semantics."
+    " On quiet turns, alternative travel estimates may be omitted for units with healthy active work. "
+    "alternative_quotes_omitted counts those estimates. Use their journey, legal options and current logistics."
 )
 
 
@@ -113,15 +115,59 @@ def expand_shared_values(data):
     return expand({name: value for name, value in data.items() if name != 'shared_values'})
 
 
-def planning_context(request, *, compact=True):
+def _trim_quiet_quotes(observation):
+    summary = observation.get('turn_summary', {})
+    units = observation.get('units', [])
+    if (not summary.get('from_turn') or summary.get('entries') or summary.get('omitted_count')
+            or observation.get('undetailed_enemy_presence') or any(u.get('relation') == 'enemy' for u in units)):
+        return 0
+    if any(contact.get('owner_relation') == 'enemy' for key in ('visible_deployables', 'visible_minefields')
+           for contact in observation.get(key, [])):
+        return 0
+    fuel_needs = {row['unit_id'] for row in observation.get('logistics', {}).get('fuel_needs', [])}
+    total = 0
+    for unit in units:
+        order = unit.get('current_order') or {}
+        if (unit.get('relation') != 'self' or unit.get('disabled') or unit.get('is_hidden_in_gas_giant')
+                or not order.get('active') or order.get('status') != 'in_progress' or unit['id'] in fuel_needs):
+            continue
+        progress = order.get('progress', {})
+        if (progress.get('phase') in {'stalled', 'blocked', 'waiting_for_contact', 'waiting_for_fuel'}
+                or progress.get('journey', {}).get('waiting_reason')):
+            continue
+        committed = {str(root.get('target_id')) for root in [order, *unit.get('queued_orders', [])]}
+        omitted = 0
+        for kind, option in unit.get('command_options', {}).items():
+            if kind in {'give_antimatter', 'take_antimatter', 'repair'}:
+                continue
+            quotes = option.get('approach_quotes', {})
+            if quotes:
+                kept = {target: quote for target, quote in quotes.items() if target in committed}
+                omitted += len(quotes) - len(kept)
+                option['approach_quotes'] = kept
+                if not kept:
+                    option.pop('approach_quote_note', None)
+            for target in option.get('targets', []):
+                if isinstance(target, dict) and target.get('mission_quote') is not None and str(target['target_id']) not in committed:
+                    target.pop('mission_quote')
+                    omitted += 1
+        if omitted:
+            unit['alternative_quotes_omitted'] = omitted
+            total += omitted
+    return total
+
+
+def planning_context(request, *, compact=True, trim_quiet=True):
     """Return stable prefix, changing state and character counts, never mutate input.
 
-    Only already-public observation data is moved. The socket observation and
-    provider-neutral PlanningRequest retain their complete original contracts.
+    Only already-public data is used. The socket observation and provider-neutral
+    PlanningRequest retain their complete original contracts.
     """
     original = request.to_dict()
     data = deepcopy(original)
     observation = data["observation"]
+    quiet_omitted = (_trim_quiet_quotes(observation)
+                     if compact and trim_quiet and request.repair_context is None else 0)
     catalogs = {}
     for key in ("command_catalog", "ability_catalog"):
         if key in observation:
@@ -168,6 +214,7 @@ def planning_context(request, *, compact=True):
         "stable_catalog_chars": len(stable),
         "dynamic_request_chars": len(dynamic),
         "shared_value_savings_chars": unfactored_chars - len(stable) - len(dynamic),
+        "quiet_quote_rows_omitted": quiet_omitted,
         "observation_sections_chars": {key: len(serialized(value)) for key, value in original["observation"].items()},
         "compact_sections_chars": {key: len(serialized(value)) for key, value in data['observation'].items()},
         "dynamic_shared_values_chars": len(serialized(data.get('shared_values', {}))),
