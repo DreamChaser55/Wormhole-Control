@@ -66,6 +66,36 @@ class AgentMemory:
     def add_receipt(self, text: str, *, turn: int) -> None:
         self.add_receipts((text,), turn=turn)
 
+    def reconcile_combat_losses(self, summary: Mapping[str, Any]) -> None:
+        """Close explicit commitments to enemies whose destruction the player observed."""
+        losses = {}
+        for event in summary.get('entries', ()):
+            if event.get('category') != 'enemy_losses' or event.get('detail') != 'Destroyed':
+                continue
+            identity = event.get('subject_id')
+            if type(identity) is not int:
+                continue
+            name = event['name']
+            named_id = name if name.endswith(f' {identity}') else f'{name} {identity}'
+            # Support the prompt's explicit target marker and older name-and-ID commitments.
+            losses[identity] = re.compile(
+                rf'\[target:{identity}\]|\b(?:attack(?:ing)?|engag(?:e|ing)|target(?:ing)?)\s+'
+                rf'(?:{re.escape(named_id)}\b|{re.escape(name)}\s*\(id:{identity}\))', re.IGNORECASE)
+            coord = event.get('hex_coord')
+            location = f" in {event['system_name']} {coord}" if coord else ''
+            fact = f"Turn {event['turn']}: {name} (id:{identity}) destroyed{location}."
+            if fact not in self.important_events:
+                self.important_events = [fact, *self.important_events][:16]
+
+        if losses:
+            commitments = []
+            for entry in self.commitments:
+                clauses = re.split(r';\s*(?=[^:;]+:)', entry)
+                remaining = [clause for clause in clauses if not any(pattern.search(clause) for pattern in losses.values())]
+                if remaining:
+                    commitments.append('; '.join(remaining))
+            self.commitments = commitments
+
     def add_receipts(self, receipts: Iterable[str], *, turn: int) -> None:
         actions = [f"Turn {turn}: {text.strip()}" for text in receipts if isinstance(text, str) and text.strip()]
         if actions:

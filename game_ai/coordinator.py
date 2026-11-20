@@ -156,6 +156,7 @@ class AgentTurnCoordinator:
         try:
             observation = build_observation(self.game, player)
             memory = AgentMemory.from_dict(getattr(player, "ai_memory", None))
+            memory.reconcile_combat_losses(observation.get('turn_summary', {}))
         except Exception as exc:
             logger.error("AI turn preparation failed (%s).", type(exc).__name__)
             self._fail("The AI turn could not be prepared.")
@@ -346,6 +347,8 @@ class AgentTurnCoordinator:
             turn=int(getattr(self.game, "turn_number", 1)),
         )
         memory.apply_patch({'lessons': self._rejection_lessons}, turn=int(getattr(self.game, "turn_number", 1)))
+        if self._base_request is not None:
+            memory.reconcile_combat_losses(self._base_request.observation.get('turn_summary', {}))
         memory.add_receipts(command_result.receipts or ("No commands issued.",),
                             turn=int(getattr(self.game, "turn_number", 1)))
         player.ai_memory = memory.to_dict()

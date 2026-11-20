@@ -191,6 +191,27 @@ class TestMemory(unittest.TestCase):
             self.assertIn("## Misc\n\n- Misc Note 0", text)
             self.assertIn("- Turn 4:\n  - Scout moved.", text)
 
+    def test_confirmed_loss_reconciles_combat_commitments_and_preserves_other_work(self):
+        memory = AgentMemory(commitments=[
+            'Flak Escort 50: continue attacking Long Range Bomber Wing 45 (6 HP); Flak Escort 53: continue attacking Escort Carrier 42.',
+            'Patrol Escort 36: attack [target:45].',
+            'Escort 54: attack [target:51].',
+            'Harvester 33: deliver fuel to Constructor 31.',
+        ], important_events=['Turn 92: Confirmed enemy strikecraft at the gateway.'])
+        summary = {'entries': [{'category': 'enemy_losses', 'detail': 'Destroyed', 'subject_id': 45,
+                                'name': 'Long Range Bomber Wing 45', 'turn': 99, 'system_name': 'Procyon',
+                                'hex_coord': [2, -3]}]}
+        memory.reconcile_combat_losses(summary)
+        memory.reconcile_combat_losses(summary)
+        self.assertEqual(memory.commitments, [
+            'Flak Escort 53: continue attacking Escort Carrier 42.', 'Escort 54: attack [target:51].',
+            'Harvester 33: deliver fuel to Constructor 31.',
+        ])
+        self.assertEqual(memory.important_events, [
+            'Turn 99: Long Range Bomber Wing 45 (id:45) destroyed in Procyon [2, -3].',
+            'Turn 92: Confirmed enemy strikecraft at the gateway.',
+        ])
+
     def test_memory_misc_field_roundtrip_and_defaults(self):
         memory = AgentMemory()
         self.assertEqual(memory.misc, [])

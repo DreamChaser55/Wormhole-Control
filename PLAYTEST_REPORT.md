@@ -28,12 +28,6 @@ I completed **100 full rounds, 200 resolved player turns**, and saved at the sta
 
 The gateway recorded no live terminal AI failure or partial commit. The round-69 reload canceled one planning attempt that is absent from the telemetry. Many zero-command turns let active construction and travel continue. Luna established a colony, fortified two worlds, used reconnaissance and perimeter defense, pursued the scout, and adapted to bombers with Tracking Lock and Flak Barrage. [Telemetry](saves/ai_telemetry.jsonl) · [AI memory](saves/agent_memory/2dc33dae/d5fdf1b8/memory.md)
 
-## Confirmed findings
-
-### Low · AI commitments retain a destroyed combat target
-
-The round-100 memory commitments still directed Flak Escort 50 to attack Long Range Bomber Wing 45 at 6 HP. The same memory recorded its confirmed destruction on round 99, and the accepted round-100 plan targeted the surviving bomber. Reconcile explicit combat commitments with terminal events during the requested fifth-round review. Retain the confirmed loss in important events. [AI memory](saves/agent_memory/2dc33dae/d5fdf1b8/memory.md) · [Telemetry](saves/ai_telemetry.jsonl)
-
 ## Gameplay and AI improvements
 
 - **Prevent the empty-hold plan at the source.** In round 31 the live AI ordered Colonizer 32 to settle asteroid 20 with no colonists. The gateway rejected the batch atomically. One repair added a load of 10 at Planet 16 and queued settlement. The initial and repaired attempts took 7.03 s and 8.72 s. Put the conditional load-then-colonize action next to empty cargo in the planning context and keep this post-settlement case in evaluations. [Telemetry](saves/ai_telemetry.jsonl)

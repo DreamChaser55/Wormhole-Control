@@ -170,8 +170,11 @@ that serve none of the other purposes. Reference related items without copying t
 The engine records receipts.
 Every fifth round and after a major change, review memory against the current board
 and order history. Drop completed or abandoned objectives and resolved commitments,
-replace contradicted beliefs, and remove stale events and reminders. Retain dates
-for facts that still inform decisions—especially active enemy sighting and approach locations
+replace contradicted beliefs, and remove stale events and reminders. Give each active
+combat commitment its own entry with one actor and its target marker, e.g. [target:45].
+Check enemy_losses in turn_summary and terminal order_history before retaining an attack.
+Close a destroyed target's commitment and keep its confirmed loss in important_events.
+Retain dates for facts that still inform decisions—especially active enemy sighting and approach locations
 used to prioritize fortifications, Orbital Bastions, sensor coverage, and fleet patrols—and keep
 durable lessons. Use null for unchanged
 fields, an empty list to clear an obsolete replaceable list, and the complete revised

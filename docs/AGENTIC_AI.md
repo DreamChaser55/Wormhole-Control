@@ -291,8 +291,11 @@ Receipts come from the engine. Planners place each fact in its most useful secti
 Every fifth round and after major changes, they reconcile memory with the current
 board and order history, remove outdated entries from replaceable sections, and retain
 active enemy sighting and approach locations that inform fortifications, Orbital Bastions,
-sensor coverage, and fleet patrols. Planning instructions require objectives
-and commitments to match accepted orders, compare mission value with remaining
+sensor coverage, and fleet patrols.
+Each active combat commitment includes one actor and an explicit `[target:ID]` marker.
+Confirmed enemy losses in the owner briefing close matching commitments and enter
+important events before planning and when accepted memory is saved.
+Planning instructions require objectives and commitments to match accepted orders, compare mission value with remaining
 travel before replacement, and consult terminal history before repeating failures.
 Zero-command plans are valid when useful work should continue.
 Colonist-loading options separate `current_population` from advisory retained
