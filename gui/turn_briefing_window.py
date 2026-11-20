@@ -76,7 +76,9 @@ def current_travel_html(game, player):
             continue
         journey = public_journey_progress(game, player, unit)
         if journey:
-            rows.append(escape(f"{unit.name} (id:{unit.id}): " + '; '.join(journey_summary_lines(journey))))
+            title = escape(f"{unit.name} (id:{unit.id})")
+            lines = '<br>'.join(escape(line) for line in journey_summary_lines(journey))
+            rows.append(f'<b>{title}</b><br>{lines}')
         if len(rows) >= 16:
             break
     if not rows:

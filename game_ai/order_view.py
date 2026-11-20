@@ -51,6 +51,7 @@ def construction_progress(unit, order, active):
 
 def journey_progress(unit, order, known_targets, known_body_ids=None):
     """Describe the active planned leg using public intent and current equipment."""
+    import math
     from types import SimpleNamespace
     from geometry import distance
     from antimatter_logistics import estimate_approach
@@ -129,12 +130,24 @@ def journey_progress(unit, order, known_targets, known_body_ids=None):
                                       get_hyperdrive_hex_jump_cost, get_hyperdrive_system_jump_cost)
     from environmental_effects import sublight_speed, modifiers_for_unit
     from movement_costs import fuel_free_sublight
+    local_distance = distance(unit.position, destination) if local else None
+    leg_turns = None
+    leg_kind = 'sublight'
     fuel_step = 0.0
-    if local and distance(unit.position, destination) > 5.0 and not fuel_free_sublight(unit):
-        fuel_step = get_sublight_antimatter_cost_per_turn(unit.hull_size, sublight_speed(unit)) * modifiers_for_unit(unit).fuel_multiplier
-    elif not local and recharge <= 0:
-        fuel_step = (get_hyperdrive_system_jump_cost(unit.hull_size) if unit.in_system != system_name
-                     else get_hyperdrive_hex_jump_cost(unit.hull_size))
+    if local:
+        speed = sublight_speed(unit)
+        if speed > 0:
+            leg_turns = min(10000, math.ceil(local_distance / speed))
+        if local_distance >= 0.01 and not fuel_free_sublight(unit):
+            fuel_step = get_sublight_antimatter_cost_per_turn(unit.hull_size, speed) * modifiers_for_unit(unit).fuel_multiplier
+    else:
+        crossing = unit.in_system != system_name
+        leg_kind = 'wormhole_transit' if crossing else 'sector_jump'
+        if drive and drive.is_functional:
+            leg_turns = min(10000, recharge + 1)
+        if recharge <= 0:
+            fuel_step = (get_hyperdrive_system_jump_cost(unit.hull_size) if crossing
+                         else get_hyperdrive_hex_jump_cost(unit.hull_size))
     storage = getattr(unit, 'antimatter_component', None)
     waiting_reason = None
     if fuel_step > 0:
@@ -142,8 +155,9 @@ def journey_progress(unit, order, known_targets, known_body_ids=None):
             phase, waiting_reason = 'blocked', 'storage_unavailable'
         elif storage.current_amount < fuel_step:
             phase, waiting_reason = 'waiting_for_fuel', 'insufficient_antimatter'
-    return {'phase': phase, 'remaining_approach_distance': round(distance(unit.position, destination), 2) if local else None,
-            'route_leg': {'system_name': system_name, 'hex_coord': point(coord), 'position': point(destination)},
+    return {'phase': phase, 'remaining_approach_distance': round(local_distance, 2) if local else None,
+            'route_leg': {'system_name': system_name, 'hex_coord': point(coord), 'position': point(destination),
+                          'kind': leg_kind, 'estimated_owner_turns': leg_turns},
             'remaining_route_legs': len(moves[0].sub_orders),
             'drive_status': enum_name(drive.jump_status) if drive else None,
             'drive_recharge_owner_turns': recharge,
@@ -187,6 +201,14 @@ def journey_summary_lines(journey):
         lines[0] += f" ({journey['drive_recharge_owner_turns']} owner turns)"
     if journey.get('waiting_reason'):
         lines.append(f"Next movement step needs {journey['next_step_antimatter']:g} AM")
+    leg = journey.get('route_leg', {})
+    leg_turns = leg.get('estimated_owner_turns')
+    if leg_turns is not None and leg.get('hex_coord') and not journey.get('waiting_reason'):
+        q, r = leg['hex_coord']
+        action = {'wormhole_transit': 'Wormhole crossing', 'sector_jump': 'Sector jump',
+                  'sublight': 'Waypoint'}[leg['kind']]
+        unit = 'owner turn' if leg_turns == 1 else 'owner turns'
+        lines.append(f"{action} · {leg['system_name']} ({q}, {r}) · About {leg_turns:,} {unit}")
     turns = journey.get('estimated_remaining_owner_turns')
     if turns is not None:
         lines.append(f"Estimated travel remaining: about {turns:,}{'+' if turns == 10000 else ''} owner turns")

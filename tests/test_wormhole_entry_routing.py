@@ -99,7 +99,10 @@ def test_entry_journey_describes_inward_approach_without_mutation(multihop):
     journey = public_journey_progress(world.game, world.unit.owner, world.unit)
     assert journey['phase'] == 'wormhole_approach'
     assert journey['route_leg']['position'] == [0, 0]
+    assert journey['route_leg']['estimated_owner_turns'] == 9
+    assert journey['estimated_remaining_owner_turns'] > 9
     assert journey_summary_lines(journey)[0] == 'Approaching wormhole entrance'
+    assert 'Waypoint · Sol (0, 0) · About 9 owner turns' in journey_summary_lines(journey)
     assert serialize_order(world.unit.commander_component.current_order) == before
 
 

@@ -162,7 +162,9 @@ remembered per body and campaign during the application session, not in saves.
 
 The briefing also shows current ship, station and wing construction progress in
 owner turns. Current travel appears in the ship's order sidebar and briefing: leaving an
-inhibition field, drive recharge, approach, or waiting for antimatter. Remaining
+inhibition field, drive recharge, approach, or waiting for antimatter. The next
+waypoint, sector jump or wormhole crossing shows its sector and estimated time
+at current speed or recharge, alongside the estimate for the full journey. Remaining
 travel estimates use current equipment and known terrain, assuming enough fuel
 and unchanged conditions. Loading, mission actions and later queued orders add
 time. Preserve advancing work unless a replacement is worth the lost progress.
