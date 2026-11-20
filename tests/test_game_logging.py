@@ -15,7 +15,7 @@ def isolated_logging(tmp_path, monkeypatch):
     """Restore process logging and close test-owned files even after assertion failures."""
     root = logging.getLogger()
     original_handlers = root.handlers[:]
-    names = (*game_logging.THIRD_PARTY_LOGGERS, "wormhole_logging_test",
+    names = (*game_logging.THIRD_PARTY_LOGGERS, game_logging.ROUTE_PREVIEW_LOGGER, "wormhole_logging_test",
              *(name + ".lifecycle_test" for name in game_logging.THIRD_PARTY_LOGGERS))
     loggers = [root, *(logging.getLogger(name) for name in names)]
     levels = {logger: logger.level for logger in loggers}
@@ -89,6 +89,23 @@ def test_verbose_traces_require_opt_in_even_for_debug_child_loggers(monkeypatch,
     logger.debug('opted in trace')
     assert 'opted in trace' in capsys.readouterr().err
     assert 'opted in trace' in (tmp_path / 'game.log').read_text()
+
+
+@pytest.mark.parametrize('preview_logging', [False, True])
+def test_debug_movement_logs_keep_route_previews_opt_in(preview_logging, monkeypatch, capsys, tmp_path):
+    from domain.coordinates import HexCoord
+    from pathfinding import find_hex_jump_path
+
+    if preview_logging:
+        monkeypatch.setenv('DEBUG_ROUTE_PREVIEWS', 'true')
+    else:
+        monkeypatch.delenv('DEBUG_ROUTE_PREVIEWS', raising=False)
+    game_logging.setup_logging(log_to_file=True)
+    start, destination = HexCoord(0, 0), HexCoord(3, 0)
+    assert find_hex_jump_path(start, destination, 2, preview=True) == find_hex_jump_path(start, destination, 2)
+    for output in (capsys.readouterr().err, (tmp_path / 'game.log').read_text(encoding='utf-8')):
+        assert 'pathfinding: Calculating jump path' in output
+        assert ('pathfinding.preview: Calculating jump path' in output) is preview_logging
 
 
 def test_runtime_logs_rotate_and_keep_redaction_in_every_backup(monkeypatch, tmp_path):

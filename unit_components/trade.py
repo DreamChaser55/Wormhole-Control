@@ -82,7 +82,7 @@ class TradeComponent(UnitComponent):
         if g and hasattr(g, 'system_graph'):
             from pathfinding import find_intersystem_path
             hull_size = getattr(self.unit, 'hull_size', None)
-            path = find_intersystem_path(g.system_graph, origin_sys, dest_sys, hull_size)
+            path = find_intersystem_path(g.system_graph, origin_sys, dest_sys, hull_size, preview=True)
             if path and len(path) > 1:
                 hops = len(path) - 1
 

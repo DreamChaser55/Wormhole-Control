@@ -279,7 +279,8 @@ class ContinuousMineOrder(Order):
                 else:
                     return hex_distance(self.unit.in_hex, refinery.in_hex) * 10000.0
             else:
-                path = find_intersystem_path(galaxy_ref.system_graph, self.unit.in_system, refinery.in_system, self.unit.hull_size)
+                path = find_intersystem_path(galaxy_ref.system_graph, self.unit.in_system, refinery.in_system,
+                                             self.unit.hull_size, preview=True)
                 if path is None:
                     return float('inf')
                 return (len(path) - 1) * 1000000.0 + hex_distance(self.unit.in_hex, refinery.in_hex) * 10000.0

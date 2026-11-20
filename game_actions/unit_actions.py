@@ -134,7 +134,8 @@ def _refinery_distance(galaxy, unit: Unit, refinery: Unit) -> float:
         else:
             return hex_distance(unit.in_hex, refinery.in_hex) * 10000.0
     else:
-        path = find_intersystem_path(galaxy.system_graph, unit.in_system, refinery.in_system, unit.hull_size)
+        path = find_intersystem_path(galaxy.system_graph, unit.in_system, refinery.in_system,
+                                     unit.hull_size, preview=True)
         if path is None:
             return float('inf')
         return (len(path) - 1) * 1000000.0 + hex_distance(unit.in_hex, refinery.in_hex) * 10000.0

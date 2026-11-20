@@ -100,8 +100,8 @@ Before a new launch, accumulated stderr of at least 5 MiB rotates with three
 backups. Rotation is between processes; one run's raw stderr can exceed that
 threshold. `game.log` rotates during play at 5 MiB with three backups. Normal
 logging omits detailed movement/order traces; set `DEBUG_LOG=true` in
-the launching environment to enable application-wide debug diagnostics, including
-these traces. HTTP payload suppression and sensitive-header redaction apply in
+the launching environment for movement and order diagnostics. Set
+`DEBUG_ROUTE_PREVIEWS=true` as well for speculative route calculations. HTTP payload suppression and sensitive-header redaction apply in
 both modes.
 
 ## Common envelope

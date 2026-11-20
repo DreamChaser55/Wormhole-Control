@@ -28,10 +28,6 @@ I completed **100 full rounds, 200 resolved player turns**, and saved at the sta
 
 The gateway recorded no live terminal AI failure or partial commit. The round-69 reload canceled one planning attempt that is absent from the telemetry. Many zero-command turns let active construction and travel continue. Luna established a colony, fortified two worlds, used reconnaissance and perimeter defense, pursued the scout, and adapted to bombers with Tracking Lock and Flak Barrage. [Telemetry](saves/ai_telemetry.jsonl) · [AI memory](saves/agent_memory/2dc33dae/d5fdf1b8/memory.md)
 
-## Gameplay and AI improvements
-
-- **Make debug logs easier to scan.** The full launcher stderr reached 23.4 MB. About 97% of its logged records came from DEBUG pathfinding, and the rotating game log reached its three-backup limit. Separate route previews from actual movement traces so turn resolution and AI events are easier to find during long runs. [Launcher stderr](saves/control_stderr.log) · [Logging reference](docs/DEVELOPMENT.md#unit-references-in-logs)
-
 ## Verification
 
 - **Bridge and persistence.** Tested launch, status, observation, command batches, End Turn, normal wait timeout, active-campaign protection, setup/state export, save listing, explicit overwrite, and reload. An invalid mixed batch applied zero operations. Replaying the same mutation ID returned the cached response and changing its payload conflicted. Stale turn tokens rejected. The round-8 reload retained balances, orders, history, and the frozen briefing and rotated the token. The round-69 reload during planning resumed the same AI owner turn. A premature retry during active planning rejected.

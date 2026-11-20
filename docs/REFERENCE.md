@@ -1794,7 +1794,8 @@ for fields, types, derived values and the Python API.
 Each run writes `game.log` in the root folder. Check it for storage and runtime
 failures.
 Normal logging omits detailed movement/order traces. Set `DEBUG_LOG=true` before
-launching to enable application-wide debug diagnostics, including these traces.
+launching to enable movement and order diagnostics. Set `DEBUG_ROUTE_PREVIEWS=true`
+as well to include speculative route calculations.
 `game.log` rotates at 5 MiB with three backups. The control launcher's raw stderr
 rotates between launches; see
 [control diagnostics](CODEX_CONTROL.md#transport-and-process-behavior).

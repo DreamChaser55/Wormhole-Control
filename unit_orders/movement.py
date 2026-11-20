@@ -1068,7 +1068,7 @@ def calculate_required_antimatter(
         dist = hex_distance(start_h, end_h)
         if dist <= effective_jump_range:
             return hex_jump_cost
-        waypoints = find_hex_jump_path(start_h, end_h, effective_jump_range)
+        waypoints = find_hex_jump_path(start_h, end_h, effective_jump_range, preview=True)
         return len(waypoints) * hex_jump_cost
 
     def _get_landing_sublight_cost(sys_name: str, target_h: HexCoord, target_p: Optional[Position]) -> float:
@@ -1103,7 +1103,8 @@ def calculate_required_antimatter(
         if direct_wh:
             path_to_dest = [curr_system, destination_system_name]
         else:
-            path_to_dest = find_intersystem_path(galaxy_ref.system_graph, curr_system, destination_system_name, unit.hull_size)
+            path_to_dest = find_intersystem_path(galaxy_ref.system_graph, curr_system, destination_system_name,
+                                                unit.hull_size, preview=True)
 
         if not path_to_dest or len(path_to_dest) < 2:
             return 0.0

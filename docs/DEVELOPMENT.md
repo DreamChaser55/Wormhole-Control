@@ -312,8 +312,9 @@ Both file and console handlers receive the same formatted message.
 
 `setup_logging(log_to_file=True)` appends UTF-8 records to `game.log`, rotating
 at 5 MiB with three backups. Normal logging is INFO; set `DEBUG_LOG=true`
-before launch to enable application-wide debug diagnostics, including detailed
-movement/order traces. Both handlers enforce the selected level even if a child
+before launch for detailed movement and order diagnostics. Speculative route
+queries use `pathfinding.preview`; set `DEBUG_ROUTE_PREVIEWS=true` alongside
+`DEBUG_LOG=true` to include those records. Both handlers enforce the selected level even if a child
 logger enables DEBUG. The handlers suppress verbose HTTP client records (including
 `httpcore2`) and redact records containing sensitive HTTP header metadata regardless
 of logger name or severity, including formatted exception details.

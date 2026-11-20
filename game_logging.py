@@ -33,6 +33,7 @@ _SENSITIVE_HTTP_METADATA = re.compile(
 _application_handlers: list[logging.Handler] = []
 LOG_MAX_BYTES = 5 * 1024 * 1024
 LOG_BACKUP_COUNT = 3
+ROUTE_PREVIEW_LOGGER = "pathfinding.preview"
 
 
 def rotate_startup_log(path):
@@ -105,7 +106,8 @@ def setup_logging(log_to_file: bool = False):
 
     Install filtered stderr output and, when log_to_file is True, append to
     rotating game.log in the working directory after closing previous destinations.
-    INFO is normal; DEBUG_LOG=true opts into application-wide DEBUG traces.
+    INFO is normal. DEBUG_LOG=true enables movement and order traces.
+    DEBUG_ROUTE_PREVIEWS=true additionally enables speculative route diagnostics.
     The active file rotates at 5 MiB with three retained backups.
     False leaves the file untouched apart from flushing an old owned handler.
     Cleanup errors propagate after all owned handlers have been processed. A
@@ -113,8 +115,11 @@ def setup_logging(log_to_file: bool = False):
     owned. Returns None; importing this module does not configure logging.
     """
     root_logger = logging.getLogger()
-    level = logging.DEBUG if os.environ.get('DEBUG_LOG', '').lower() in {'1', 'true', 'yes'} else logging.INFO
+    enabled = {'1', 'true', 'yes'}
+    level = logging.DEBUG if os.environ.get('DEBUG_LOG', '').lower() in enabled else logging.INFO
     root_logger.setLevel(level)
+    route_level = level if os.environ.get('DEBUG_ROUTE_PREVIEWS', '').lower() in enabled else logging.INFO
+    logging.getLogger(ROUTE_PREVIEW_LOGGER).setLevel(route_level)
 
     # These clients include complete request bodies in DEBUG records. The game
     # records its own bounded AI telemetry, so library logs must never contain

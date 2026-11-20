@@ -268,7 +268,7 @@ def estimate_approach(unit, galaxy, target, origin=None, *, approach_range=ANTIM
                 # A moving ship cannot escape its own inhibition field.
                 raise NoSafePathError("Active onboard inhibitor")
             escape()
-            for waypoint in find_hex_jump_path(coord, destination_hex, jump_range):
+            for waypoint in find_hex_jump_path(coord, destination_hex, jump_range, preview=True):
                 coord = waypoint
                 landing = destination if waypoint == destination_hex else Position(0, 0)
                 for zone in zones():
@@ -293,7 +293,7 @@ def estimate_approach(unit, galaxy, target, origin=None, *, approach_range=ANTIM
             if jump_range <= 0 or drive.drive_type != HyperdriveType.ADVANCED:
                 return None
             route = find_intersystem_path(
-                galaxy.system_graph, system, target.in_system, unit.hull_size
+                galaxy.system_graph, system, target.in_system, unit.hull_size, preview=True
             )
             if not route:
                 return None
@@ -443,7 +443,7 @@ def automatic_recipient(unit, source, galaxy, *, harvesting=False, excluded=(), 
                      hex_distance(unit.in_hex, candidate.in_hex) * 10000.0)
         else:
             path = find_intersystem_path(galaxy.system_graph, unit.in_system,
-                                        candidate.in_system, unit.hull_size)
+                                        candidate.in_system, unit.hull_size, preview=True)
             value = (float('inf') if not path else
                      (len(path) - 1) * 1_000_000.0
                      + hex_distance(unit.in_hex, candidate.in_hex) * 10000.0)

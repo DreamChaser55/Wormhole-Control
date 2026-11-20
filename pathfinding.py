@@ -1,7 +1,4 @@
 import logging
-
-logger = logging.getLogger(__name__)
-
 import heapq
 import typing
 import math
@@ -9,12 +6,17 @@ import math
 from domain.coordinates import HexCoord
 from geometry import hex_distance
 from constants import HullSize
+from game_logging import ROUTE_PREVIEW_LOGGER
+
+logger = logging.getLogger(__name__)
+preview_logger = logging.getLogger(ROUTE_PREVIEW_LOGGER)
 
 Graph = typing.Dict[str, typing.Dict[str, HullSize]] # Adjacency map: system_name -> {connected_system_name: max_diameter}
 Path = typing.List[str] # List of system names forming a path
 
 
-def find_intersystem_path(graph: Graph, start_node: str, end_node: str, ship_size: typing.Optional[HullSize] = None) -> typing.Optional[Path]:
+def find_intersystem_path(graph: Graph, start_node: str, end_node: str,
+                          ship_size: typing.Optional[HullSize] = None, *, preview: bool = False) -> typing.Optional[Path]:
     """
     Finds the shortest path between two nodes in a graph (star systems in the galaxy) using Dijkstra's algorithm.
     Assumes all edge weights are 1 (i.e., finds the path with the fewest hops).
@@ -24,13 +26,15 @@ def find_intersystem_path(graph: Graph, start_node: str, end_node: str, ship_siz
         start_node: The starting system name.
         end_node: The target system name.
         ship_size: The hull size of the ship requesting the path.
+        preview: Route diagnostics use the separate preview logger.
 
     Returns:
         A list of system names representing the shortest path from start_node to
         end_node, or None if no path exists.
     """
+    trace = preview_logger if preview else logger
     if start_node not in graph or end_node not in graph:
-        logger.debug(f"Warning: Start node '{start_node}' or end node '{end_node}' not in graph.")
+        trace.debug("Start node %r or end node %r not in graph.", start_node, end_node)
         return None
 
     if start_node == end_node:
@@ -82,7 +86,7 @@ def find_intersystem_path(graph: Graph, start_node: str, end_node: str, ship_siz
         else:
             # This case should ideally not happen if the graph is well-formed
             # (i.e., all nodes listed as neighbors also exist as keys in the graph)
-            logger.debug(f"Warning: Node '{current_node}' found as neighbor but not as a key in the graph.")
+            trace.debug("Node %r found as neighbor but not as a key in the graph.", current_node)
 
 
     # If the loop finishes and end_node wasn't reached
@@ -128,24 +132,26 @@ def _cube_lerp(a: typing.Tuple[float, float, float], b: typing.Tuple[float, floa
         a[2] + (b[2] - a[2]) * t,
     )
 
-def find_hex_jump_path(start_hex: HexCoord, end_hex: HexCoord, max_range: int) -> typing.List[HexCoord]:
+def find_hex_jump_path(start_hex: HexCoord, end_hex: HexCoord, max_range: int, *,
+                       preview: bool = False) -> typing.List[HexCoord]:
     """
     Calculates a list of waypoints for a jump between two hexes,
     ensuring no single jump exceeds the max_range.
     """
-    logger.debug(f"  [find_hex_jump_path] Calculating multi-stage jump from {start_hex} to {end_hex} with max jump range {max_range}.")
+    trace = preview_logger if preview else logger
+    trace.debug("Calculating jump path from %s to %s with range %s.", start_hex, end_hex, max_range)
     path: typing.List[HexCoord] = []
     total_distance = hex_distance(start_hex, end_hex)
 
     if total_distance <= max_range:
-        logger.debug(f"  [find_hex_jump_path] Total distance {total_distance} is within max range. No waypoints needed.")
+        trace.debug("Distance %s is within jump range.", total_distance)
         return [end_hex]
 
     start_cube = _axial_to_cube(start_hex)
     end_cube = _axial_to_cube(end_hex)
 
     num_segments = math.ceil(total_distance / max_range)
-    logger.debug(f"  [find_hex_jump_path] Calculated {num_segments} segments for the jump.")
+    trace.debug("Calculated %s jump segments.", num_segments)
 
     for i in range(1, int(num_segments) + 1):
         t = i / num_segments
@@ -166,5 +172,5 @@ def find_hex_jump_path(start_hex: HexCoord, end_hex: HexCoord, max_range: int) -
              # For now, we ensure the final destination is always included.
              path.append(end_hex)
 
-    logger.debug(f"  [find_hex_jump_path] Final waypoints: {path}")
+    trace.debug("Final jump waypoints: %s", path)
     return path
