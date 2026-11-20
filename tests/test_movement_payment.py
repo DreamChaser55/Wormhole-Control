@@ -92,6 +92,7 @@ def test_unpaid_movement_preserves_location_and_has_no_success_effects(mode, pro
 
 @pytest.mark.parametrize('mode', ['hex_jump', 'system_jump'])
 def test_failed_jump_reports_shortfall_on_parent_order_and_private_briefing(mode):
+    from game_ai.observation import build_observation
     from turn_briefing import begin_window, finish_window, initialize_campaign, summary_view
     from unit_orders.movement import MoveOrder
 
@@ -115,6 +116,10 @@ def test_failed_jump_reports_shortfall_on_parent_order_and_private_briefing(mode
     expected = f'Move failed: insufficient antimatter (jump requires {cost:g} AM, short by 0.5 AM)'
     assert any(row['detail'] == expected for row in summary_view(unit.owner)['entries'])
     assert all(entry.detail != expected for entry in game.players[1].briefing.pending)
+    [need] = build_observation(game, unit.owner)['logistics']['fuel_needs']
+    assert need['unit_id'] == unit.id and need['next_shortfall'] == 0.5
+    unit.antimatter_component.current_amount = cost
+    assert not build_observation(game, unit.owner)['logistics']['fuel_needs']
 
 
 @pytest.mark.parametrize('mode', MODES)

@@ -78,6 +78,12 @@ Do not cancel useful work just to spend more. Future income, trade and salvage c
 Construct template_names is a single-builder replacement shortlist, not a guarantee that all listed builds fit.
 Construct prices gives replacement_shortfall and queued_shortfall; account for every selected builder and earlier commands.
 If any resource is insufficient, defer new builds or submit fewer.
+Check logistics alongside turn_summary.construction_progress before authorizing more spending.
+If fuel is stalling useful construction or travel, preserve the work and arrange a delivery,
+pickup, or storage repair first. Dedicate an available tanker or harvester to critical work when
+one can reach it with enough fuel. Compare minerals.available_after_reservations, passive income,
+and designs blocked by shortages. When reserves threaten useful builds, favor mining, refining,
+or completing pending deliveries before adding discretionary construction or fortifications.
 Exploit multiple available metal asteroids and crystal comets concurrently to build a strong
 economic base: construct matching Metal and Crystal Refineries (or Industrial Hubs) and deploy
 multiple mining ships on parallel continuous_mine orders across distinct mineral sources rather

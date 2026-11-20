@@ -85,6 +85,10 @@ that mode. Other target checks retain the recording default, as described in the
   owned colonies, credits for active habitats, and aggregate siphoned credits.
   `resources.upkeep_breakdown` lists each owned unit owing upkeep. These are the
   rates used by turn settlement.
+- `logistics` lists the most urgent owned fuel needs from current movement,
+  construction with fewer than three funded owner turns remaining, and idle
+  units still short of fuel after a failed jump. Mineral outlook shows unreserved
+  balances, passive yields, and the number of available designs each mineral limits.
 - public system topology, navigation anchors, detailed nearby bodies (including
   planetary traits, colonizability, and antimatter harvesting sources and
   multipliers), and physical summaries of remote bodies;

@@ -32,7 +32,7 @@ from component_visibility import public_components
 from order_history import history_view
 from turn_briefing import summary_view
 
-OBSERVATION_SCHEMA_VERSION = 58
+OBSERVATION_SCHEMA_VERSION = 59
 COMMAND_HELP = {name: spec.description for name, spec in COMMAND_SPECS.items()}
 
 
@@ -175,6 +175,9 @@ def build_observation(game: Any, player: Any) -> dict[str, Any]:
     memory_note = (
         "Presence signatures intentionally contain no unit count, identity, owner, or strength."
     )
+    economy = recurring_economy(galaxy, player)
+    history = history_view(player)
+    from .logistics_view import logistics_view
     return {
         "schema_version": OBSERVATION_SCHEMA_VERSION,
         "turn_number": turn,
@@ -189,7 +192,7 @@ def build_observation(game: Any, player: Any) -> dict[str, Any]:
                 "resource_budget": resource_budget,
                 "metal": _rounded(player.metal),
                 "crystal": _rounded(player.crystal),
-                **recurring_economy(galaxy, player),
+                **economy,
             },
         },
         "players": [
@@ -248,7 +251,9 @@ def build_observation(game: Any, player: Any) -> dict[str, Any]:
                 **player_intelligence_options,
             },
         },
-        "order_history": history_view(player),
+        "order_history": history,
+        "logistics": logistics_view(zip(visible_unit_objects, units), history, construction_templates,
+                                     resource_budget['available'], economy),
         "command_legality_note": "Legal means issuable now; future execution can still fail. Hardware support does not imply present legality.",
         "action_catalogs": {
             "colonization_target_ids": [

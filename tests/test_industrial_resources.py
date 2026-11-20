@@ -466,6 +466,15 @@ def test_paid_construction_waits_for_fuel_and_resumes_without_another_payment():
     processor = TurnProcessor(game)
     processor.process_player_turn(owner)
     assert job.current_construction_target and job.construction_progress == 0
+    owner.metal = 0
+    observation = build_observation(game, owner)
+    [need] = observation['logistics']['fuel_needs']
+    assert need['unit_id'] == unit.id and need['order_type'] == 'construct'
+    assert need['next_shortfall'] == CONSTRUCTION_AM_PER_OWNER_TURN
+    assert observation['logistics']['minerals']['metal']['available_after_reservations'] == 0
+    assert observation['logistics']['minerals']['metal']['construction_designs_short'] > 0
+    assert not build_observation(game, game.players[1])['logistics']['fuel_needs']
+    owner.metal = balance[0]
     tank.add(CONSTRUCTION_AM_PER_OWNER_TURN)
     processor.process_player_turn(owner)
     assert job.construction_progress == 1 and tank.current_amount == 0
