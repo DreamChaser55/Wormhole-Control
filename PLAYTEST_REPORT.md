@@ -30,10 +30,6 @@ The gateway recorded no live terminal AI failure or partial commit. The round-69
 
 ## Confirmed findings
 
-### Low · Completed recruitment still advertises a pending action
-
-The round-92 briefing and order history recorded 35 troops recruited on round 91. Troop Transport 47 had the 35 troops aboard and the same root reported `status: completed` and `active: false`, but the progress phase said `awaiting_owner_turn_resolution`. The root cleared in round 93. Derive the phase from terminal status before checking for approach or resolution so a planner can immediately recognize the transport as available. [Round 92 observation](saves/pt26/r092-start.json.gz) · [Order view](game_ai/order_view.py#L305)
-
 ### Low · AI commitments retain a destroyed combat target
 
 The round-100 memory commitments still directed Flak Escort 50 to attack Long Range Bomber Wing 45 at 6 HP. The same memory recorded its confirmed destruction on round 99, and the accepted round-100 plan targeted the surviving bomber. Reconcile explicit combat commitments with terminal events during the requested fifth-round review. Retain the confirmed loss in important events. [AI memory](saves/agent_memory/2dc33dae/d5fdf1b8/memory.md) · [Telemetry](saves/ai_telemetry.jsonl)

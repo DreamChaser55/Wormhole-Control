@@ -226,10 +226,11 @@ def order_layers(unit, relation, visible_ids, body_ids):
         if root and kind == 'return_for_service':
             origin = 'system'
         private_agent_order = kind in {"extract_agent", "eliminate_agent"}
-        data = {"type": kind, "status": enum_name(order.status), "origin": origin}
+        status = enum_name(order.status)
+        data = {"type": kind, "status": status, "origin": origin}
         if not rich:
             return data
-        actionable = enum_name(order.status) in {"pending", "in_progress"}
+        actionable = status in {"pending", "in_progress"}
         params = getattr(order, "parameters", {})
         reference = order.primary_target_reference()
         target_id = reference[1] if reference is not None else None
@@ -308,7 +309,9 @@ def order_layers(unit, relation, visible_ids, body_ids):
         elif kind in {"construct", "refit_unit"} and not hidden:
             progress = construction_progress(unit, order, active)
         if kind in {"recruit_troops", "invade_planet", "bombard_planet"} and not hidden:
-            progress = {"phase": "approach" if order.has_active_sub_orders() else "awaiting_owner_turn_resolution",
+            phase = status if not actionable else (
+                "approach" if order.has_active_sub_orders() else "awaiting_owner_turn_resolution")
+            progress = {"phase": phase,
                         "last_action_round": unit.last_planetary_action_round}
         if kind in {'colonize', 'load_colonists', 'infiltrate_planet', 'recruit_troops', 'invade_planet', 'bombard_planet'} and not hidden:
             from planetary_intel import order_phase

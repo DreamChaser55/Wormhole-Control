@@ -90,6 +90,10 @@ def test_recruitment_is_deferred_and_population_and_cargo_are_conserved():
     assert (body.population, unit.troop_transport_component.troops, game.players[0].credits) == (50, 0, 100)
     phase(game)
     assert (body.population, unit.troop_transport_component.troops, game.players[0].credits) == (42, 40, 20)
+    observation = build_observation(game, unit.owner)
+    view = next(row for row in observation['units'] if row['id'] == unit.id)['current_order']
+    assert view['status'] == view['progress']['phase'] == 'completed'
+    assert not view['active']
     phase(game)
     assert unit.troop_transport_component.troops == 40
 
