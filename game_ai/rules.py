@@ -468,6 +468,10 @@ def command_guidance(
         ]
         options["colonize"] = {"target_ids": colony_targets}
         options["load_colonists"] = {"targets": sources}
+        fuel_warning = _jump_fuel_warning(player, unit)
+        if fuel_warning:
+            options["colonize"]["fuel_warning"] = fuel_warning
+            options["load_colonists"]["fuel_warning"] = fuel_warning
         if cargo > 0 and colony_targets:
             legal.add("colonize")
         elif colony_targets and sources:
@@ -759,6 +763,31 @@ def ability_states(unit: Any) -> list[dict[str, Any]]:
             state.update(details(kind), active=instance.is_active, ready=blocker is None,
                          unavailable_reason=blocker, activation_antimatter=0)
     return enrich_states(unit, result)
+
+
+def _jump_fuel_warning(player: Any, unit: Any) -> str | None:
+    """Return a concise warning when this unit's latest order failed a jump for lack of fuel."""
+    events = getattr(player, "order_history", None) or ()
+    latest = None
+    for event in reversed(events):
+        if isinstance(event, dict) and event.get("unit_id") == unit.id:
+            latest = event
+            break
+    failure = latest.get("jump_fuel_failure") if isinstance(latest, dict) else None
+    if not isinstance(failure, dict):
+        return None
+    required = float(failure.get("required_antimatter", 0.0))
+    storage = getattr(unit, "antimatter_component", None)
+    if storage is None or getattr(storage, "is_destroyed", False):
+        return f"Antimatter storage unavailable; recent jump required {required:g} AM."
+    current = float(storage.current_amount)
+    if current >= required:
+        return None
+    shortfall = round(required - current, 2)
+    return (
+        f"Current AM ({round(current, 2):g}) cannot cover jump ({required:g} AM; "
+        f"short by {shortfall:g} AM). Resupply before reissuing a jump-dependent mission."
+    )
 
 
 def _hull_name(unit: Any) -> str:

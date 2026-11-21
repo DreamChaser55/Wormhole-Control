@@ -360,6 +360,47 @@ class TestMemory(unittest.TestCase):
         self.assertEqual(serialized["ai_repair_retries"], 4)
         self.assertNotIn("ai_profile", serialized)
 
+    def test_colonizer_jump_fuel_failure_surfaces_warning_in_command_options(self):
+        from constants import HullSize, PlanetType
+        from domain.celestials import Planet
+        from game_ai.rules import command_guidance
+        from tests.support.campaigns import campaign, ship
+        from unit_components.antimatter import AntimatterStorage
+        from unit_components.colony import ColonyComponent
+        from unit_components.movement import Engines, Hyperdrive
+        from unit_components.enums import HyperdriveType
+        game = campaign()
+        owner = game.players[0]
+        home = Planet((0, 0), 'Sol', planet_type=PlanetType.TERRAN)
+        home.owner = owner
+        home.population = 50.0
+        home.population_capacity = 100
+        target = Planet((1, 0), 'Sol', planet_type=PlanetType.TERRAN)
+        game.galaxy.systems['Sol'].add_celestial_body(home)
+        game.galaxy.systems['Sol'].add_celestial_body(target)
+        colonizer = ship(game, 'Colonizer', hull=HullSize.MEDIUM)
+        colonizer.add_component(Engines(colonizer, speed=175))
+        colonizer.add_component(Hyperdrive(colonizer, drive_type=HyperdriveType.ADVANCED, jump_range=5))
+        colonizer.add_component(AntimatterStorage(colonizer, max_capacity=150))
+        colonizer.antimatter_component.current_amount = 5.75
+        colonizer.add_component(ColonyComponent(colonizer))
+        owner.order_history.append({
+            'event_id': 1, 'turn': 1, 'player_id': owner.id, 'unit_id': colonizer.id,
+            'order_id': 'abc', 'type': 'colonize', 'outcome': 'failed',
+            'reason': 'insufficient_antimatter',
+            'jump_fuel_failure': {'required_antimatter': 10.0, 'available_antimatter': 5.75, 'shortfall_antimatter': 4.25},
+        })
+        _, options, _ = command_guidance(game, owner, colonizer, exact_bodies=[home, target], visible_units=[colonizer])
+        self.assertIn('fuel_warning', options['colonize'])
+        self.assertIn('fuel_warning', options['load_colonists'])
+        self.assertIn('5.75', options['colonize']['fuel_warning'])
+        self.assertIn('10', options['colonize']['fuel_warning'])
+        # Refueling clears the warning automatically.
+        colonizer.antimatter_component.current_amount = 15.0
+        _, options_after, _ = command_guidance(game, owner, colonizer, exact_bodies=[home, target], visible_units=[colonizer])
+        self.assertNotIn('fuel_warning', options_after['colonize'])
+        self.assertNotIn('fuel_warning', options_after['load_colonists'])
+
     def test_player_deserialization_preserves_only_canonical_reasoning_effort(self):
 
         from save_manager import deserialize_player, serialize_player
