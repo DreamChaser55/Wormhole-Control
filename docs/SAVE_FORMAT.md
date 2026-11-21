@@ -92,6 +92,12 @@ abilities, and Commander orders. A component entry has this envelope:
 }
 ```
 
+Hit points (`current_hit_points`, `max_hit_points`), unit `experience_points`, and
+deployable `hit_points` are finite non-negative **real numbers** and may be fractional.
+Saves written before fractional combat stored whole numbers; they remain valid and load
+unchanged. Hull `max_hit_points` must be positive and `current_hit_points` may not exceed it.
+Cooldowns, round deadlines and counts stay integers.
+
 Enums, positions, tuples, and sets use explicit JSON tags in `state_codec.py`.
 Component names come from a registry; save data cannot import arbitrary classes.
 Unknown types, unsupported schema versions, missing component fields, invalid

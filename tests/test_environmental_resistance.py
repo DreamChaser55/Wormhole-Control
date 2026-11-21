@@ -89,8 +89,8 @@ def phase(game, unit, speed=100):
 
 @pytest.mark.parametrize('kind,ability,base,protected', [
     ('plasma', 'hazard_shielding', 8, 2),
-    ('black_hole', 'hazard_shielding', 15, 3),
-    ('debris', 'hazard_shielding', 3, 0),
+    ('black_hole', 'hazard_shielding', 15, 3.75),
+    ('debris', 'hazard_shielding', 3, 0.75),
     ('radiation', 'radiation_hardening', 4, 1),
     ('magnetic', 'antimatter_containment', 6, 1.5),
     ('dust_nebula', 'antimatter_containment', 10, 199 * .0125),
@@ -113,10 +113,10 @@ def test_each_hazard_at_inclusive_boundary(kind, ability, base, protected, enabl
     if kind in ('magnetic', 'dust_nebula'):
         assert unit.antimatter_component.current_amount == pytest.approx(200 - cost - expected)
     elif kind == 'radiation':
-        assert component_hp - unit.sensors_component.current_hit_points == expected
+        assert component_hp - unit.sensors_component.current_hit_points == pytest.approx(expected)
         assert unit.current_hit_points == hp
     else:
-        assert hp - unit.current_hit_points == expected
+        assert hp - unit.current_hit_points == pytest.approx(expected)
 
 
 @pytest.mark.parametrize('kind', ['plasma', 'black_hole', 'debris', 'radiation', 'magnetic'])
@@ -177,7 +177,8 @@ def test_overlapping_hazards_charge_once_and_stack_with_forcefield():
     assert unit.antimatter_component.current_amount == 198
     unit.damage_reduction = .75
     phase(game, unit)
-    assert unit.current_hit_points == hp - 4
+    # Fractional hull damage is no longer truncated: 2 plasma sources * 2 HP * (1 - .75).
+    assert unit.current_hit_points == pytest.approx(hp - 5)
     assert unit.antimatter_component.current_amount == 196
 
 
@@ -430,7 +431,7 @@ def test_observation_preserves_enemy_boundary_and_exposes_allied_state():
 
 
 @pytest.mark.parametrize('density', list(FieldDensity))
-def test_all_debris_densities_round_to_zero_without_changing_drag(density):
+def test_debris_abrasion_under_hazard_shielding_is_fractional_without_changing_drag(density):
     from environmental_effects import modifiers_for_unit
     game = campaign()
     unit = equipped(game)
@@ -441,7 +442,8 @@ def test_all_debris_densities_round_to_zero_without_changing_drag(density):
     set_enabled(unit, 'hazard_shielding', True)
     hp = unit.current_hit_points
     phase(game, unit)
-    assert unit.current_hit_points == hp
+    base = {FieldDensity.LOW: 1, FieldDensity.MEDIUM: 2, FieldDensity.HIGH: 3}[density]
+    assert hp - unit.current_hit_points == pytest.approx(base * .25)
     assert modifiers_for_unit(unit) == before
 
 

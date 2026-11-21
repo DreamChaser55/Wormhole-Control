@@ -1,3 +1,4 @@
+from hp_format import format_hp
 import logging
 from game_logging import format_unit_for_log
 import typing
@@ -346,7 +347,7 @@ class StrikecraftBayComponent(UnitComponent):
             if wing is not None:
                 component = wing.strikecraft_wing_component
                 role = component.wing_type.value.capitalize() if component else "Fighter"
-                label(f"{wing.name} · {role} · {wing.current_hit_points}/{wing.max_hit_points} HP")
+                label(f"{wing.name} · {role} · {format_hp(wing.current_hit_points)}/{format_hp(wing.max_hit_points)} HP")
                 if component:
                     for line in sidebar_labels(wing, galaxy):
                         label(line)
@@ -528,7 +529,7 @@ class StrikecraftBayComponent(UnitComponent):
                     return
                 self.replenish_progress += 1
                 if self.replenish_progress >= 1: # 1 turn to restore up to 10 hull HP
-                    self.replenishing_unit.heal_hull(10)
+                    self.replenishing_unit.heal_hull(10.0)
                     logger.debug(f"Strikecraft bay on {format_unit_for_log(self.unit)} restored hull HP to wing {format_unit_for_log(self.replenishing_unit)}. HP: {self.replenishing_unit.current_hit_points}/{self.replenishing_unit.max_hit_points}")
                     # If fully healed, clear. Otherwise keep replenishing on next turn
                     if self.replenishing_unit.current_hit_points >= self.replenishing_unit.max_hit_points:

@@ -476,9 +476,9 @@ def test_evasion_guardian_and_sabotage_combine_without_base_mutation():
     assert issue(game, carrier, 'guardian_link', bomber).accepted
     before_wing, before_carrier = bomber.current_hit_points, carrier.current_hit_points
     combat_hit(bomber, 20, TurretType.MASS_DRIVER)
-    # Evasion leaves 10; Guardian redirects 3 and retains floor(3 * .75) = 2.
-    assert bomber.current_hit_points == before_wing - 7
-    assert carrier.current_hit_points == before_carrier - 2
+    # Evasion leaves 10; Guardian redirects 3 and retains 3 * .75 = 2.25.
+    assert bomber.current_hit_points == pytest.approx(before_wing - 7)
+    assert carrier.current_hit_points == pytest.approx(before_carrier - 2.25)
     turret = bomber.weapons_component.turrets[0]
     initial = turret.damage, turret.range, turret.cooldown
     from unit_components.enums import SabotageType
@@ -486,5 +486,6 @@ def test_evasion_guardian_and_sabotage_combine_without_base_mutation():
     turret.target = target
     before = target.current_hit_points
     turret.fire()
-    assert target.current_hit_points == before - 1
+    # Base 6 * 0.5 (sabotage) * 0.5 (evasive formation) = 1.5 (no truncation).
+    assert target.current_hit_points == pytest.approx(before - 1.5)
     assert (turret.damage, turret.range, turret.cooldown) == initial

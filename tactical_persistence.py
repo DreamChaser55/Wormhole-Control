@@ -39,7 +39,9 @@ def validate(data, player_ids, *, patch=False):
     else:
         if data['kind'] != 'ghost_fleet':
             raise ValueError('Unknown deployable kind')
-        number(data['hit_points'], 'hit_points', 1, integer=True)
+        number(data['hit_points'], 'hit_points', 0)
+        if data['hit_points'] <= 0:
+            raise ValueError('hit_points: must be > 0')
         from tactical_balance import DEPLOYABLE_HP
         if data['hit_points'] > DEPLOYABLE_HP:
             raise ValueError('Invalid deployable HP')

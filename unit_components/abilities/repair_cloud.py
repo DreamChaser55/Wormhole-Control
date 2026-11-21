@@ -54,7 +54,7 @@ class RepairCloudAbility(AbilityInstance):
         if not hex_obj:
             return
         from domain.players import are_allies
-        heal_per_turn = 5
+        heal_per_turn = 5.0
         for unit in hex_obj.units:
             if not are_allies(unit.owner, component.unit.owner):
                 continue

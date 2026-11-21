@@ -1,7 +1,7 @@
 """Authoritative tactical ability rules shared by orders, presentation and agents."""
 import math
 
-from constants import HullSize, NAVIGATION_CLEARANCE, NebulaType
+from constants import HullSize, NAVIGATION_CLEARANCE, NebulaType, HP_EPSILON
 from domain.players import are_allies, are_enemies
 from geometry import Position, distance
 
@@ -434,15 +434,15 @@ def combat_hit(target, amount, damage_type=None, *, component_type=None, is_spla
     if component_type:
         comp = target.get_component(component_type)
         comp_before = comp.current_hit_points if comp else 0
-    amount = max(0, int(amount * incoming_multiplier(target)))
+    amount = max(0.0, amount * incoming_multiplier(target))
     galaxy = getattr(target, 'in_galaxy', None)
     link = incoming_link(target, 'guardian_link', galaxy) if galaxy and amount else None
     guardian_before = link[0].current_hit_points if link else None
     if link:
         guardian, inst = link
-        redirected = min(math.floor(amount * inst.redirect_fraction), inst.redirect_cap)
+        redirected = min(amount * inst.redirect_fraction, inst.redirect_cap)
         amount -= redirected
-        guardian.take_damage(math.floor(redirected * inst.redirect_retained * incoming_multiplier(guardian)), damage_type, is_splash=is_splash)
+        guardian.take_damage(redirected * inst.redirect_retained * incoming_multiplier(guardian), damage_type, is_splash=is_splash)
     if component_type:
         if link:
             # Linked subsystem hits apply reduction once, including any hull spillover.
@@ -454,8 +454,9 @@ def combat_hit(target, amount, damage_type=None, *, component_type=None, is_spla
             if link:
                 # take_component_damage has already applied defenses; use a hull-only debit.
                 unit_event(target, "combat", "Hull damage (HP)", amount=min(spillover, target.current_hit_points))
-                target.current_hit_points = max(0, target.current_hit_points - spillover)
-                if target.current_hit_points == 0:
+                target.current_hit_points = max(0.0, target.current_hit_points - spillover)
+                if target.current_hit_points <= HP_EPSILON:
+                    target.current_hit_points = 0.0
                     target.destroy()
             else:
                 target.take_damage(spillover)

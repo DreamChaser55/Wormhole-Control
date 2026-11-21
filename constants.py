@@ -136,7 +136,13 @@ SECTOR_FOG_OF_WAR_COLOR = (40, 40, 50, 55)            # semi-transparent grey fo
 SYSTEM_FOG_OF_WAR_COLOR = (20, 20, 25)         # opaque dark grey fog for out-of-sensor-range hexes (system view)
 
 # Experience point (XP) constants
-MAX_UNIT_XP: int = 1000               # Maximum XP a unit can accumulate
+MAX_UNIT_XP: float = 1000.0          # Maximum XP a unit can accumulate
+
+# Fraction of every positive combat hit that defenses can never mitigate. Applies to the
+# defenses roll only (not to hazards, mines or wormhole damage, which bypass defenses).
+MIN_DAMAGE_PASS_THROUGH: float = 0.10
+# Hull/component HP at or below this is treated as destroyed (guards float residue).
+HP_EPSILON: float = 1e-9
 XP_WEAPON_DAMAGE_BONUS: float = 0.25  # +25% weapon damage at max XP
 XP_DEFENSE_BONUS: float = 0.25        # +25% defense mitigation at max XP
 XP_SPEED_BONUS: float = 0.15          # +15% sub-FTL speed at max XP
@@ -531,13 +537,13 @@ ENGINE_ANTIMATTER_HULL_SIZE_MULTIPLIERS: Dict[HullSize, float] = {
 }
 
 HIT_POINTS = {
-    HullSize.STRIKECRAFT_WING: 30,
-    HullSize.TINY: 20,
-    HullSize.SMALL: 50,
-    HullSize.MEDIUM: 100,
-    HullSize.LARGE: 200,
-    HullSize.HUGE: 400,
-    HullSize.TITAN: 1600,
+    HullSize.STRIKECRAFT_WING: 30.0,
+    HullSize.TINY: 20.0,
+    HullSize.SMALL: 50.0,
+    HullSize.MEDIUM: 100.0,
+    HullSize.LARGE: 200.0,
+    HullSize.HUGE: 400.0,
+    HullSize.TITAN: 1600.0,
 }
 
 HULL_BASE_ICON_SCALES = {

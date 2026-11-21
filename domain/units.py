@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING, Any, Optional
 from constants import (
     DEFAULT_SENSOR_SHORT_RANGE,
     HIT_POINTS,
+    HP_EPSILON,
+    MIN_DAMAGE_PASS_THROUGH,
     HULL_CAPACITIES,
     MAX_UNIT_XP,
     HullSize,
@@ -82,8 +84,8 @@ class Unit(GameObject):
         self.hull_capacity: float = HULL_CAPACITIES[self.hull_size] # consumed by components with hull_cost
         self.current_hull_usage: float = 0.0
 
-        self.max_hit_points: int = HIT_POINTS[self.hull_size]
-        self.current_hit_points: int = self.max_hit_points
+        self.max_hit_points: float = float(HIT_POINTS[self.hull_size])
+        self.current_hit_points: float = self.max_hit_points
 
         self.components: typing.Dict[type, UnitComponent] = {}
 
@@ -104,7 +106,7 @@ class Unit(GameObject):
         # Experience points earned through combat (0 – MAX_UNIT_XP).
         self.multiply_cast_ready_round: int = 0
         self.multiply_receive_ready_round: int = 0
-        self.experience_points: int = 0
+        self.experience_points: float = 0.0
 
         self.template_name: typing.Optional[str] = template_name
         self.infiltrating_agents: typing.List[Agent] = []
@@ -332,7 +334,7 @@ class Unit(GameObject):
             return True
         return False
 
-    def gain_experience(self, amount: int) -> None:
+    def gain_experience(self, amount: float) -> None:
         """Awards experience points to the unit, capped at MAX_UNIT_XP."""
         if self.experience_points >= MAX_UNIT_XP:
             return
@@ -410,62 +412,58 @@ class Unit(GameObject):
         pos = position if position is not None else self.position
         return is_position_blocked_by_celestial_field(g, self.in_system, self.in_hex, pos, self)
 
-    def take_damage(self, amount: int, damage_type: Optional[TurretType] = None, *, is_splash: bool = False, cause: Optional[str] = None) -> None:
+    def _mitigate_incoming(self, amount: float, damage_type: Optional[TurretType]) -> float:
+        """Apply environmental cover, then defenses mitigation (with the minimum pass-through).
+
+        No rounding is applied: damage stays a float. Defenses never absorb more than
+        ``1 - MIN_DAMAGE_PASS_THROUGH`` of a hit (enforced in ``calculate_mitigation``).
+        """
+        if not damage_type or amount <= 0.0:
+            return amount
+        cover = self.get_environmental_cover_bonus(damage_type)
+        if cover > 0.0:
+            amount = max(0.0, amount - amount * cover)
+        defenses = self.get_component(Defenses)
+        if defenses and amount > 0.0:
+            mitigation = defenses.calculate_mitigation(amount, damage_type)
+            if self.is_sabotaged(SabotageType.DEFENSES):
+                mitigation *= 0.5
+            amount = max(amount - mitigation, amount * MIN_DAMAGE_PASS_THROUGH)
+            logger.debug(f"Unit '{format_unit_for_log(self)}' defenses mitigated {mitigation} damage. Remaining damage: {amount}")
+        return amount
+
+    def take_damage(self, amount: float, damage_type: Optional[TurretType] = None, *, is_splash: bool = False, cause: Optional[str] = None) -> None:
         """Reduces the unit's current hit points by the given amount, applying any active damage reduction, environmental cover, and defenses mitigation."""
         if amount <= 0:
             return
         if is_splash:
             from environmental_effects import splash_damage
             amount = splash_damage(amount, self)
-        if damage_type:
-            cover = self.get_environmental_cover_bonus(damage_type)
-            if cover > 0.0:
-                cover_mitigation = amount * cover
-                amount = max(0, int(round(amount - cover_mitigation)))
-            defenses = self.get_component(Defenses)
-            if defenses:
-                mitigation = defenses.calculate_mitigation(amount, damage_type)
-                if self.is_sabotaged(SabotageType.DEFENSES):
-                    mitigation *= 0.5
-                amount = max(0, int(round(amount - mitigation)))
-                logger.debug(f"Unit '{format_unit_for_log(self)}' defenses mitigated {mitigation} damage. Remaining damage: {amount}")
+        amount = self._mitigate_incoming(amount, damage_type)
 
         reduction = max(0.0, min(1.0, self.damage_reduction))
         if reduction > 0.0:
-            amount = max(0, int(amount * (1.0 - reduction)))
+            amount = max(0.0, amount * (1.0 - reduction))
         if amount <= 0:
             return
         from turn_briefing import unit_event
         unit_event(self, "hazard" if cause else "combat", f"{cause}: hull damage (HP)" if cause else "Hull damage (HP)", amount=min(amount, self.current_hit_points))
         self.current_hit_points -= amount
-        if self.current_hit_points < 0:
-            self.current_hit_points = 0
         logger.debug(f"Unit '{format_unit_for_log(self)}' takes {amount} damage. Current HP: {self.current_hit_points}/{self.max_hit_points}")
 
-        if self.current_hit_points <= 0:
-            self.current_hit_points = 0
+        if self.current_hit_points <= HP_EPSILON:
+            self.current_hit_points = 0.0
             self.destroy()
 
-    def take_component_damage(self, component_type: type, amount: int, damage_type: Optional[TurretType] = None, *, apply_reduction: bool = False, cause: Optional[str] = None) -> int:
+    def take_component_damage(self, component_type: type, amount: float, damage_type: Optional[TurretType] = None, *, apply_reduction: bool = False, cause: Optional[str] = None) -> float:
         """
         Applies damage to a specific component. 
         Returns any excess damage (spillover) if the component is destroyed.
         """
-        if damage_type:
-            cover = self.get_environmental_cover_bonus(damage_type)
-            if cover > 0.0:
-                cover_mitigation = amount * cover
-                amount = max(0, int(round(amount - cover_mitigation)))
-            defenses = self.get_component(Defenses)
-            if defenses:
-                mitigation = defenses.calculate_mitigation(amount, damage_type)
-                if self.is_sabotaged(SabotageType.DEFENSES):
-                    mitigation *= 0.5
-                amount = max(0, int(round(amount - mitigation)))
-                logger.debug(f"Unit '{format_unit_for_log(self)}' defenses mitigated {mitigation} component damage. Remaining damage: {amount}")
+        amount = self._mitigate_incoming(amount, damage_type)
 
         if apply_reduction:
-            amount = int(amount * (1 - max(0.0, min(1.0, self.damage_reduction))))
+            amount = amount * (1.0 - max(0.0, min(1.0, self.damage_reduction)))
 
         component = self.get_component(component_type)
         if not component or component.is_destroyed:
@@ -477,12 +475,12 @@ class Unit(GameObject):
             unit_event(self, "hazard" if cause else "combat", f"{cause + ': ' if cause else ''}{component.DISPLAY_NAME} damage (HP)",
                        amount=min(amount, component.current_hit_points), component_type=component_type, allies_only=bool(cause))
         component.current_hit_points -= amount
-        spillover = 0
+        spillover = 0.0
         
-        if component.current_hit_points <= 0:
+        if component.current_hit_points <= HP_EPSILON:
             unit_event(self, "combat", f"{component.DISPLAY_NAME} destroyed", component_type=component_type, once=True)
-            spillover = abs(component.current_hit_points)
-            component.current_hit_points = 0
+            spillover = max(0.0, -component.current_hit_points)
+            component.current_hit_points = 0.0
             from titan_abilities import decommission
             decommission(self, component)
             component.on_destroyed()
@@ -490,18 +488,18 @@ class Unit(GameObject):
 
         return spillover
 
-    def heal_hull(self, amount: int) -> int:
+    def heal_hull(self, amount: float) -> float:
         """Heals the unit's hull by the given amount. Returns actual amount healed."""
         if self.current_hit_points >= self.max_hit_points:
-            return 0
+            return 0.0
         healed = min(amount, self.max_hit_points - self.current_hit_points)
         self.current_hit_points += healed
         logger.debug(f"Unit '{format_unit_for_log(self)}' hull healed by {healed}. HP: {self.current_hit_points}/{self.max_hit_points}")
         return healed
 
-    def heal_components(self, amount: int) -> int:
+    def heal_components(self, amount: float) -> float:
         """Heals damaged components by the given amount. Returns actual amount healed."""
-        healed_total = 0
+        healed_total = 0.0
         for component in self.components.values():
             if amount <= 0:
                 break

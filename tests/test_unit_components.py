@@ -805,28 +805,24 @@ def test_defenses():
     # Shields (non-matching): random(0, sqrt(50)) -> random(0, 7) -> avg 3.5
     # Point Defense (non-matching): random(0, sqrt(10)) -> random(0, 3) -> avg 1.5
     # Max mitigation = 20 + 7 + 3 = 30
+    import math
+    max_mit = 20.0 + math.sqrt(50.0) + math.sqrt(10.0)
     mitigations = [defenses.calculate_mitigation(100, TurretType.MASS_DRIVER) for _ in range(100)]
-    assert all(0 <= m <= 30 for m in mitigations)
+    assert all(0 <= m <= max_mit for m in mitigations)
     # Check that we actually rolled some values > 0
     assert any(m > 0 for m in mitigations)
 
-    # Test that mitigation is capped at incoming damage
+    # Test that mitigation is capped below incoming damage (by MIN_DAMAGE_PASS_THROUGH)
     assert defenses.calculate_mitigation(5, TurretType.MASS_DRIVER) <= 5
 
     # Test take_damage integration
-    unit.current_hit_points = 100
+    unit.current_hit_points = 100.0
     # Mocking random to return max values
     import unittest.mock as mock
     with mock.patch("random.uniform", side_effect=lambda a, b: b):
         unit.take_damage(50, TurretType.MASS_DRIVER)
-        # Expected mitigation:
-        # armor = 20
-        # shields = sqrt(50) = 7
-        # point_defense = sqrt(10) = 3
-        # Total mitigation = 20 + 7 + 3 = 30
-        # Damage taken = 50 - 30 = 20
-        # Remaining HP = 100 - 20 = 80
-        assert unit.current_hit_points == 80
+        # Expected mitigation: 20 + sqrt(50) + sqrt(10)
+        assert unit.current_hit_points == pytest.approx(100.0 - (50.0 - max_mit))
 
     # Test fractional defenses
     frac_unit = ComponentUnit()
@@ -836,12 +832,8 @@ def test_defenses():
     assert frac_defenses.shields == 4.5
     assert frac_defenses.point_defense == 1.5
     with mock.patch("random.uniform", side_effect=lambda a, b: b):
-        # MASS_DRIVER:
-        # armor matching: 2.5
-        # shields non-matching: sqrt(4.5) -> isqrt(4) = 2.0
-        # point_defense non-matching: sqrt(1.5) -> isqrt(1) = 1.0
-        # total mitigation = round(2.5 + 2.0 + 1.0) = 6
-        assert frac_defenses.calculate_mitigation(50, TurretType.MASS_DRIVER) == 6
+        expected_frac = 2.5 + math.sqrt(4.5) + math.sqrt(1.5)
+        assert frac_defenses.calculate_mitigation(50, TurretType.MASS_DRIVER) == pytest.approx(expected_frac)
 
 
 def test_turret_variants():
@@ -912,7 +904,8 @@ def test_turret_variants():
 
     target_normal.current_hit_points = 500
     turret_as.fire()
-    assert target_normal.current_hit_points == 475
+    # Unit gained 100 XP from the strikecraft hit (+2.5% damage): 100 * 1.025 * 0.25 = 25.625.
+    assert target_normal.current_hit_points == pytest.approx(500.0 - 25.625)
 
 
 def test_weapons_sidebar_data():

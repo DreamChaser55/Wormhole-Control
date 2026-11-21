@@ -139,7 +139,7 @@ class Turret:
 
         from strikecraft_abilities import outgoing_multiplier
         from tactical_abilities import combat_hit
-        damage = int(effective_damage * outgoing_multiplier(self.parent_unit, target, self))
+        damage = effective_damage * outgoing_multiplier(self.parent_unit, target, self)
         hp_before = target.current_hit_points
         cost = _antimatter_per_shot(self.parent_unit)
         storage = self.parent_unit.antimatter_component

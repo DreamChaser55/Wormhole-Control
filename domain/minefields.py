@@ -9,6 +9,7 @@ from constants import (
     MINEFIELD_DEFAULT_DAMAGE,
     MINEFIELD_DEFAULT_MINES,
     MINEFIELD_DETONATION_RADIUS,
+    HP_EPSILON,
     HullSize,
 )
 from domain.coordinates import HexCoord
@@ -83,13 +84,14 @@ class Minefield(GameObject):
         if getattr(unit, 'damage_amplification', 0) > 0:
             effective_damage *= (1.0 + unit.damage_amplification)
 
-        damage_int = int(round(effective_damage))
+        damage = effective_damage
         from turn_briefing import unit_event
-        unit_event(unit, "hazard", "Mine detonation: hull damage (HP)", amount=min(damage_int, unit.current_hit_points))
-        unit.current_hit_points = max(0, unit.current_hit_points - damage_int)
+        unit_event(unit, "hazard", "Mine detonation: hull damage (HP)", amount=min(damage, unit.current_hit_points))
+        unit.current_hit_points = max(0.0, unit.current_hit_points - damage)
         self.mines_remaining -= 1
 
-        logger.debug(f"{self.name} (Owner: {self.owner.name}) detonated against {format_unit_for_log(unit)}! Dealt {damage_int} damage. Mines remaining: {self.mines_remaining}")
-        if unit.current_hit_points <= 0:
+        logger.debug(f"{self.name} (Owner: {self.owner.name}) detonated against {format_unit_for_log(unit)}! Dealt {damage} damage. Mines remaining: {self.mines_remaining}")
+        if unit.current_hit_points <= HP_EPSILON:
+            unit.current_hit_points = 0.0
             unit.destroy()
-        return damage_int
+        return damage

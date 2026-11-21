@@ -220,7 +220,9 @@ def validate_document(data):
             raise ValueError(f"{path}.components: expected object")
         if raw["owner_id"] is None:
             raise ValueError(f"{path}.owner_id: unit has no owner")
-        for name in ("current_hit_points", "max_hit_points", "experience_points", "multiply_cast_ready_round", "multiply_receive_ready_round"):
+        for name in ("current_hit_points", "max_hit_points", "experience_points"):
+            number(raw[name], f"{path}.{name}", 0)
+        for name in ("multiply_cast_ready_round", "multiply_receive_ready_round"):
             number(raw[name], f"{path}.{name}", 0, integer=True)
         if raw["max_hit_points"] <= 0 or raw["current_hit_points"] > raw["max_hit_points"]:
             raise ValueError(f"{path}: invalid hull HP")

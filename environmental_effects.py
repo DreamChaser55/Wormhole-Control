@@ -100,11 +100,11 @@ def long_range_sensor_hexes(unit):
 
 
 def splash_damage(amount, unit):
-    """Scale positive, post-falloff splash once, truncating exact decimal multiplication."""
+    """Scale positive, post-falloff splash once by the terrain multiplier (no rounding)."""
     if amount <= 0:
         return amount
     multiplier = modifiers_for_unit(unit).splash_damage_multiplier
-    return int(Decimal(amount) * Decimal(str(multiplier)))
+    return float(Decimal(str(amount)) * Decimal(str(multiplier)))
 
 
 def local_short_range_multiplier(galaxy, system_name, hex_coord, position):

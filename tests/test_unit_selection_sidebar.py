@@ -344,10 +344,11 @@ def test_equipment_health_and_allowed_details_are_inside_each_section():
         component.current_hit_points = 7
     game.selected_objects = [unit]
 
+    from hp_format import format_hp
     sections = _overview_sections(build_sidebar_data(game))
     for component in components:
         health, *details = sections[component.DISPLAY_NAME]
-        assert health['text'] == f'HP: 7/{component.max_hit_points}'
+        assert health['text'] == f'HP: 7/{format_hp(component.max_hit_points)}'
         assert all(component.DISPLAY_NAME not in row['text'] for row in details)
     assert sections['Troop Transport'][1]['text'] == 'Troops: 7/40'
     assert any(row['text'] == 'Idle' for row in sections['Wormhole Stabilizer'])

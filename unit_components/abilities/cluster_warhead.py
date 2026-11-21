@@ -80,7 +80,7 @@ class ClusterWarheadAbility(AbilityInstance):
             if dist <= self.SPLASH_RADIUS:
                 # Damage falls off linearly with distance
                 falloff = max(0.0, 1.0 - (dist / self.SPLASH_RADIUS))
-                damage = max(1, int(self.BASE_DAMAGE * falloff))
+                damage = self.BASE_DAMAGE * falloff
                 from tactical_abilities import combat_hit
                 combat_hit(target_unit, damage, is_splash=True, attacker=component.unit)
                 logger.debug(f"[Cluster Warhead] Hit {format_unit_for_log(target_unit)} for {damage} damage (dist={dist:.1f}).")

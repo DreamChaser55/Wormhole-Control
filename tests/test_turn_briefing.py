@@ -272,12 +272,11 @@ def test_deflected_zero_damage_attack_is_explicitly_labeled_in_briefing(monkeypa
     from unit_components.enums import TurretType
     game = setup()
     defender = ship(game, name="Escort", owner=0)
-    defender.add_component(Defenses(defender, shields=20.0))
+    defender.damage_reduction = 1.0
     attacker = ship(game, name="Bomber", owner=1)
     attacker.position = defender.position
     initialize_campaign(game)
     begin_window(game, defender.owner)
-    monkeypatch.setattr('unit_components.defenses.random.uniform', lambda a, b: b)
     combat_hit(defender, 5, TurretType.BEAM, attacker=attacker)
     finish_window(game, defender.owner)
     entries = summary_view(defender.owner)['entries']

@@ -1,4 +1,5 @@
 """Sidebar UI panel builders for Unit entities."""
+from hp_format import format_hp
 from constants import MAX_UNIT_XP
 from economy import calculate_unit_upkeep
 from domain.units import Unit
@@ -197,7 +198,7 @@ def build_unit_panel(game, unit: Unit) -> list[dict]:
             upkeep_per_turn = calculate_unit_upkeep(getattr(unit, 'hull_size', None), unit.current_hull_usage)
             data.append({'type': 'label', 'text': f"Upkeep: {upkeep_per_turn:.2f} cr/turn", 'object_id': '#sidebar_info_label', 'height': 20})
 
-        data.append({'type': 'label', 'text': f"Hit Points: {unit.current_hit_points}/{unit.max_hit_points}", 'object_id': hit_point_style_id(unit), 'height': 25})
+        data.append({'type': 'label', 'text': f"Hit Points: {format_hp(unit.current_hit_points)}/{format_hp(unit.max_hit_points)}", 'object_id': hit_point_style_id(unit), 'height': 25})
 
         xp = unit.experience_points
         xp_text = f"Experience: {xp} / {MAX_UNIT_XP}"
@@ -218,7 +219,7 @@ def build_unit_panel(game, unit: Unit) -> list[dict]:
         data.extend(_build_component_overview(game, installed_components))
 
     else:  # 'components' tab
-        data.append({'type': 'label', 'text': f"Hit Points: {unit.current_hit_points}/{unit.max_hit_points}", 'object_id': hit_point_style_id(unit), 'height': 20})
+        data.append({'type': 'label', 'text': f"Hit Points: {format_hp(unit.current_hit_points)}/{format_hp(unit.max_hit_points)}", 'object_id': hit_point_style_id(unit), 'height': 20})
         data.append({'type': 'label', 'text': "Select Component:", 'object_id': '#sidebar_section_header_label', 'height': 25})
 
         installed_components.sort(key=lambda component: component.SIDEBAR_ORDER)

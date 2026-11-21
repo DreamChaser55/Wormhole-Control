@@ -5,7 +5,7 @@ import dataclasses
 
 from .base import UnitComponent
 from .enums import TurretType
-from constants import XP_DEFENSE_BONUS
+from constants import XP_DEFENSE_BONUS, MIN_DAMAGE_PASS_THROUGH
 
 if TYPE_CHECKING:
     from domain.units import Unit
@@ -88,9 +88,14 @@ class Defenses(UnitComponent):
         return data
 
 
-    def calculate_mitigation(self, incoming_damage: int, damage_type: Optional[TurretType]) -> int:
-        if self.is_destroyed or damage_type is None:
-            return 0
+    def calculate_mitigation(self, incoming_damage: float, damage_type: Optional[TurretType]) -> float:
+        """Randomly roll how much of ``incoming_damage`` the defenses absorb.
+
+        Returns a float that never exceeds ``incoming_damage * (1 - MIN_DAMAGE_PASS_THROUGH)``,
+        so a fixed fraction of every positive hit always passes through.
+        """
+        if self.is_destroyed or damage_type is None or incoming_damage <= 0.0:
+            return 0.0
 
         def _roll(val: float) -> float:
             if val <= 0.0:
@@ -120,4 +125,4 @@ class Defenses(UnitComponent):
             if od_def_bonus > 0.0:
                 mitigation = mitigation * (1.0 + od_def_bonus)
 
-        return min(incoming_damage, int(round(mitigation)))
+        return min(incoming_damage * (1.0 - MIN_DAMAGE_PASS_THROUGH), mitigation)

@@ -1113,10 +1113,20 @@ installed order, so a low tank can fund part of a volley. Units that pay for sho
 need a working tank with at least 1 AM. A still-valid attack can fire on the next
 eligible owner turn after refueling or restoring storage.
 
-Non-positive damage has no effect. Cover, defenses and damage reduction can fully
-absorb a positive hit, including rounding it to zero; there is no one-HP minimum.
-Damage reduction is limited to 0–100% and cannot heal a ship. Shields are mitigation,
-not a regenerating health pool. See [environmental effects](#environmental-fields)
+Non-positive damage has no effect. Hit points, damage, mitigation, repair and
+experience are real numbers: no combat step rounds or truncates them, so a hit of
+0.3 HP removes exactly 0.3 HP.
+
+Each defense stat rolls a random mitigation, as described above, but defenses can
+never absorb more than **90%** of a hit: at least **10%** of every positive hit
+(`MIN_DAMAGE_PASS_THROUGH`) always passes through, so large numbers of weak ships or
+wings can wear down a heavily defended target. The minimum applies after the
+mitigation roll, XP and Orbital Defense bonuses and Defenses sabotage. Environmental
+cover applies before defenses and can still absorb a hit completely. Active damage
+reduction (for example Hazard Shielding) applies afterwards and can lower damage below
+the pass-through. Hazard, wormhole and mine damage bypass defenses and have no
+pass-through. A unit at or below 1e-9 HP is destroyed. Damage reduction is limited to
+0–100% and cannot heal a ship. Shields are mitigation, not a regenerating health pool. See [environmental effects](#environmental-fields)
 for cover, cooling and splash modifiers.
 
 ### Planetary warfare
@@ -1268,9 +1278,9 @@ bill cannot be paid, all resistances disable with no partial charge; the turn
 briefing reports the shutdown. Subsequent harvesting cannot fund that phase.
 Paying exactly the bill still protects against that phase's hazards.
 
-Each source's nominal damage or drain is reduced to 25%, before HP truncation or
-fuel clamping. Plasma damage becomes 2 HP, black-hole damage 3 HP, pulsar damage 1 HP, radiation 1
-component HP, and debris abrasion 0 HP at every density. Hull protection applies
+Each source's nominal damage or drain is reduced to 25%, before fuel clamping. Plasma
+damage becomes 2 HP, black-hole damage 3.75 HP, pulsar damage 1 HP, radiation 1
+component HP, and debris abrasion 0.25 / 0.5 / 0.75 HP at Low / Medium / High density. Hull protection applies
 before Adaptive Forcefield; radiation still discards component spillover.
 Magnetic storms drain at most 1.5 AM. Dust nebulae drain 1.25% of fuel remaining after
 upkeep and earlier hazards. Overlapping hazard sources resolve separately.
@@ -1607,7 +1617,7 @@ AM from functioning storage after movement each owner turn.
 
 Oxygen affects Cluster Warhead splash, not ordinary missiles, mines, hazards or
 component spillover. Apply it once after distance falloff and before mitigation,
-truncating the product to an integer. Overlapping oxygen clouds do not stack.
+without rounding. Overlapping oxygen clouds do not stack.
 [Nebula Catalyst](#deployment-and-link-abilities) selectively enhances these effects.
 
 Storms and star hazards apply after movement on each affected owner's turn.

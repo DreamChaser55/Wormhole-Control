@@ -1,6 +1,6 @@
 """Persistent tactical objects, deliberately separate from ships."""
 from domain.identity import GameObject
-from constants import HullSize
+from constants import HullSize, HP_EPSILON
 from tactical_balance import DEPLOYABLE_HP, CATALYST_RADIUS
 
 
@@ -53,9 +53,9 @@ class Deployable(DeploymentProvenance, GameObject):
         if amount > 0:
             from turn_briefing import unit_event
             unit_event(self, 'hazard' if cause else 'combat', f'{cause}: damage (HP)' if cause else 'Damage (HP)',
-                       amount=min(int(amount), self.current_hit_points))
-            self.current_hit_points = max(0, self.current_hit_points - int(amount))
-            if self.current_hit_points == 0:
+                       amount=min(amount, self.current_hit_points))
+            self.current_hit_points = max(0.0, self.current_hit_points - amount)
+            if self.current_hit_points <= HP_EPSILON:
                 self.destroy()
 
     def destroy(self, *, reason='destroyed'):

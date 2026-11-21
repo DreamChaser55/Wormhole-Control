@@ -1,4 +1,5 @@
 import logging
+import math
 from game_logging import format_unit_for_log
 from typing import Optional, TYPE_CHECKING
 
@@ -113,7 +114,7 @@ class RepairComponent(UnitComponent):
         if max_hp_to_repair < 1.0:
             return
 
-        repair_budget = int(max_hp_to_repair)
+        repair_budget = max_hp_to_repair
         hp_repaired = 0
 
         if needs_hull_repair:
@@ -128,6 +129,7 @@ class RepairComponent(UnitComponent):
 
         if hp_repaired > 0:
             tank.consume(hp_repaired * REPAIR_AM_PER_HP)
-            cost = int(hp_repaired * self.credit_cost_per_hp)
+            # Credits are whole currency units: charge fractional HP repairs rounded up.
+            cost = math.ceil(round(hp_repaired * self.credit_cost_per_hp, 6))
             player.credits = max(0, player.credits - cost)
             logger.debug(f"Unit {format_unit_for_log(self.unit)} repaired {format_unit_for_log(self.target)} for {hp_repaired} HP, costing {cost} credits.")

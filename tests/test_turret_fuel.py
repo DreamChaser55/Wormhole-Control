@@ -44,7 +44,7 @@ def battle():
     return game, attacker, target
 
 
-def test_a_fully_absorbed_shot_spends_the_last_am(battle, monkeypatch):
+def test_a_heavily_absorbed_shot_spends_the_last_am(battle, monkeypatch):
     game, attacker, target = battle
     turret, = arm(attacker).turrets
     tank = attacker.antimatter_component
@@ -57,8 +57,9 @@ def test_a_fully_absorbed_shot_spends_the_last_am(battle, monkeypatch):
     attacker.update()
 
     assert tank.current_amount == 0
-    assert target.current_hit_points == before
-    assert attacker.experience_points == 0
+    # The 10-damage shot is absorbed down to the minimum pass-through (10%).
+    assert target.current_hit_points == pytest.approx(before - 1.0)
+    assert attacker.experience_points == pytest.approx(1.0)
     assert turret.current_cooldown == 2
 
 
@@ -75,7 +76,8 @@ def test_volley_spends_in_installed_order_until_out_of_fuel_or_target_destroyed(
     shots = sum(cooldown > 0 for cooldown in cooldowns)
     assert [turret.current_cooldown for turret in weapons.turrets] == cooldowns
     assert attacker.antimatter_component.current_amount == 2.5 - shots
-    assert target.current_hit_points == max(0, target_hp - shots * 10)
+    # The second shot is 0.25% stronger from XP earned by the first.
+    assert target.current_hit_points == pytest.approx(max(0, target_hp - shots * 10), abs=0.05)
 
 
 @pytest.mark.parametrize('problem, blocker', [
@@ -224,7 +226,7 @@ def test_save_round_trip_retains_fuel_cooldown_and_engagement(battle):
     tank.add(1)
     restored.update()
     assert restored.commander_component.current_order.public_id == order_id
-    assert restored_target.current_hit_points == before - 10
+    assert restored_target.current_hit_points == pytest.approx(before - 10, abs=0.05)
     assert tank.current_amount == 0.5
 
 

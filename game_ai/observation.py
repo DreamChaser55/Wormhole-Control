@@ -32,7 +32,7 @@ from component_visibility import public_components
 from order_history import history_view
 from turn_briefing import summary_view
 
-OBSERVATION_SCHEMA_VERSION = 59
+OBSERVATION_SCHEMA_VERSION = 60
 COMMAND_HELP = {name: spec.description for name, spec in COMMAND_SPECS.items()}
 
 
@@ -307,8 +307,8 @@ def _unit_view(
         "position": _position(unit.position),
         "hull_size": _enum_value(unit.hull_size),
         "hit_points": {
-            "current": int(unit.current_hit_points),
-            "maximum": int(unit.max_hit_points),
+            "current": float(unit.current_hit_points),
+            "maximum": float(unit.max_hit_points),
         },
         "disabled": bool(getattr(unit, "is_disabled", False)),
         "components": components,

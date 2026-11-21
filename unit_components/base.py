@@ -1,5 +1,7 @@
 from typing import TYPE_CHECKING
 
+from hp_format import format_hp
+
 if TYPE_CHECKING:
     from domain.units import Unit
     from game import Game
@@ -40,8 +42,8 @@ class UnitComponent:
         if state["type"] != type(self).__name__ or type(state["schema_version"]) is not int or state["schema_version"] != self.SCHEMA_VERSION:
             raise ValueError(f"Unsupported {type(self).__name__} schema")
         self.hull_cost = number(state["hull_cost"], "hull_cost", 0)
-        self.max_hit_points = number(state["max_hit_points"], "max_hit_points", 1, integer=True)
-        self.current_hit_points = number(state["current_hit_points"], "current_hit_points", 0, integer=True)
+        self.max_hit_points = float(number(state["max_hit_points"], "max_hit_points", 1))
+        self.current_hit_points = float(number(state["current_hit_points"], "current_hit_points", 0))
         if self.current_hit_points > self.max_hit_points:
             raise ValueError("Component HP exceeds maximum")
         fields(state["configuration"], self.STATE_CONFIG, "configuration")
@@ -93,8 +95,8 @@ class UnitComponent:
     def __init__(self, unit: 'Unit', hull_cost: float = 0.0):
         self.unit: 'Unit' = unit
         self.hull_cost: float = float(hull_cost)
-        self.max_hit_points: int = max(10, int(round(float(hull_cost) * 10)))
-        self.current_hit_points: int = self.max_hit_points
+        self.max_hit_points: float = max(10.0, float(hull_cost) * 10.0)
+        self.current_hit_points: float = self.max_hit_points
 
     @property
     def is_destroyed(self) -> bool:
@@ -109,7 +111,7 @@ class UnitComponent:
         Returns a list of UI element definitions (labels, progress bars, buttons)
         to render in the sidebar when this component is selected in Components panel.
         """
-        status = "DESTROYED" if self.is_destroyed else f"HP: {self.current_hit_points}/{self.max_hit_points}"
+        status = "DESTROYED" if self.is_destroyed else f"HP: {format_hp(self.current_hit_points)}/{format_hp(self.max_hit_points)}"
         return [
             {
                 'type': 'label',
@@ -128,7 +130,7 @@ class UnitComponent:
             text = 'Destroyed'
             style = '#sidebar_hit_points_critical_damage_label'
         else:
-            text = f'HP: {self.current_hit_points}/{self.max_hit_points}'
+            text = f'HP: {format_hp(self.current_hit_points)}/{format_hp(self.max_hit_points)}'
             style = '#sidebar_info_label'
         return {'type': 'label', 'text': text, 'object_id': style, 'height': 18, 'indent_level': 1}
 

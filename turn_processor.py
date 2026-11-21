@@ -548,8 +548,7 @@ class TurnProcessor:
                                 if random.random() < damage_chance:
                                     # Calculate damage amount (10% to 25% of max hit points)
                                     damage_percentage = random.uniform(0.10, 0.25)
-                                    damage_amount = int(unit.max_hit_points * damage_percentage)
-                                    damage_amount = max(1, damage_amount)
+                                    damage_amount = unit.max_hit_points * damage_percentage
                                     
                                     # 50% chance of component damage
                                     component_damaged = False
@@ -727,9 +726,9 @@ class TurnProcessor:
                             candidates = [c for c in components if not c.is_destroyed]
                             if candidates:
                                 component = self.rng.choice(candidates)
-                                unit.take_component_damage(type(component), int(amount), cause=hazard.kind)
+                                unit.take_component_damage(type(component), amount, cause=hazard.kind)
                         else:
-                            unit.take_damage(int(amount), cause=hazard.kind)
+                            unit.take_damage(amount, cause=hazard.kind)
                 for obj in list(getattr(sector, 'deployables', ())):
                     if obj.owner != current_player:
                         continue
@@ -737,7 +736,7 @@ class TurnProcessor:
                         if obj.current_hit_points <= 0:
                             break
                         if hazard.affects_deployables and hazard.contains(obj.position, body):
-                            obj.take_damage(int(hazard.amount), cause=hazard.kind)
+                            obj.take_damage(hazard.amount, cause=hazard.kind)
 
     def _process_resource_generation(self, current_player):
         """Apply the shared preview once in this owner's income phase, before upkeep."""

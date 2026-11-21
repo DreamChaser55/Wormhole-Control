@@ -209,7 +209,7 @@ def test_persistent_cap_survives_time_save_refit_and_capture(kind, cap):
     assert len(deployments(restored.galaxy, caster.id, kind)) == cap-1
 
 
-@pytest.mark.parametrize('damage,loss,guardian_loss', [(40, 28, 9), (100, 80, 15), (1, 1, 0), (0, 0, 0)])
+@pytest.mark.parametrize('damage,loss,guardian_loss', [(40, 28, 9), (100, 80, 15), (1, .7, .225), (0, 0, 0)])
 def test_guardian_reduces_redirected_weapon_damage_only(damage, loss, guardian_loss):
     game = campaign()
     caster, target = equipped(game), ship(game, 'protected')
@@ -217,10 +217,10 @@ def test_guardian_reduces_redirected_weapon_damage_only(damage, loss, guardian_l
     assert activate(caster, 'guardian_link', game.galaxy, target.id)
     before = (target.current_hit_points, caster.current_hit_points)
     combat_hit(target, damage)
-    assert before[0]-target.current_hit_points == loss
-    assert before[1]-caster.current_hit_points == guardian_loss
+    assert before[0]-target.current_hit_points == pytest.approx(loss)
+    assert before[1]-caster.current_hit_points == pytest.approx(guardian_loss)
     target.take_damage(10)
-    assert before[1]-caster.current_hit_points == guardian_loss
+    assert before[1]-caster.current_hit_points == pytest.approx(guardian_loss)
     assert cancel(caster, 'guardian_link')
     assert caster.ability_component.abilities[AbilityType.GUARDIAN_LINK].cooldown_remaining == 7
 
@@ -448,8 +448,8 @@ def test_catalyst_opposing_patches_baseline_boundary_and_recipient_splash():
     guardian.position = Position(50, 0)
     before = guardian.current_hit_points, target.current_hit_points
     combat_hit(target, 40, is_splash=True)
-    assert guardian.current_hit_points == before[0]-12  # floor(9 * 1.35)
-    assert target.current_hit_points == before[1]-37  # floor(28 * 1.35)
+    assert guardian.current_hit_points == pytest.approx(before[0]-9 * 1.35)
+    assert target.current_hit_points == pytest.approx(before[1]-28 * 1.35)
     target.position = Position(500.01, 0)
     assert modifiers_for_unit(target).splash_damage_multiplier == 1.0
     enemy.destroy()

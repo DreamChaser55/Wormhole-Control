@@ -111,8 +111,9 @@ class TestTurretFireXpEarning:
         turret.fire()
 
         assert attacker.experience_points > 0
-        # Two shots of 30 each = 60 XP (no mitigation in this bare mock)
-        assert attacker.experience_points == 60
+        # Two shots of 30: the second gains the XP bonus earned by the first (no truncation).
+        expected = 30.0 + 30.0 * (1.0 + XP_WEAPON_DAMAGE_BONUS * 30.0 / MAX_UNIT_XP)
+        assert attacker.experience_points == pytest.approx(expected)
 
     def test_xp_capped_across_shots(self):
         attacker = make_unit()
@@ -160,8 +161,8 @@ class TestWeaponDamageXpBonus:
 
         hp_lost = 500 - target.current_hit_points
         mult = 1.0 + XP_WEAPON_DAMAGE_BONUS * 0.5
-        expected = int(100.0 * mult)
-        assert hp_lost == expected
+        expected = 100.0 * mult
+        assert hp_lost == pytest.approx(expected)
 
 
 class TestDefenseMitigationXpBonus:
@@ -190,8 +191,8 @@ class TestDefenseMitigationXpBonus:
             defender.experience_points = MAX_UNIT_XP
             boosted = defenses.calculate_mitigation(200, TurretType.MASS_DRIVER)
 
-        expected_boosted = int(baseline * (1.0 + XP_DEFENSE_BONUS))
-        assert boosted == expected_boosted
+        expected_boosted = baseline * (1.0 + XP_DEFENSE_BONUS)
+        assert boosted == pytest.approx(expected_boosted)
         assert boosted > baseline
 
     def test_destroyed_defenses_return_zero_mitigation(self):

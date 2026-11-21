@@ -144,7 +144,7 @@ def ability_description(name: str) -> tuple[str, str]:
             ('Ongoing cost', f'{definition.ongoing_antimatter:g} AM each owner turn, including safe space.'),
             ('Payment', 'Combined resistance upkeep is paid after movement, before environmental hazards. Insufficient fuel disables all resistances without a partial charge.'),
             ('Lifecycle', 'Disables on capture, docking, atmospheric hiding, disablement, prerequisite loss or Ability refit. Does not reactivate automatically.'),
-            ('Damage', 'HP damage is truncated; debris abrasion can become zero. Hull protection applies before Adaptive Forcefield.'),
+            ('Damage', 'HP damage is fractional (no truncation); hull protection applies before Adaptive Forcefield.'),
         ])
         return definition.name, _body(definition.description, facts)
     if spec and spec.cap:

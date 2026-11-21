@@ -101,7 +101,8 @@ def test_cooling_never_adds_ticks_or_fires_outside_owner_turn(count):
     for _ in range(3):
         for player in game.players:
             processor._process_unit_updates(player)
-    assert hp - target.current_hit_points == 20
+    # Two 10-damage shots; the second is 0.25% stronger from the XP the first one earned.
+    assert hp - target.current_hit_points == pytest.approx(20, abs=0.05)
     assert turret.current_cooldown == 2
 
 
@@ -141,15 +142,15 @@ def test_oxygen_damage_classification_and_victim_boundary(position, splash, expe
     assert hp - target.current_hit_points == expected
 
 
-@pytest.mark.parametrize('amount,reduction,expected', [(1, 0, 1), (10, .5, 5),
-    (100, 1, 0), (0, 0, 0), (-1, 0, 0), (1000, 0, 400)])
-def test_oxygen_rounding_absorption_and_destruction(amount, reduction, expected):
+@pytest.mark.parametrize('amount,reduction,expected', [(1, 0, 1.15), (10, .5, 5.75),
+    (100, 1, 0), (0, 0, 0), (-1, 0, 0), (1000, 0, 400), (0.5, 0, 0.575)])
+def test_oxygen_scaling_is_exact_absorption_and_destruction(amount, reduction, expected):
     game, _, target, _ = combatants()
     field(game, 'oxygen')
     target.damage_reduction = reduction
     hp = target.current_hit_points
     target.take_damage(amount, is_splash=True)
-    assert hp - target.current_hit_points == expected
+    assert hp - target.current_hit_points == pytest.approx(expected)
     assert bool(getattr(target, '_destroyed', False)) == (expected == hp)
 
 

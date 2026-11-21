@@ -1,3 +1,4 @@
+from hp_format import format_hp
 import dataclasses
 import logging
 from game_logging import format_unit_for_log
@@ -69,7 +70,7 @@ class AbilityComponent(UnitComponent):
         return float(ABILITY_BASE_COST + sum(ABILITY_HULL_COST if getattr(a, "value", a) in TITAN_ABILITIES else ABILITY_COST_PER_ABILITY for a in abilities))
 
     def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
-        status = "DESTROYED" if self.is_destroyed else f"HP: {self.current_hit_points}/{self.max_hit_points}"
+        status = "DESTROYED" if self.is_destroyed else f"HP: {format_hp(self.current_hit_points)}/{format_hp(self.max_hit_points)}"
         data = [{
             'type': 'label',
             'text': f"Ability System [{status}]",

@@ -1,4 +1,5 @@
 """Human tactical controls backed by the same gateway as automated players."""
+from hp_format import format_hp
 from tactical_abilities import SPECS, deployments, get_instance
 
 
@@ -128,7 +129,7 @@ def ability_panel(unit, game):
 def deployable_panel(game, obj):
     first = label(obj.name)
     first['sidebar_identity'] = f'deployable:{getattr(obj, "id", id(obj))}'
-    data = [first, label(f'HP: {obj.current_hit_points}/{obj.max_hit_points}'), label('Persistent')]
+    data = [first, label(f'HP: {format_hp(obj.current_hit_points)}/{format_hp(obj.max_hit_points)}'), label('Persistent')]
     from game_ai.tactical import deployable_view
     view = deployable_view(obj, game.players[game.current_player_index])
     if 'deploying_ship_id' in view:
