@@ -292,7 +292,7 @@ minimum_load_fraction in (0,1] permits earlier departure at that tank fraction (
 Use partial loads when timely service is valuable; travel and return reserves still apply.
 Sources remain fixed. Automatic routes return to their source and wait without demand; a lost manual destination fails. Full manual destinations wait.
 Harvesters retain 60 AM; transports reserve buffered return fuel. Both block queued work.
-The ability_catalog describes targeting and costs. Multiply Antimatter doubles seeded friendly tanks within 500, including self, after a 20 AM cost. Caster and recipients have 30-round cooldowns. Empty tanks gain nothing. Future pickups and queued pulses cannot finance immediate casts.
+The ability_catalog describes targeting and costs. Before casting short-duration local combat auras (flak_barrage, adaptive_forcefield, repair_cloud), check their tactical_readiness_note and remember queue=false replaces active movement or attack orders. Multiply Antimatter doubles seeded friendly tanks within 500, including self, after a 20 AM cost. Caster and recipients have 30-round cooldowns. Empty tanks gain nothing. Future pickups and queued pulses cannot finance immediate casts.
 Ghost emitters are persistent, capped at one per source; identification does not free the slot. Scout radar presence visually.
 cancel_ability releases Tractor Tether or Guardian Link without refund.
 Environmental resistances use toggle_ability with one owned unit, ability and queue=false; no targets.

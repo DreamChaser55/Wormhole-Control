@@ -401,6 +401,54 @@ class TestMemory(unittest.TestCase):
         self.assertNotIn('fuel_warning', options_after['colonize'])
         self.assertNotIn('fuel_warning', options_after['load_colonists'])
 
+    def test_self_centered_combat_abilities_expose_local_tactical_readiness_without_leaking_hidden(self):
+        from constants import HullSize
+        from game_ai.rules import ability_states
+        from geometry import Position
+        from tests.support.campaigns import campaign, ship
+        from unit_components.abilities import AbilityComponent
+        from unit_components.cloaking import CloakingDevice
+        from unit_components.defenses import Defenses
+        from unit_components.enums import AbilityType, TurretType
+        from unit_components.repair import RepairComponent
+        from unit_components.weapons import Weapons, Turret
+        game = campaign()
+        caster = ship(game, 'Flak Escort', hull=HullSize.MEDIUM, sector=(0, 0))
+        caster.position = Position(0, 0)
+        weapons = Weapons(caster)
+        weapons.turrets.append(Turret(turret_type=TurretType.MASS_DRIVER, damage=5, range=400, cooldown=2, parent_unit=caster))
+        caster.add_component(weapons)
+        caster.add_component(Defenses(caster, armor=5))
+        caster.add_component(RepairComponent(caster, repair_rate=10, repair_range=200))
+        caster.add_component(AbilityComponent(caster, [
+            AbilityType.FLAK_BARRAGE, AbilityType.ADAPTIVE_FORCEFIELD, AbilityType.REPAIR_CLOUD,
+        ]))
+        caster.sensors_component.short_range_radius = 600.0
+
+        # Empty sector: zero counts and wait notes.
+        by_name = {s['ability']: s for s in ability_states(caster)}
+        self.assertEqual(by_name['flak_barrage']['enemies_in_ability_radius'], 0)
+        self.assertIn('No visible enemy wings in this sector', by_name['flak_barrage']['tactical_readiness_note'])
+        self.assertEqual(by_name['adaptive_forcefield']['enemies_in_sector'], 0)
+        self.assertEqual(by_name['repair_cloud']['damaged_allies_in_ability_radius'], 0)
+
+        # Hidden enemy wing out of short-range sensor radius must not leak.
+        hidden_wing = ship(game, 'Hidden Wing', owner=1, hull=HullSize.STRIKECRAFT_WING, sector=(0, 0))
+        hidden_wing.position = Position(2000, 0)
+        by_name = {s['ability']: s for s in ability_states(caster)}
+        self.assertEqual(by_name['flak_barrage']['enemies_in_sector'], 0)
+        self.assertEqual(by_name['adaptive_forcefield']['enemies_in_sector'], 0)
+
+        # Visible enemy wing within 500 units and damaged ally within 350 units surface immediately.
+        hidden_wing.position = Position(300, 0)
+        ally = ship(game, 'Damaged Ally', owner=0, hull=HullSize.SMALL, sector=(0, 0))
+        ally.position = Position(200, 0)
+        ally.current_hit_points = 10
+        by_name = {s['ability']: s for s in ability_states(caster)}
+        self.assertEqual(by_name['flak_barrage']['enemies_in_ability_radius'], 1)
+        self.assertEqual(by_name['adaptive_forcefield']['enemies_in_sector'], 1)
+        self.assertEqual(by_name['repair_cloud']['damaged_allies_in_ability_radius'], 1)
+
     def test_player_deserialization_preserves_only_canonical_reasoning_effort(self):
 
         from save_manager import deserialize_player, serialize_player

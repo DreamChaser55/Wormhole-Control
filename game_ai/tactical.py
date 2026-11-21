@@ -106,7 +106,71 @@ def enrich_states(unit, states):
                 if (wing := galaxy.get_unit_by_id(uid)) is not None and wing.owner == unit.owner and wing_order(wing, kind)]
             if kind == 'attack_run':
                 state['eligible_wing_ids'] = [wing.id for wing in eligible_bombers(unit, galaxy)]
+    if galaxy is not None:
+        _add_local_combat_readiness(unit, galaxy, states)
     return states
+
+
+def _add_local_combat_readiness(unit, galaxy, states):
+    """Expose visible-only local target counts for short-duration self-centered combat auras."""
+    interesting = {'flak_barrage', 'adaptive_forcefield', 'repair_cloud'}
+    matching = [state for state in states if state.get('ability') in interesting]
+    if not matching:
+        return
+    system = galaxy.systems.get(unit.in_system) if getattr(galaxy, 'systems', None) else None
+    sector = system.hexes.get(unit.in_hex) if system else None
+    sector_units = list(getattr(sector, 'units', ())) if sector else []
+    from constants import HullSize
+    from geometry import distance
+    from tactical_balance import FLAK_RADIUS
+    snapshot = None
+
+    def _visible_enemies():
+        nonlocal snapshot
+        if snapshot is None:
+            snapshot = VisibilityService.compute(galaxy, unit.owner, record_intel=False)
+        return [
+            other for other in sector_units
+            if other is not unit and other.current_hit_points > 0
+            and are_enemies(unit.owner, other.owner) and is_unit_visible(snapshot, other)
+        ]
+
+    for state in matching:
+        kind = state['ability']
+        if kind == 'flak_barrage':
+            enemy_wings = [e for e in _visible_enemies() if getattr(e, 'hull_size', None) == HullSize.STRIKECRAFT_WING]
+            in_sector = len(enemy_wings)
+            in_radius = sum(1 for e in enemy_wings if distance(unit.position, e.position) <= FLAK_RADIUS)
+            state['enemies_in_sector'] = in_sector
+            state['enemies_in_ability_radius'] = in_radius
+            if in_radius > 0:
+                state['tactical_readiness_note'] = f"{in_radius} visible enemy wing(s) within {int(FLAK_RADIUS)} units."
+            elif in_sector > 0:
+                state['tactical_readiness_note'] = f"No visible enemy wings within {int(FLAK_RADIUS)} units yet; close distance before casting."
+            else:
+                state['tactical_readiness_note'] = f"No visible enemy wings in this sector; wait until entering the target sector and closing within {int(FLAK_RADIUS)} units before casting."
+        elif kind == 'adaptive_forcefield':
+            in_sector = len(_visible_enemies())
+            state['enemies_in_sector'] = in_sector
+            state['tactical_readiness_note'] = (
+                f"{in_sector} visible enemy unit(s) in this sector."
+                if in_sector > 0 else
+                "No visible enemies in this sector; wait until entering combat before casting."
+            )
+        elif kind == 'repair_cloud':
+            damaged = [
+                other for other in sector_units
+                if other.current_hit_points > 0 and other.current_hit_points < other.max_hit_points
+                and are_allies(unit.owner, other.owner)
+                and distance(unit.position, other.position) <= 350.0
+            ]
+            count = len(damaged)
+            state['damaged_allies_in_ability_radius'] = count
+            state['tactical_readiness_note'] = (
+                f"{count} damaged friendly/allied unit(s) within 350 units."
+                if count > 0 else
+                "No damaged friendly or allied ships within 350 units; wait until damaged friendlies are nearby."
+            )
 
 
 def guidance(game, player, unit, legal, options, visible_units, exact_bodies):

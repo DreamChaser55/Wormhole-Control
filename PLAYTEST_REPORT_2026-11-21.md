@@ -86,9 +86,7 @@ From `saves/ai_telemetry.jsonl` (campaign `babda014`, Turns 1–204):
 
 Overall, Luna played a surprisingly coherent, bug-free 204-turn campaign (expanded to 4 colonies + 2 more colonizers in flight, fortified all colonies to Level 3, built Metal & Crystal refineries, Orbital Bastion, Deep Survey Ship, and adaptively built Flak Escorts to counter our Carrier!). However, inspecting `memory.md` and `ai_telemetry.jsonl` revealed clear strategic weaknesses:
 
-1. **Premature out-of-sector `use_ability(flak_barrage)` (Turn 183):** Luna cast `flak_barrage` (3-turn duration, 35 AM, 8-turn cooldown) on `Flak Escort #106` while `#106` was still in `Betelgeuse [-2, 2]` — not even in the same sector as our wings in `[1, 3]`! Worse, casting with `queue=false` cancelled `#106`'s active `attack` order, forcing a Turn 184 re-issue, and the aura expired before `#106` got within 500 units.
-   - *Suggestion:* Add an explicit `tactical_readiness_note` (or `enemies_in_ability_radius` count) to self-centered combat ability states (`flak_barrage`, `adaptive_forcefield`, `repair_cloud`) so the AI doesn't fire short-duration local auras out of range or in empty sectors.
-2. **Quiet-turn cost & latency:** 67.2% of Luna's turns issued `cmds=[]`, yet many quiet turns still consumed 1,000–2,500 reasoning tokens and 15–28 seconds whenever any unit had a fuel wait. Trimming redundant per-unit `command_options` on units with healthy active work (extending `trim_quiet` to reduce the 95 KB `units` payload) would substantially cut latency, cost, and cache erosion.
+1. **Quiet-turn cost & latency:** 67.2% of Luna's turns issued `cmds=[]`, yet many quiet turns still consumed 1,000–2,500 reasoning tokens and 15–28 seconds whenever any unit had a fuel wait. Trimming redundant per-unit `command_options` on units with healthy active work (extending `trim_quiet` to reduce the 95 KB `units` payload) would substantially cut latency, cost, and cache erosion.
 
 ---
 
