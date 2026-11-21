@@ -34,6 +34,8 @@ The construction_templates catalog explains roles, equipment, prices and support
 Choose suitable designs from this catalog; no unit design command is available.
 Review idle Constructors and stationary Shipyards each turn. Use affordable parallel
 production at valid sites within each builder's range while preserving useful paid work.
+construct automatically approaches out-of-range build coordinates; issue construct directly
+at the target sector and position instead of issuing move first.
 Assign each planned Colonizer a distinct reachable colony target and a population-loading
 plan; count current and queued missions before ordering more. If those targets are already
 covered, use available builders for reconnaissance, military protection, or needed logistics.
@@ -57,11 +59,17 @@ have no population advice; obtain current contact before relying on population f
 Balance expansion and fortification spending against mobile defense, scouting, fuel and
 industrial reserves. Visible enemy activity warrants reassessing an undefended fleet;
 home fortifications do not replace ships that protect travel and new colonies.
+When hostile combat forces enter your home system or threaten a colony, prioritize immediate
+mobilization: pull combat ships (especially hard-counters such as Flak Escorts against visible
+carriers or wings) off routine utility or escort duties to intercept rather than waiting.
 Build varied, combined-arms fleets rather than a single hull type: combine standard warships and
 anti-strikecraft escorts, recon/sensor units (to maintain target visibility and spot
 concealed threats), strikecraft carriers, long-range attack units (using attack_long_range),
 ability/buff support units (such as Command Cruisers or
 tenders), minelayers, mobile repair and antimatter resupply units, and other special-purpose ships.
+Avoid building only light escorts; scale into frigates, cruisers, carriers, or artillery as your
+economy grows, and field early long-range recon (such as a Scout or Deep Survey Ship) to explore
+adjacent systems and wormholes well before mid-game.
 Secure strategic locations and chokepoints—especially wormhole sectors, border gateways, and key
 colony or resource hubs—using defend and patrol orders, combat stances, defensive and interdiction
 stations, and minefields. Preferentially fortify sectors, wormholes, and colonies where enemies
@@ -81,7 +89,8 @@ If any resource is insufficient, defer new builds or submit fewer.
 Check logistics alongside turn_summary.construction_progress before authorizing more spending.
 If fuel is stalling useful construction or travel, preserve the work and arrange a delivery,
 pickup, or storage repair first. Dedicate an available tanker or harvester to critical work when
-one can reach it with enough fuel. Compare minerals.available_after_reservations, passive income,
+one can reach it with enough fuel. If a builder or critical unit stays fuel-stalled for more than
+3 turns despite an automatic resupply route, dispatch an explicit give_antimatter to unblock it. Compare minerals.available_after_reservations, passive income,
 and designs blocked by shortages. When reserves threaten useful builds, favor mining, refining,
 or completing pending deliveries before adding discretionary construction or fortifications.
 Exploit multiple available metal asteroids and crystal comets concurrently to build a strong
@@ -168,6 +177,8 @@ that still matter, such as a lost colony, a confirmed enemy capability, an allia
 historical enemy sightings, radar presences, and approach/entry locations (system, hex_coord,
 wormhole endpoint, or raided colony).
 Carry forward relevant earlier entries when replacing this list.
+Do not record turn-by-turn repeats of unchanged waits, ongoing observations, or zero-damage
+skirmishes in important_events; record only genuinely new milestones or state changes.
 Use strategy for the overall approach and tradeoffs that guide several turns. Use objectives
 for measurable outcomes still to achieve, ordered by priority. Use commitments for accepted work
 in progress, with the actor, task and next decision point. Use beliefs for estimates or hypotheses

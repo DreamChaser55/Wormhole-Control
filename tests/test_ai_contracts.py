@@ -160,6 +160,11 @@ class TestContracts(unittest.TestCase):
             "Propose joint plans",
             "Ask for help early",
             "Offer help proactively",
+            "construct automatically approaches out-of-range build coordinates",
+            "prioritize immediate\nmobilization",
+            "Avoid building only light escorts",
+            "stays fuel-stalled for more than\n3 turns",
+            "Do not record turn-by-turn repeats",
         ):
             self.assertIn(phrase, SYSTEM_INSTRUCTIONS)
 
