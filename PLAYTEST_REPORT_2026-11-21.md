@@ -84,5 +84,4 @@ From `saves/ai_telemetry.jsonl` (campaign `babda014`, Turns 1–204):
 
 ## 7. Gameplay & UX Improvement Suggestions
 
-1. **Expose active-unit count & prompt-size budget tips in AI telemetry/dashboard:** The local telemetry in `saves/ai_telemetry.jsonl` was invaluable for diagnosing latency and cache decay; optionally logging `active_unit_count` and `memory_chars` alongside `prompt_metrics` would make scalability profiling even easier.
-2. **Update `docs/CODEX_CONTROL.md` Windows PowerShell quick-start:** Use stdin piping (`'{"action":"status"}' | python .\game_control.py -`) for the PowerShell example so Windows PowerShell 5.1 users don't hit quote-stripping errors on step 1.
+1. **Update `docs/CODEX_CONTROL.md` Windows PowerShell quick-start:** Use stdin piping (`'{"action":"status"}' | python .\game_control.py -`) for the PowerShell example so Windows PowerShell 5.1 users don't hit quote-stripping errors on step 1.

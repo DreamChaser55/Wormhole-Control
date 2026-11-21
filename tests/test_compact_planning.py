@@ -116,3 +116,6 @@ def test_quiet_prompt_trims_non_committed_dismantle_previews_and_colonist_advice
     assert 'population_advice' in projected_busy['command_options']['load_colonists']['targets'][0]
     assert 'population_advice' not in projected_busy['command_options']['load_colonists']['targets'][1]
     assert projected_idle['command_options'] == idle['command_options']
+    assert metrics['active_unit_count'] == 2
+    assert metrics['visible_unit_count'] == 2
+    assert metrics['memory_chars'] == 2

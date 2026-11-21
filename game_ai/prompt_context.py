@@ -224,12 +224,16 @@ def planning_context(request, *, compact=True, trim_quiet=True):
         data = share_repeated_values(data)
     stable = serialized(catalogs)
     dynamic = serialized(data)
+    units = original["observation"].get("units", [])
     metrics = {
         "original_request_chars": len(serialized(original)),
         "stable_catalog_chars": len(stable),
         "dynamic_request_chars": len(dynamic),
         "shared_value_savings_chars": unfactored_chars - len(stable) - len(dynamic),
         "quiet_quote_rows_omitted": quiet_omitted,
+        "active_unit_count": sum(1 for u in units if isinstance(u, dict) and u.get("relation") == "self"),
+        "visible_unit_count": len(units),
+        "memory_chars": len(serialized(original.get("memory", {}))),
         "observation_sections_chars": {key: len(serialized(value)) for key, value in original["observation"].items()},
         "compact_sections_chars": {key: len(serialized(value)) for key, value in data['observation'].items()},
         "dynamic_shared_values_chars": len(serialized(data.get('shared_values', {}))),

@@ -349,7 +349,8 @@ keep full detail. `planning_context(request, trim_quiet=False)` retains all quot
 for comparisons with the same catalog and value deduplication.
 
 Telemetry records `prompt_metrics`: original/compact section character counts,
-stable catalog size, dynamic size and serialized/content input sizes. These are
+stable catalog size, dynamic size, `active_unit_count`, `visible_unit_count`,
+`memory_chars`, and serialized/content input sizes. These are
 JSON character counts, not token estimates.
 `shared_value_savings_chars` reports the reduction from repeated values, and
 `dynamic_shared_values_chars` accounts for the changing message's reference table.
