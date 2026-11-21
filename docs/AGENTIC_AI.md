@@ -95,7 +95,7 @@ that mode. Other target checks retain the recording default, as described in the
 - owned and allied units;
 - enemy units only when detailed visibility permits them (concealed from long-range radar presence when cloaked or inside nebulae or asteroid fields);
 - celestial fields (asteroid, debris, ice) with density parameters (`density`, `max_hull_size`), solidity status (`is_solid: false`), and exact `effect_radius` values that restrict hulls exceeding the field's maximum allowable hull, rejecting forbidden commands with `hazard_blocked`;
-- space storms (plasma, magnetic, radiation) and nebulae exposing `is_solid: false` and exact `effect_radius`, along with separately scoped black-hole hazards (strikecraft wings are banned from entering or launching in magnetic storms, but ignore field drag and debris abrasion and can enter fields of all densities);
+- space storms (plasma, magnetic, radiation) and nebulae exposing `is_solid: false` and exact `effect_radius`, along with separately scoped black-hole hazards (strikecraft wings are banned from entering or launching in magnetic storms, but ignore field drag and debris abrasion and can enter fields of all densities); point bodies (stars, planets, moons, asteroids, comets, and wormholes) expose `is_solid: true` as selectable sector bodies, while wormholes report `collision_radius: 0.0` (no physical collision obstruction);
 - visible minefields;
 - undetailed enemy-presence hexes without count, identity, owner, or strength;
 - per-owned-unit supported commands, currently legal commands, conditional

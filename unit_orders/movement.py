@@ -259,7 +259,7 @@ class ReachWaypointOrder(Order):
             if self.unit.hyperdrive_component:
                 self.unit.hyperdrive_component.clear_jump_target(self.local_order_id)
             self.status = OrderStatus.COMPLETED
-            logger.debug(f"[{format_unit_for_log(self.unit)}] ReachWaypointOrder.check_completion_conditions: {self.order_type.name} (id:{self.local_order_id}): COMPLETED (arrived at waypoint: {dest_position}:Hex{dest_hex}:{dest_system})")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] ReachWaypointOrder.check_completion_conditions: {self.order_type.name} (id:{self.local_order_id}): COMPLETED (arrived at waypoint: {dest_position}:{dest_hex}:{dest_system})")
 
     def cancel(self) -> None:
         super().cancel()

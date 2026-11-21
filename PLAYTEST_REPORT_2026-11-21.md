@@ -82,17 +82,6 @@ From `saves/ai_telemetry.jsonl` (campaign `babda014`, Turns 1–204):
 
 ---
 
-## 5. Discovered Bugs & Engine Issues
-
-### [LOW] Bug 9: Minor Logging, Receipt & Observation Polish
-
-1. **`HexHexCoord` log typo:** `game.log` contained **239** occurrences of `HexHexCoord(q=..., r=...)` from `ReachWaypointOrder.check_completion_conditions` (`"Hex"` prefix concatenated onto `repr(HexCoord)`).
-2. **Stale unit name in same-batch receipts (Turn 68):** Sending `rename_unit` (`#86` → `"Beam Frigate Alpha"`) followed by `set_stance` in the same batch returned `"Renamed unit 86 to Beam Frigate Alpha."` then `"Set Kinetic Frigate stance to attack_same_sector."` (pre-rename name).
-3. **`Movement resumed after fuel wait` categorized as `[problem]`:** Triggered on Turns 77, 166, 201 (and on Turn 77 fired when replacing a failed jump with a sublight order, even though the ship had never entered a fuel wait). Should use a neutral/info category (`logistics` or `development`) and clear wait flags cleanly when orders are replaced.
-4. **Wormhole `is_solid: true` with `collision_radius: 0.0`:** Disclosed wormhole bodies report `"is_solid": true` alongside `"collision_radius": 0.0` (while `docs/REFERENCE.md` describes them as having 0 collision radius). Setting `is_solid: false` (or clarifying in schema docs) would be cleaner.
-
----
-
 ## 6. Agentic AI (Luna) Strategic & Planning Observations
 
 Overall, Luna played a surprisingly coherent, bug-free 204-turn campaign (expanded to 4 colonies + 2 more colonizers in flight, fortified all colonies to Level 3, built Metal & Crystal refineries, Orbital Bastion, Deep Survey Ship, and adaptively built Flak Escorts to counter our Carrier!). However, inspecting `memory.md` and `ai_telemetry.jsonl` revealed clear strategic weaknesses:

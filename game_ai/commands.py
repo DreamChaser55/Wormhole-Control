@@ -113,6 +113,7 @@ class _BatchProjection:
         self._planetary_upgrades = set()
         self._troop_cargo = {}
         self._planetary_reserved_am = {}
+        self._renamed_units: dict[int, str] = {}
         self._available = resource_balances(player)
         self._resource_reservations: list[dict[str, Any]] = []
         self._docking_slots: dict[int, int] = {}
@@ -240,6 +241,9 @@ class _BatchProjection:
         if command.type not in {'attack', 'attack_long_range', *safe}:
             if command.target_id in locked or command.source_id in locked:
                 raise _Rejected('dismantling_conflict', 'Target is offline for dismantling.')
+
+    def unit_name(self, unit: Any) -> str:
+        return self._renamed_units.get(unit.id, unit.name)
 
     def _rebuild(self):
         """Replay reservations without mutation: resources are personal, capacity can be shared.
@@ -1068,13 +1072,14 @@ class CommandGateway:
             from unit_naming import normalize_unit_name, rename_unit
             unit = units[0]
             name = normalize_unit_name(command.new_name)
+            projection._renamed_units[unit.id] = name
             return [_Prepared(lambda: rename_unit(unit, name),
                               f"Renamed unit {unit.id} to {name}.")]
         if command.type == "cancel_orders":
             return [
                 _Prepared(
                     apply=lambda unit=unit: unit.commander_component.stop_and_idle(),
-                    receipt=f"Stopped {unit.name} and set its stance to Do Nothing.",
+                    receipt=f"Stopped {projection.unit_name(unit)} and set its stance to Do Nothing.",
                 )
                 for unit in units
             ]
@@ -1147,7 +1152,7 @@ class CommandGateway:
             return [_Prepared(apply_production,
                               f"Selected {command.template_name} production for unit {unit.id}, slot {command.slot_index}.")]
         if command.type == "set_stance":
-            return self._prepare_stance(units, command.stance)
+            return self._prepare_stance(units, command.stance, projection)
         if command.type == "toggle_inhibitor":
             return self._prepare_inhibitor(units, projection)
         if command.type == "toggle_cloaking":
@@ -1155,7 +1160,7 @@ class CommandGateway:
         if command.type == "ci_sweep":
             return self._prepare_ci_sweep(units, projection)
 
-        order_factory, receipt_action = self._order_factory(player, command)
+        order_factory, receipt_action = self._order_factory(player, command, projection)
         if command.type == "load_colonists":
             target_body = self._body(command.target_id)
             projection.validate_load(command, units, target_body)
@@ -1211,7 +1216,7 @@ class CommandGateway:
             )
         return operations
 
-    def _order_factory(self, player: Any, command: Any):
+    def _order_factory(self, player: Any, command: Any, projection: _BatchProjection):
         """Return an actor-to-order factory and descriptive label for a command.
 
         The caller validates command shape and actor ownership separately. Resolve
@@ -1313,7 +1318,7 @@ class CommandGateway:
             self._require_relation(player, target_unit, "enemy")
             return (
                 lambda unit: InfiltrateUnitOrder(unit, {"target_unit_id": target_unit.id}),
-                f"Infiltrate {target_unit.name}",
+                f"Infiltrate {projection.unit_name(target_unit)}",
             )
         if command.type == "infiltrate_planet":
             target_body = self._body(command.target_id)
@@ -1377,7 +1382,7 @@ class CommandGateway:
             label = "Attack (long-range only)" if command.type == "attack_long_range" else "Attack"
             return (
                 lambda unit: order_class(unit, dict(attack_params)),
-                f"{label} {target_unit.name}{receipt_suffix}",
+                f"{label} {projection.unit_name(target_unit)}{receipt_suffix}",
             )
         if command.type == "defend":
             if command.target_id is not None:
@@ -1429,7 +1434,7 @@ class CommandGateway:
             self._require_friendly(player, target_unit)
             return (
                 lambda unit: ProtectOrder(unit, {"target_unit_id": target_unit.id}),
-                f"Protect {target_unit.name}",
+                f"Protect {projection.unit_name(target_unit)}",
             )
         if command.type == "colonize":
             if not is_colonizable_body(target_body):
@@ -1485,7 +1490,7 @@ class CommandGateway:
             self._require_friendly(player, target_unit)
             return (
                 lambda unit: RepairOrder(unit, {"target_unit_id": target_unit.id}),
-                f"Repair {target_unit.name}",
+                f"Repair {projection.unit_name(target_unit)}",
             )
         if command.type in {"mine", "continuous_mine"}:
             if not is_mining_target(target_body):
@@ -1506,7 +1511,7 @@ class CommandGateway:
                 lambda unit: UnloadResourcesOrder(
                     unit, {"target_unit_id": target_unit.id}
                 ),
-                f"Unload at {target_unit.name}",
+                f"Unload at {projection.unit_name(target_unit)}",
             )
         if command.type == "dock_in_hangar":
             self._require_friendly(player, target_unit)
@@ -1520,7 +1525,7 @@ class CommandGateway:
                 )
             return (
                 lambda unit: DockOrder(unit, {"target_carrier_id": target_unit.id}),
-                f"Dock in Hangar of {target_unit.name}",
+                f"Dock in Hangar of {projection.unit_name(target_unit)}",
             )
         if command.type == "dock_in_strikecraft_bay":
             self._require_friendly(player, target_unit)
@@ -1534,7 +1539,7 @@ class CommandGateway:
                 )
             return (
                 lambda unit: DockOrder(unit, {"target_carrier_id": target_unit.id}),
-                f"Dock in Strikecraft Bay of {target_unit.name}",
+                f"Dock in Strikecraft Bay of {projection.unit_name(target_unit)}",
             )
         if command.type == "dock":
             self._require_friendly(player, target_unit)
@@ -1548,7 +1553,7 @@ class CommandGateway:
                 )
             return (
                 lambda unit: DockOrder(unit, {"target_carrier_id": target_unit.id}),
-                f"Dock with {target_unit.name}",
+                f"Dock with {projection.unit_name(target_unit)}",
             )
         if command.type == "deploy_unit":
             if command.target_id is None:
@@ -1611,7 +1616,7 @@ class CommandGateway:
                 )
             return (
                 lambda unit: TradeOrder(unit, {"target_unit_id": target_unit.id}),
-                f"Trade with {target_unit.name}",
+                f"Trade with {projection.unit_name(target_unit)}",
             )
         if command.type == "continuous_trade":
             return (lambda unit: ContinuousTradeOrder(unit), "Begin continuous trade")
@@ -1664,7 +1669,7 @@ class CommandGateway:
             f"Use {command.ability}",
         )
 
-    def _prepare_stance(self, units: list[Any], stance_value: str | None):
+    def _prepare_stance(self, units: list[Any], stance_value: str | None, projection: _BatchProjection):
         from unit_components.enums import UnitStance
 
         try:
@@ -1690,7 +1695,7 @@ class CommandGateway:
             operations.append(
                 _Prepared(
                     apply=lambda unit=unit: apply(unit),
-                    receipt=f"Set {unit.name} stance to {stance.value}.",
+                    receipt=f"Set {projection.unit_name(unit)} stance to {stance.value}.",
                 )
             )
         return operations
@@ -1708,7 +1713,7 @@ class CommandGateway:
                     raise RuntimeError(result.code or "inhibitor state change failed")
 
             action = "Activated" if turn_on else "Deactivated"
-            operations.append(_Prepared(apply, f"{action} inhibitor on {unit.name}."))
+            operations.append(_Prepared(apply, f"{action} inhibitor on {projection.unit_name(unit)}."))
         return operations
 
     def _prepare_cloaking(self, units: list[Any], projection: _BatchProjection):

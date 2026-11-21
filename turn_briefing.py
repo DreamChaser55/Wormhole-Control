@@ -81,6 +81,15 @@ def _state(player):
     return value if isinstance(value, BriefingState) else None
 
 
+def clear_movement_fuel_wait(unit):
+    """Clear any tracked movement fuel wait silently when an order ends or is replaced."""
+    if unit is None or not _live(_game(unit)):
+        return
+    state = _state(getattr(unit, "owner", None))
+    if state is not None:
+        state.fuel_waits.pop(str(unit.id), None)
+
+
 def movement_fuel_state(unit, problem=None):
     """Report entry/change/recovery, keeping unchanged waits quiet across windows."""
     if not _live(_game(unit)):
@@ -95,7 +104,7 @@ def movement_fuel_state(unit, problem=None):
     if problem is None:
         state.fuel_waits.pop(key, None)
         if previous is not None:
-            unit_event(unit, 'problem', 'Movement resumed after fuel wait', private=True, once=True)
+            unit_event(unit, 'development', 'Movement resumed after fuel wait', private=True, once=True)
     elif problem in FUEL_PROBLEMS:
         state.fuel_waits[key] = problem
         while len(state.fuel_waits) > MAX_ENTRIES:

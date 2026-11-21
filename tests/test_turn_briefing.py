@@ -284,6 +284,50 @@ def test_deflected_zero_damage_attack_is_explicitly_labeled_in_briefing(monkeypa
     assert any('deflected; 0 damage' in e['detail'] for e in entries)
 
 
+def test_fuel_wait_recovery_is_development_and_clears_silently_on_order_replacement():
+    from unit_components.antimatter import AntimatterStorage
+    from unit_components.movement import Engines
+    game = setup()
+    unit = ship(game, name="Kinetic Frigate")
+    unit.add_component(Engines(unit, speed=100))
+    unit.add_component(AntimatterStorage(unit, max_capacity=500))
+    unit.antimatter_component.current_amount = 0
+    initialize_campaign(game)
+    assert CommandGateway(game).apply_batch(unit.owner, CommandBatch((
+        Command('move', (unit.id,), system_name='Sol', hex_coord=(0, 0), position=(2000, 0)),
+    ))).accepted
+    begin_window(game, unit.owner)
+    TurnProcessor(game)._process_movement(unit.owner)
+    assert str(unit.id) in unit.owner.briefing.fuel_waits
+    # Replacing the order clears the wait silently without emitting a spurious recovery event.
+    unit.antimatter_component.current_amount = 100
+    assert CommandGateway(game).apply_batch(unit.owner, CommandBatch((
+        Command('move', (unit.id,), system_name='Sol', hex_coord=(0, 0), position=(500, 0)),
+    ))).accepted
+    assert str(unit.id) not in unit.owner.briefing.fuel_waits
+    TurnProcessor(game)._process_movement(unit.owner)
+    assert not any('resumed after fuel wait' in e.detail for e in unit.owner.briefing.pending)
+
+
+def test_same_batch_rename_updates_subsequent_command_receipts():
+    from unit_components.movement import Engines
+    from unit_components.weapons import Weapons, Turret
+    from unit_components.enums import TurretType
+    game = setup()
+    unit = ship(game, name="Kinetic Frigate")
+    unit.add_component(Engines(unit, speed=100))
+    weapons = Weapons(unit)
+    weapons.turrets.append(Turret(turret_type=TurretType.BEAM, damage=10, range=300, cooldown=2, parent_unit=unit))
+    unit.add_component(weapons)
+    result = CommandGateway(game).apply_batch(unit.owner, CommandBatch((
+        Command('rename_unit', (unit.id,), new_name='Beam Frigate Alpha'),
+        Command('set_stance', (unit.id,), stance='attack_same_sector'),
+    )))
+    assert result.accepted, result.errors
+    assert result.receipts[0] == f"Renamed unit {unit.id} to Beam Frigate Alpha."
+    assert result.receipts[1] == "Set Beam Frigate Alpha stance to attack_same_sector."
+
+
 def test_anonymous_presence_has_no_identity_and_vanishing_is_not_a_loss():
     game = setup()
     observer = ship(game)

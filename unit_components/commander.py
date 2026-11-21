@@ -371,6 +371,8 @@ class Commander(UnitComponent):
         """
         self.current_order = None
         self._clear_weapon_target()
+        from turn_briefing import clear_movement_fuel_wait
+        clear_movement_fuel_wait(self.unit)
 
     def clear_explicit_orders(self, *, internal: bool = False) -> None:
         """Cancel owned explicit roots without promoting any queued work.
