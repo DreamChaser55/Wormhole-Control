@@ -17,8 +17,9 @@ CONTEXT_INSTRUCTIONS = (
     "exact JSON value in that same message's shared_values; follow references "
     "recursively. These references deduplicate data, including command options and rules; "
     "they do not change command fields, visibility, availability, or order semantics."
-    " On quiet turns, alternative travel estimates may be omitted for units with healthy active work. "
-    "alternative_quotes_omitted counts those estimates. Use their journey, legal options and current logistics."
+    " On quiet turns, alternative travel estimates, non-committed dismantle previews, and "
+    "non-committed colonist-loading advice may be omitted for units with healthy active work. "
+    "alternative_quotes_omitted counts those omitted entries. Use their journey, legal options and current logistics."
 )
 
 
@@ -140,6 +141,16 @@ def _trim_quiet_quotes(observation):
         for kind, option in unit.get('command_options', {}).items():
             if kind in {'give_antimatter', 'take_antimatter', 'repair'}:
                 continue
+            if kind == 'dismantle_unit':
+                targets = option.get('targets', [])
+                if targets:
+                    kept_targets = [t for t in targets if isinstance(t, dict) and str(t.get('target_id')) in committed]
+                    removed = len(targets) - len(kept_targets)
+                    if removed > 0:
+                        option['targets'] = kept_targets
+                        option['omitted_targets'] = removed
+                        omitted += removed
+                continue
             quotes = option.get('approach_quotes', {})
             if quotes:
                 kept = {target: quote for target, quote in quotes.items() if target in committed}
@@ -148,9 +159,13 @@ def _trim_quiet_quotes(observation):
                 if not kept:
                     option.pop('approach_quote_note', None)
             for target in option.get('targets', []):
-                if isinstance(target, dict) and target.get('mission_quote') is not None and str(target['target_id']) not in committed:
-                    target.pop('mission_quote')
-                    omitted += 1
+                if isinstance(target, dict) and str(target.get('target_id')) not in committed:
+                    if target.get('mission_quote') is not None:
+                        target.pop('mission_quote')
+                        omitted += 1
+                    if kind == 'load_colonists' and target.get('population_advice') is not None:
+                        target.pop('population_advice')
+                        omitted += 1
         if omitted:
             unit['alternative_quotes_omitted'] = omitted
             total += omitted

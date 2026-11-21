@@ -341,7 +341,8 @@ unfactored planning representation. Dismantling options omit target previews who
 executor lacks the required capability; hardware/schema discovery remains available.
 
 On quiet turns with an empty briefing and no current enemy contacts, the provider
-can omit alternate travel estimates for units with healthy active work. It keeps
+can omit alternate travel estimates, non-committed dismantle target previews, and
+non-committed colonist-loading advice for units with healthy active work. It keeps
 active journeys, current and queued targets, repair and refueling quotes, and all
 action choices and legality. Idle units, resource-stalled units, and repair requests
 keep full detail. `planning_context(request, trim_quiet=False)` retains all quotes

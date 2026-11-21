@@ -86,3 +86,33 @@ def test_carrier_dismantling_omits_ship_targets_without_constructor_capability()
     assert 'dismantle_unit' in observed['command_catalog']['commands']
     assert actor['command_options']['dismantle_unit']['targets'] == []
     assert other.id in {actor['id'] for actor in observed['units']}
+
+
+def test_quiet_prompt_trims_non_committed_dismantle_previews_and_colonist_advice():
+    active = {'status': 'in_progress', 'active': True, 'target_id': 10,
+              'progress': {'phase': 'building'}}
+    busy = {
+        'id': 1, 'relation': 'self', 'current_order': active, 'queued_orders': [],
+        'command_options': {
+            'dismantle_unit': {'targets': [
+                {'target_id': 10, 'blocker': None, 'duration': 5},
+                {'target_id': 20, 'blocker': None, 'duration': 8, 'members': [{'unit_id': 20}]},
+                {'target_id': 21, 'blocker': None, 'duration': 4, 'members': [{'unit_id': 21}]},
+            ]},
+            'load_colonists': {'targets': [
+                {'target_id': 10, 'maximum_amount': 20, 'population_advice': {'recommended_amount': 15}},
+                {'target_id': 30, 'maximum_amount': 20, 'population_advice': {'recommended_amount': 10}},
+            ]},
+        },
+    }
+    idle = {'id': 2, 'relation': 'self', 'current_order': None, 'command_options': deepcopy(busy['command_options'])}
+    observation = {'units': [busy, idle], 'turn_summary': {'from_turn': 5, 'entries': []}, 'logistics': {'fuel_needs': []}}
+    request = PlanningRequest('quiet', 'agent', 'One', 6, observation, {})
+    messages, metrics = planning_context(request)
+    assert metrics['quiet_quote_rows_omitted'] == 3
+    projected_busy, projected_idle = expand_shared_values(json.loads(messages[-1]['content']))['observation']['units']
+    assert [t['target_id'] for t in projected_busy['command_options']['dismantle_unit']['targets']] == [10]
+    assert projected_busy['command_options']['dismantle_unit']['omitted_targets'] == 2
+    assert 'population_advice' in projected_busy['command_options']['load_colonists']['targets'][0]
+    assert 'population_advice' not in projected_busy['command_options']['load_colonists']['targets'][1]
+    assert projected_idle['command_options'] == idle['command_options']

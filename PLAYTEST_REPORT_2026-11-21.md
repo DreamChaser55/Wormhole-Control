@@ -82,14 +82,6 @@ From `saves/ai_telemetry.jsonl` (campaign `babda014`, Turns 1–204):
 
 ---
 
-## 6. Agentic AI (Luna) Strategic & Planning Observations
-
-Overall, Luna played a surprisingly coherent, bug-free 204-turn campaign (expanded to 4 colonies + 2 more colonizers in flight, fortified all colonies to Level 3, built Metal & Crystal refineries, Orbital Bastion, Deep Survey Ship, and adaptively built Flak Escorts to counter our Carrier!). However, inspecting `memory.md` and `ai_telemetry.jsonl` revealed clear strategic weaknesses:
-
-1. **Quiet-turn cost & latency:** 67.2% of Luna's turns issued `cmds=[]`, yet many quiet turns still consumed 1,000–2,500 reasoning tokens and 15–28 seconds whenever any unit had a fuel wait. Trimming redundant per-unit `command_options` on units with healthy active work (extending `trim_quiet` to reduce the 95 KB `units` payload) would substantially cut latency, cost, and cache erosion.
-
----
-
 ## 7. Gameplay & UX Improvement Suggestions
 
 1. **Add an optional `amount` parameter to `give_antimatter` and `take_antimatter`:** Currently, manual transfers either fill the recipient or completely empty the donor (`0 AM`), making it impossible for a ship to donate e.g. `30 AM` to jump-start a stranded Harvester without stranding itself. Allowing an optional `amount` (defaulting to full/empty) solves a major real logistics frustration for both human and AI players.
