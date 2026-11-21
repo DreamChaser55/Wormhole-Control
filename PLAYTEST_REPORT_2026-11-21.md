@@ -84,15 +84,6 @@ From `saves/ai_telemetry.jsonl` (campaign `babda014`, Turns 1–204):
 
 ## 5. Discovered Bugs & Engine Issues
 
-### [LOW] Bug 8: `continuous_resupply` Rejects Low-Fuel Harvesters That Can Still Reach Their Source Star
-
-- **Observed (Turn 120, `Harvester #72`):**
-  - At `25/300 AM` in `Epsilon Eridani [0, 2]`, issuing `continuous_resupply` from Star 15 (`[0, 0]`, only ~18 AM away) immediately failed with `insufficient_resources`. Yet issuing `move` to Star 15 + queued `continuous_resupply` succeeded and recovered `#72` completely!
-- **Suggested Fix:**
-  - Allow `continuous_resupply` to start its `returning_to_source` leg whenever current AM is sufficient to reach the harvest source (without requiring the full `60 AM` delivery reserve or delivery-leg buffer before harvesting!).
-
----
-
 ### [LOW] Bug 9: Minor Logging, Receipt & Observation Polish
 
 1. **`HexHexCoord` log typo:** `game.log` contained **239** occurrences of `HexHexCoord(q=..., r=...)` from `ReachWaypointOrder.check_completion_conditions` (`"Hex"` prefix concatenated onto `repr(HexCoord)`).

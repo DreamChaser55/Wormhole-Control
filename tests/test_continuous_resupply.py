@@ -123,3 +123,20 @@ def test_harvester_save_restore_without_replay(phase, manual):
     for _ in range(100):
         tick(game, loaded)
     assert game.galaxy.get_unit_by_id(target.id).antimatter_component.current_amount > 0
+
+
+def test_low_fuel_harvester_can_start_continuous_resupply_when_it_can_reach_source():
+    from antimatter_logistics import estimate_approach, buffered_fuel, source_range
+    game, actor, source, target, command = harvesting_scenario(amount=100, position=(4500, 0))
+    estimate = estimate_approach(actor, game.galaxy, source, approach_range=source_range(actor, True))
+    assert estimate is not None and estimate.fuel > 0
+    # Give enough fuel to reach the star, but strictly less than buffered_fuel(estimate.fuel).
+    actor.antimatter_component.current_amount = estimate.fuel + 1.0
+    assert actor.antimatter_component.current_amount < buffered_fuel(estimate.fuel)
+    assert issue(game, command).accepted
+    order = actor.commander_component.current_order
+    assert order is not None and order.status == OrderStatus.IN_PROGRESS
+    for _ in range(60):
+        tick(game, actor)
+    assert order.status == OrderStatus.IN_PROGRESS
+    assert actor.antimatter_component.current_amount > estimate.fuel + 1.0

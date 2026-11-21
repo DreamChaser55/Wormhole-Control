@@ -329,9 +329,10 @@ class ContinuousFuelDeliveryOrder(Order):
             return True
         radius = source_range(self.unit, harvesting)
         estimate = estimate_approach(self.unit, galaxy, target, approach_range=radius)
+        required = estimate.fuel if (estimate is not None and source) else (buffered_fuel(estimate.fuel) if estimate is not None else 0.0)
         if estimate is None:
             self.fail("path_unavailable")
-        elif self.unit.antimatter_component.current_amount < buffered_fuel(estimate.fuel):
+        elif self.unit.antimatter_component.current_amount < required:
             self.fail("insufficient_resources")
         elif not self.sub_orders:
             factory = MoveOrder.for_celestial_approach if harvesting else MoveOrder.for_unit_approach
