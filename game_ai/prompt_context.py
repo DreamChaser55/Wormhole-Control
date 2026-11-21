@@ -132,7 +132,7 @@ def _trim_quiet_quotes(observation):
                 or not order.get('active') or order.get('status') != 'in_progress' or unit['id'] in fuel_needs):
             continue
         progress = order.get('progress', {})
-        if (progress.get('phase') in {'stalled', 'blocked', 'waiting_for_contact', 'waiting_for_fuel'}
+        if (progress.get('phase') in {'stalled', 'blocked', 'waiting_for_contact', 'waiting_for_fuel', 'waiting_for_refinery'}
                 or progress.get('journey', {}).get('waiting_reason')):
             continue
         committed = {str(root.get('target_id')) for root in [order, *unit.get('queued_orders', [])]}

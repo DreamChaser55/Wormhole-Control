@@ -70,7 +70,8 @@ class MineOrder(Order):
             if self.unit.mining_component.get_cargo_fullness() >= 1.0:
                 self.status = OrderStatus.COMPLETED
                 self.unit.mining_component.clear_target()
-                logger.debug(f"MINE order completed: Cargo full for {format_unit_for_log(self.unit)}.")
+                if not isinstance(self.parent_order, MineOrder):
+                    logger.debug(f"MINE order completed: Cargo full for {format_unit_for_log(self.unit)}.")
 
 
 class UnloadResourcesOrder(Order):
@@ -160,10 +161,41 @@ class ContinuousMineOrder(Order):
 
     def __init__(self, unit: 'Unit', parameters: Dict[str, Any] = None, parent_order: Optional[Order] = None):
         super().__init__(unit, OrderType.CONTINUOUS_MINE, parameters, parent_order)
+        self._reported_refinery_wait = False
+
+    def _required_refinery_types(self, galaxy) -> list[str]:
+        from domain.celestials import MetalAsteroid, Comet
+        mining = self.unit.mining_component
+        target = galaxy.get_celestial_body_by_id(self.parameters.get('target_id')) if galaxy else None
+        required = []
+        if (mining and mining.raw_metal_cargo > 0) or isinstance(target, MetalAsteroid):
+            required.append('metal')
+        if (mining and mining.raw_crystal_cargo > 0) or isinstance(target, Comet):
+            required.append('crystal')
+        return required
+
+    def _enter_refinery_wait(self, galaxy_ref: 'Galaxy') -> None:
+        if self._reported_refinery_wait:
+            return
+        self._reported_refinery_wait = True
+        required = self._required_refinery_types(galaxy_ref)
+        needed = '/'.join(required) if required else 'compatible'
+        logger.debug(
+            "[%s] ContinuousMineOrder waiting: cargo full, no compatible reachable %s refinery found.",
+            format_unit_for_log(self.unit),
+            needed,
+        )
+        from turn_briefing import unit_event
+        unit_event(
+            self.unit,
+            'problem',
+            f"Mining cargo full; waiting for reachable {needed} refinery",
+            private=True,
+            once=True,
+        )
 
     def progress_view(self, galaxy, known_unit_ids=None):
         """Describe the real cycle and refinery choice without starting any work."""
-        from domain.celestials import MetalAsteroid, Comet
         mining = self.unit.mining_component
         if mining is None:
             return {'phase': 'blocked', 'waiting_reason': 'capability_unavailable'}
@@ -175,6 +207,7 @@ class ContinuousMineOrder(Order):
         if refinery is not None and known_unit_ids is not None and refinery.id not in known_unit_ids:
             refinery = None
         phase = self.status.name.lower()
+        waiting_reason = None
         if self.status in {OrderStatus.PENDING, OrderStatus.IN_PROGRESS}:
             if delivering:
                 component = (getattr(refinery, 'metal_refinery_component', None)
@@ -183,21 +216,23 @@ class ContinuousMineOrder(Order):
                             and self.unit.in_hex == refinery.in_hex
                             and distance(self.unit.position, refinery.position) <= component.unload_range)
                 phase = 'unloading' if in_range else 'delivering'
+            elif mining.get_cargo_fullness() >= 1.0 and not self.sub_orders:
+                phase = 'waiting_for_refinery'
+                waiting_reason = 'no_compatible_refinery'
             else:
                 in_range = (target is not None and self.unit.in_system == target.in_system
                             and self.unit.in_hex == target.in_hex
                             and distance(self.unit.position, target.position) <= mining.mining_range)
                 phase = 'mining' if in_range else 'approaching_mine'
-        required = []
-        if mining.raw_metal_cargo > 0 or isinstance(target, MetalAsteroid):
-            required.append('metal')
-        if mining.raw_crystal_cargo > 0 or isinstance(target, Comet):
-            required.append('crystal')
-        return {'phase': phase, 'raw_metal': mining.raw_metal_cargo,
-                'raw_crystal': mining.raw_crystal_cargo, 'cargo_capacity': mining.max_cargo,
-                'required_refinery_types': required,
-                'refinery_id': refinery.id if refinery else None,
-                'refinery_available': refinery is not None, 'refinery_selected': delivering}
+        required = self._required_refinery_types(galaxy)
+        result = {'phase': phase, 'raw_metal': mining.raw_metal_cargo,
+                  'raw_crystal': mining.raw_crystal_cargo, 'cargo_capacity': mining.max_cargo,
+                  'required_refinery_types': required,
+                  'refinery_id': refinery.id if refinery else None,
+                  'refinery_available': refinery is not None, 'refinery_selected': delivering}
+        if waiting_reason is not None:
+            result['waiting_reason'] = waiting_reason
+        return result
 
     def get_state_data(self):
         return dict(super().get_state_data(), **self.progress_view(self.unit.game.galaxy))
@@ -226,11 +261,12 @@ class ContinuousMineOrder(Order):
         if mining_comp.get_cargo_fullness() >= 1.0:
             refinery = self._find_closest_refinery(galaxy_ref)
             if not refinery:
-                self.fail("execution_failed")
-                logger.debug(f"[{format_unit_for_log(self.unit)}] CONTINUOUS_MINE order failed: Cargo full but no refinery found.")
+                self._enter_refinery_wait(galaxy_ref)
                 return
+            self._reported_refinery_wait = False
             self._spawn_unload_order(refinery.id)
         else:
+            self._reported_refinery_wait = False
             self._spawn_mine_order(target_id)
 
     def _spawn_mine_order(self, target_id: str) -> None:
@@ -311,11 +347,12 @@ class ContinuousMineOrder(Order):
             if mining_comp.get_cargo_fullness() >= 1.0:
                 refinery = self._find_closest_refinery(galaxy_ref)
                 if not refinery:
-                    self.fail("execution_failed")
-                    logger.debug(f"[{format_unit_for_log(self.unit)}] ContinuousMineOrder failed: cargo full, no refinery found.")
+                    self._enter_refinery_wait(galaxy_ref)
                     return
+                self._reported_refinery_wait = False
                 self._spawn_unload_order(refinery.id)
                 logger.debug(f"[{format_unit_for_log(self.unit)}] ContinuousMineOrder: cargo full. Heading to refinery {format_unit_for_log(refinery)}.")
             else:
+                self._reported_refinery_wait = False
                 self._spawn_mine_order(target_id)
                 logger.debug(f"[{format_unit_for_log(self.unit)}] ContinuousMineOrder: cargo has space. Heading back to mine target {target_id}.")

@@ -372,10 +372,12 @@ and the Small Mining Ship 145. Faster engines use more antimatter per movement
 turn.
 
 **Continuous Mine** fills cargo, unloads at a compatible refinery and repeats.
-Its root progress and sidebar identify approaching the mine, mining, delivering,
-or unloading; show raw cargo and capacity; and name the selected or next compatible
-reachable owned refinery. Missing-refinery guidance names the required metal/crystal
-type. Raw cargo becomes spendable only after delivery.
+Its root progress and sidebar identify approaching the mine, mining, waiting for
+a refinery, delivering, or unloading; show raw cargo and capacity; and name the
+selected or next compatible reachable owned refinery. When cargo fills before a
+compatible reachable refinery exists, the miner waits in `waiting_for_refinery`
+(naming the required metal/crystal type) and resumes delivery automatically once
+one becomes available. Raw cargo becomes spendable only after delivery.
 **Continuous Resupply** alternates harvesting at a star or hydrogen nebula and
 refueling automatically chosen owned ships or one manually chosen owned/allied depot. **Continuous Trade** travels between active Civilian Habitats in
 different sectors; payout scales with distance. A Trade Module requires Engines.

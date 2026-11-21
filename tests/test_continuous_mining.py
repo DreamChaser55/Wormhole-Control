@@ -171,9 +171,58 @@ def test_continuous_mining_no_refinery():
     
     unit.game.galaxy = galaxy
 
-    # Execute with full cargo -> should fail because no refinery found
+    # Execute with full cargo and no refinery -> waits in waiting_for_refinery until one appears
     mining_comp.raw_metal_cargo = 100.0
     order = ContinuousMineOrder(unit, {"target_id": 999})
     order.execute(galaxy)
-    
-    assert order.status == OrderStatus.FAILED
+
+    assert order.status == OrderStatus.IN_PROGRESS
+    assert not order.sub_orders
+    view = order.progress_view(galaxy)
+    assert view['phase'] == 'waiting_for_refinery'
+    assert view['waiting_reason'] == 'no_compatible_refinery'
+    assert view['required_refinery_types'] == ['metal']
+
+    # Once a compatible refinery is built, the next update automatically starts unloading
+    refinery_unit = ComponentUnit()
+    refinery_unit.id = 1005
+    refinery_unit.owner = player
+    refinery_unit.in_system = "Sol"
+    refinery_unit.in_hex = (0, 0)
+    refinery_unit.position = Position(100, 0)
+    refinery_unit.add_component(MetalRefineryComponent(refinery_unit))
+    mock_hex.units.append(refinery_unit)
+
+    order.update(galaxy)
+    assert order.status == OrderStatus.IN_PROGRESS
+    assert len(order.sub_orders) == 1
+    assert order.sub_orders[0].order_type == OrderType.UNLOAD_RESOURCES
+    assert order.sub_orders[0].parameters["target_unit_id"] == 1005
+
+
+def test_mine_order_cargo_full_logs_only_once_for_nested_approach(caplog):
+    import logging
+    from unit_orders.mining import MineOrder
+    player = ComponentPlayer()
+    unit = ComponentUnit()
+    unit.owner = player
+    unit.in_system = "Sol"
+    unit.in_hex = (0, 0)
+    unit.position = Position(500, 0)
+    mining_comp = MiningComponent(unit, max_cargo=100.0, mining_range=100.0)
+    unit.add_component(mining_comp)
+    asteroid = MetalAsteroid((0, 0), "Sol")
+    asteroid.position = Position(0, 0)
+    asteroid.id = 999
+    galaxy = MagicMock()
+    galaxy.get_celestial_body_by_id.return_value = asteroid
+    outer = MineOrder(unit, {"target_id": 999})
+    outer.status = OrderStatus.IN_PROGRESS
+    inner = MineOrder(unit, {"target_id": 999}, parent_order=outer)
+    inner.status = OrderStatus.IN_PROGRESS
+    outer.add_sub_order(inner)
+    mining_comp.raw_metal_cargo = 100.0
+    with caplog.at_level(logging.DEBUG, logger="unit_orders.mining"):
+        outer.update(galaxy)
+    matches = [r.message for r in caplog.records if "MINE order completed: Cargo full" in r.message]
+    assert len(matches) == 1

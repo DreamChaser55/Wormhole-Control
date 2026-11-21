@@ -84,19 +84,6 @@ From `saves/ai_telemetry.jsonl` (campaign `babda014`, Turns 1–204):
 
 ## 5. Discovered Bugs & Engine Issues
 
-### [HIGH] Bug 3: `ContinuousMineOrder` Fails With Opaque `execution_failed` When No Refinery Exists Yet (Plus Duplicate Logs)
-
-- **Observed (Turn 58, `Small Mining Ship #83`):**
-  - `#83` filled its `100/100` raw crystal cargo at Comet 19 four turns before Constructor `#70` finished building Crystal Refinery `#85` in the exact same sector.
-  - Instead of waiting for a compatible refinery (as `continuous_resupply` waits for demand) or reporting a specific `no_refinery_available` code, `ContinuousMineOrder` terminated with generic `execution_failed` (`Continuous Mine failed: execution failed`).
-  - `game.log` also printed `"MINE order completed: Cargo full for ..."` **twice** every single cycle (57 occurrences across the match).
-- **Root Cause (`unit_orders/mining.py:228-231` and `check_completion_conditions`):**
-  - When cargo is full and `_find_closest_refinery()` returns `None`, `ContinuousMineOrder` calls `self.fail("execution_failed")` instead of entering a `waiting_for_refinery` phase (or using a distinct failure code).
-- **Suggested Fix:**
-  - Either wait in a `waiting_for_refinery` phase (rechecking each owner turn and surfacing `required_refinery_types` in `progress` & briefing once), or if failing is intentional, use a specific failure code (`no_compatible_refinery`) instead of `execution_failed`. Deduplicate the double `"MINE order completed: Cargo full"` log line.
-
----
-
 ### [MEDIUM] Bug 4: `TakeAntimatterOrder` / Unit Approach Does Not Refresh Moving Target Coordinates Mid-Flight
 
 - **Observed (Turns 75–91, `Colonizer #71` & `Harvester #72`):**
