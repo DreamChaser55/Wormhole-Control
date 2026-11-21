@@ -84,17 +84,6 @@ From `saves/ai_telemetry.jsonl` (campaign `babda014`, Turns 1–204):
 
 ## 5. Discovered Bugs & Engine Issues
 
-### [MEDIUM] Bug 7: Flat Mitigation Makes Bomber Wings Deal Zero Damage to Basic Patrol Escorts Without Feedback
-
-- **Observed (Turns 180–186, `Betelgeuse [1, 3]`):**
-  - `Bomber Wing #95` (5-damage Beam turret) and `Escort Carrier #94` (precision-targeting `Weapons`) fired 7+ shots at Luna's standard `Patrol Escort #102` (`6.0` Armor / `6.0` Shields / `6.0` PD), dealing **0 damage every single shot** (`#102` stayed at `100/100 HP` until Beam Frigate Alpha `#86` arrived with 10-damage turrets on Turn 201!).
-  - Furthermore, `turn_summary` reported `[combat] Attacked by Bomber Wing (Antigravity) subj=Patrol Escort#102 amt=0.0` without clarifying that damage was fully negated by defenses (and Luna's memory noted *"no damage amount reported"*).
-- **Suggested Fix:**
-  - Review Bomber Wing base turret damage (5 dmg vs. 6.0 shields/armor on even the cheapest medium escort makes unbuffed Bomber Wings completely ineffective against almost every Medium+ combat ship without `Attack Run`'s 2× bonus — and `Escort Carrier` does **not** even equip `Attack Run`!). Either raise Bomber Wing per-shot damage (e.g., 8–10 with longer cooldown) or introduce a minimum chip-damage / percentage-mitigation floor.
-  - Surface `"deflected / 0 damage"` explicitly in combat briefings so human and AI players know when a matchup cannot penetrate defenses.
-
----
-
 ### [LOW] Bug 8: `continuous_resupply` Rejects Low-Fuel Harvesters That Can Still Reach Their Source Star
 
 - **Observed (Turn 120, `Harvester #72`):**

@@ -266,6 +266,24 @@ def test_homeworld_sector_not_reported_newly_explored_and_simultaneous_sectors_a
     assert 'Newly explored' in discoveries[0]['detail'] and 'sectors:' in discoveries[0]['detail']
 
 
+def test_deflected_zero_damage_attack_is_explicitly_labeled_in_briefing(monkeypatch):
+    from tactical_abilities import combat_hit
+    from unit_components.defenses import Defenses
+    from unit_components.enums import TurretType
+    game = setup()
+    defender = ship(game, name="Escort", owner=0)
+    defender.add_component(Defenses(defender, shields=20.0))
+    attacker = ship(game, name="Bomber", owner=1)
+    attacker.position = defender.position
+    initialize_campaign(game)
+    begin_window(game, defender.owner)
+    monkeypatch.setattr('unit_components.defenses.random.uniform', lambda a, b: b)
+    combat_hit(defender, 5, TurretType.BEAM, attacker=attacker)
+    finish_window(game, defender.owner)
+    entries = summary_view(defender.owner)['entries']
+    assert any('deflected; 0 damage' in e['detail'] for e in entries)
+
+
 def test_anonymous_presence_has_no_identity_and_vanishing_is_not_a_loss():
     game = setup()
     observer = ship(game)

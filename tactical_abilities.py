@@ -427,11 +427,17 @@ def process_pulls(galaxy, player, round_number):
 def combat_hit(target, amount, damage_type=None, *, component_type=None, is_splash=False, attacker=None):
     """Route once, then retain each recipient's existing mitigation and spillover rules."""
     from strikecraft_abilities import incoming_multiplier
-    from turn_briefing import unit_event
-    unit_event(target, "combat", "Attacked", actor=attacker)
+    from turn_briefing import unit_event, snapshot_unit_observers, record_observed_unit_event
+    observers = snapshot_unit_observers(target, actor=attacker)
+    hull_before = target.current_hit_points
+    comp_before = None
+    if component_type:
+        comp = target.get_component(component_type)
+        comp_before = comp.current_hit_points if comp else 0
     amount = max(0, int(amount * incoming_multiplier(target)))
     galaxy = getattr(target, 'in_galaxy', None)
     link = incoming_link(target, 'guardian_link', galaxy) if galaxy and amount else None
+    guardian_before = link[0].current_hit_points if link else None
     if link:
         guardian, inst = link
         redirected = min(math.floor(amount * inst.redirect_fraction), inst.redirect_cap)
@@ -455,6 +461,14 @@ def combat_hit(target, amount, damage_type=None, *, component_type=None, is_spla
                 target.take_damage(spillover)
     else:
         target.take_damage(amount, damage_type, is_splash=is_splash)
+    dealt = max(0, hull_before - target.current_hit_points)
+    if comp_before is not None:
+        comp_after = target.get_component(component_type)
+        dealt += max(0, comp_before - (comp_after.current_hit_points if comp_after else 0))
+    if link and guardian_before is not None:
+        dealt += max(0, guardian_before - link[0].current_hit_points)
+    detail = "Attacked" if dealt > 0 else "Attacked (deflected; 0 damage)"
+    record_observed_unit_event(target, "combat", detail, observers, actor=attacker)
 
 
 def catalyst_effects(unit, galaxy):

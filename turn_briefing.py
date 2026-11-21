@@ -160,6 +160,44 @@ def record(game, player, category, detail, *, subject=None, subject_id=None,
     _bound(state)
 
 
+def snapshot_unit_observers(unit, *, actor=None):
+    """Capture visible observers before combat damage/destruction mutates sensors."""
+    from visibility import VisibilityService
+    game = _game(unit)
+    if not _live(game):
+        return ()
+    observers = []
+    for player in getattr(game, "players", ()):
+        state = _state(player)
+        if state is None or not state.collecting:
+            continue
+        snapshot = VisibilityService.compute(game.galaxy, player, record_intel=False)
+        if not _visible(snapshot, unit):
+            continue
+        actor_visible = bool(actor is not None and _visible(snapshot, actor))
+        observers.append((player, actor_visible))
+    return tuple(observers)
+
+
+def record_observed_unit_event(unit, category, detail, observers, *, amount=0, actor=None, once=False):
+    """Record a briefing event using pre-mutation observer visibility snapshots."""
+    game = _game(unit)
+    if not _live(game) or not observers:
+        return
+    owner = unit.owner if category in {'combat', 'hazard', 'loss', 'capture'} else None
+    for player, actor_visible in observers:
+        public_detail = detail
+        if actor is not None:
+            if actor_visible:
+                actor_owner = getattr(actor, "owner", None)
+                actor_label = f"{actor.name} ({actor_owner.name})" if actor_owner else actor.name
+                public_detail += f" by {actor_label}"
+            else:
+                public_detail += " by an unknown attacker"
+        record(game, player, category, public_detail, subject=unit, amount=amount, once=once,
+               unit_owner=owner)
+
+
 def unit_event(unit, category, detail, *, amount=0, private=False, allies_only=False, component_type=None, actor=None, once=False, new_owner=None):
     """Snapshot disclosure before mutation; never look up a historical target later."""
     from visibility import VisibilityService

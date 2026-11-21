@@ -150,7 +150,7 @@ def test_inhibitor_catalog_budget_field_fuel_and_persistence(
 
 @pytest.mark.parametrize('key,speed,engine_hull,price,total_hull,weapon_range', [
     ('FIGHTER_WING', 300, 3.0, 260, 7.0, 50),
-    ('BOMBER_WING', 200, 2.0, 259, 6.966666666666667, 150),
+    ('BOMBER_WING', 200, 2.0, 260, 7.0, 120),
     ('INTERCEPTOR_WING', 380, 3.8, 259, 6.966666666666666, 50),
     ('LONG_RANGE_BOMBER_WING', 145, 1.45, 260, 6.997222222222222, 292.5),
     ('RECON_WING', 330, 3.3, 259, 6.966666666666667, 50),
