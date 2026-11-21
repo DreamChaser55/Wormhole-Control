@@ -84,18 +84,6 @@ From `saves/ai_telemetry.jsonl` (campaign `babda014`, Turns 1–204):
 
 ## 5. Discovered Bugs & Engine Issues
 
-### [MEDIUM] Bug 5: Enemy `turn_summary` Discloses Exact Internal Component Damage From Wormhole Instability
-
-- **Observed (Turn 178, `Escort Carrier #94`):**
-  - When our `Escort Carrier #94` crossed Wormhole 68 into Betelgeuse `[1, 3]`, it took **24 component damage to Defenses** while its hull stayed `100/100 HP`.
-  - Yet Luna's Turn 178 `memory.md` recorded: *"Enemy Escort Carrier 94 sighted at Betelgeuse wormhole sector [1,3]; took 24 HP of wormhole-instability damage."*
-- **Root Cause (`turn_briefing.py:163-199`):**
-  - `unit_event()` records `hazard` events for every player with visibility of the unit whenever `private=False`. While `component_is_public` hides covert Intelligence components, it still exposes exact component HP damage amounts on public components like `Defenses` to enemy observers, even though enemy component HP is otherwise hidden in observations.
-- **Suggested Fix:**
-  - Mark internal component-damage hazard/wormhole events as `private=True` (owner/allies only), or omit exact component damage numbers for enemy observers (reporting only hull damage or component destruction).
-
----
-
 ### [MEDIUM] Bug 6: Homeworld Sector Reported as `"Newly explored sector"` on Turn 12 & Unaggregated Discovery Entries
 
 - **Observed (Turn 13):**

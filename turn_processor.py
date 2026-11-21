@@ -721,7 +721,7 @@ class TurnProcessor:
                                      if hazard.amount_basis == 'fraction_of_current_antimatter'
                                      else min(amount, storage.current_amount))
                             if drain > 0 and storage.consume(drain):
-                                unit_event(unit, 'hazard', f'{hazard.kind.title()} AM drain', amount=drain)
+                                unit_event(unit, 'hazard', f'{hazard.kind.title()} AM drain', amount=drain, private=True)
                         elif hazard.target == 'random_non_destroyed_component':
                             components = unit.components.values()
                             candidates = [c for c in components if not c.is_destroyed]

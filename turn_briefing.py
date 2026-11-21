@@ -160,7 +160,7 @@ def record(game, player, category, detail, *, subject=None, subject_id=None,
     _bound(state)
 
 
-def unit_event(unit, category, detail, *, amount=0, private=False, component_type=None, actor=None, once=False, new_owner=None):
+def unit_event(unit, category, detail, *, amount=0, private=False, allies_only=False, component_type=None, actor=None, once=False, new_owner=None):
     """Snapshot disclosure before mutation; never look up a historical target later."""
     from visibility import VisibilityService
     from component_visibility import component_is_public
@@ -172,6 +172,8 @@ def unit_event(unit, category, detail, *, amount=0, private=False, component_typ
         if state is None or not state.collecting:
             continue
         if private and player is not unit.owner:
+            continue
+        if allies_only and player.is_enemy_of(unit.owner):
             continue
         snapshot = VisibilityService.compute(game.galaxy, player, record_intel=False)
         if not _visible(snapshot, unit):

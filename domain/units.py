@@ -475,7 +475,7 @@ class Unit(GameObject):
         from turn_briefing import unit_event
         if amount > 0:
             unit_event(self, "hazard" if cause else "combat", f"{cause + ': ' if cause else ''}{component.DISPLAY_NAME} damage (HP)",
-                       amount=min(amount, component.current_hit_points), component_type=component_type)
+                       amount=min(amount, component.current_hit_points), component_type=component_type, allies_only=bool(cause))
         component.current_hit_points -= amount
         spillover = 0
         

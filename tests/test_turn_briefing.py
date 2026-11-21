@@ -217,6 +217,31 @@ def test_hidden_attacker_and_covert_equipment_do_not_leak():
     assert len(own.owner.briefing.pending) == before
 
 
+def test_hazard_component_damage_does_not_leak_to_enemy_briefing():
+    from unit_components.defenses import Defenses
+    game = setup(3)
+    game.players[2].team_id = game.players[0].team_id
+    carrier = ship(game, name="Carrier", owner=0)
+    defenses = Defenses(carrier, shields=10)
+    carrier.add_component(defenses)
+    defenses.max_hit_points = 50
+    defenses.current_hit_points = 50
+    enemy_observer = ship(game, name="Observer", owner=1)
+    enemy_observer.position = carrier.position
+    ally_observer = ship(game, name="Ally", owner=2)
+    ally_observer.position = carrier.position
+    initialize_campaign(game)
+    for player in game.players:
+        begin_window(game, player)
+    carrier.take_component_damage(Defenses, 24, cause="wormhole instability")
+    assert any("Defenses damage" in e.detail and e.amount == 24 for e in game.players[0].briefing.pending)
+    assert any("Defenses damage" in e.detail and e.amount == 24 for e in game.players[2].briefing.pending)
+    assert not any("Defenses damage" in e.detail for e in game.players[1].briefing.pending)
+    # Component destruction remains observable for public components.
+    carrier.take_component_damage(Defenses, 100, cause="wormhole instability")
+    assert any("Defenses destroyed" in e.detail for e in game.players[1].briefing.pending)
+
+
 def test_anonymous_presence_has_no_identity_and_vanishing_is_not_a_loss():
     game = setup()
     observer = ship(game)
