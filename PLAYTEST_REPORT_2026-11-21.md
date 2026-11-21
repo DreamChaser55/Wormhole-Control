@@ -84,17 +84,6 @@ From `saves/ai_telemetry.jsonl` (campaign `babda014`, Turns 1–204):
 
 ## 5. Discovered Bugs & Engine Issues
 
-### [MEDIUM] Bug 6: Homeworld Sector Reported as `"Newly explored sector"` on Turn 12 & Unaggregated Discovery Entries
-
-- **Observed (Turn 13):**
-  - When our first `Scout #77` (with `long_range_hexes: 1`) completed at our homeworld `Epsilon Eridani [0, 2]`, `turn_summary` fired **7 separate** `[discovery] Newly explored sector` entries — including **`Epsilon Eridani [0, 2]`**, our own homeworld sector that we had owned and occupied since Turn 1!
-- **Root Cause (`turn_briefing.py:239-241`):**
-  - `_discoveries()` derives explored sectors from `player.sector_intel`, which is populated by long-range hex sensors rather than starting colony/unit presence. Because starter units have `long_range_hexes == 0`, the homeworld sector wasn't in `state.seen` at campaign start.
-- **Suggested Fix:**
-  - Record sectors containing owned colonies/units into `player.sector_intel` (or baseline `state.seen`) during campaign initialization so your homeworld sector is never reported as "newly explored" mid-game. Consider optionally aggregating multiple simultaneous sector discoveries per system in briefings.
-
----
-
 ### [MEDIUM] Bug 7: Flat Mitigation Makes Bomber Wings Deal Zero Damage to Basic Patrol Escorts Without Feedback
 
 - **Observed (Turns 180–186, `Betelgeuse [1, 3]`):**

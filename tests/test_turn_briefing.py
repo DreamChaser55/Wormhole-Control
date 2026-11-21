@@ -242,6 +242,30 @@ def test_hazard_component_damage_does_not_leak_to_enemy_briefing():
     assert any("Defenses destroyed" in e.detail for e in game.players[1].briefing.pending)
 
 
+def test_homeworld_sector_not_reported_newly_explored_and_simultaneous_sectors_aggregate():
+    from constants import PlanetType
+    from domain.celestials import Planet
+    game = setup()
+    sector_cls = type(game.galaxy.systems['Sol'].hexes[(0, 0)])
+    game.galaxy.systems['Sol'].hexes[(0, 1)] = sector_cls(0, 1, 'Sol')
+    owner = game.players[0]
+    home = Planet((0, 0), 'Sol', planet_type=PlanetType.TERRAN)
+    home.owner = owner
+    game.galaxy.systems['Sol'].add_celestial_body(home)
+    starter = ship(game, name="Shipyard", owner=0, sector=(0, 0))
+    starter.sensors_component.long_range_hexes = 0
+    initialize_campaign(game)
+    begin_window(game, owner)
+    scout = ship(game, name="Scout", owner=0, sector=(0, 0))
+    scout.sensors_component.long_range_hexes = 1
+    refresh_discoveries(game)
+    finish_window(game, owner)
+    discoveries = [e for e in summary_view(owner)['entries'] if e['category'] == 'discovery']
+    assert len(discoveries) == 1
+    assert '[0, 0]' not in discoveries[0]['detail']
+    assert 'Newly explored' in discoveries[0]['detail'] and 'sectors:' in discoveries[0]['detail']
+
+
 def test_anonymous_presence_has_no_identity_and_vanishing_is_not_a_loss():
     game = setup()
     observer = ship(game)

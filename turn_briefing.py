@@ -226,6 +226,37 @@ def economy_snapshot(game, player):
     return result
 
 
+def _owned_colony_sectors(game, player):
+    from planetary_intel import is_colony_body
+    galaxy = getattr(game, "galaxy", None)
+    if galaxy is None:
+        return set()
+    return {
+        (system_name, coord)
+        for system_name, system in galaxy.systems.items()
+        for coord, sector in system.hexes.items()
+        if any(is_colony_body(body) and body.owner is player for body in sector.celestial_bodies)
+    }
+
+
+def _starting_known_sector_keys(game, player):
+    from domain.players import are_allies
+    from planetary_intel import is_colony_body
+    galaxy = getattr(game, "galaxy", None)
+    if galaxy is None:
+        return set()
+    keys = set()
+    for system_name, system in galaxy.systems.items():
+        for coord, sector in system.hexes.items():
+            if any(are_allies(getattr(unit, "owner", None), player) and unit.current_hit_points > 0
+                   for unit in sector.units) or any(
+                is_colony_body(body) and are_allies(getattr(body, "owner", None), player)
+                for body in sector.celestial_bodies
+            ):
+                keys.add(f"sector:{system_name}:{coord[0]}:{coord[1]}")
+    return keys
+
+
 def _discoveries(game, player):
     from visibility import VisibilityService, is_minefield_visible
     from game_ai.intelligence import discovered_enemy_agent_hosts
@@ -238,7 +269,10 @@ def _discoveries(game, player):
     for system_name, coord in sorted(snapshot.presence_hexes):
         found[f"presence:{system_name}:{coord[0]}:{coord[1]}"] = (
             "discovery", "New anonymous radar presence", None, system_name, coord)
+    owned_colony_sectors = _owned_colony_sectors(game, player)
     for system_name, coord in sorted(player.sector_intel):
+        if (system_name, coord) in owned_colony_sectors:
+            continue
         found[f"sector:{system_name}:{coord[0]}:{coord[1]}"] = (
             "discovery", "Newly explored sector", None, system_name, coord)
     for system in game.galaxy.systems.values():
@@ -262,10 +296,24 @@ def refresh_discoveries(game):
         found = _discoveries(game, player)
         known = set(state.seen.get("known", []))
         previous_presence = set(state.seen.get("presence", []))
+        new_sectors_by_system: dict[str, list[tuple[int, int]]] = {}
         for key, (category, detail, subject, system_name, coord) in found.items():
-            if key not in (previous_presence if key.startswith("presence:") else known):
+            if key in (previous_presence if key.startswith("presence:") else known):
+                continue
+            if key.startswith("sector:") and coord is not None:
+                new_sectors_by_system.setdefault(system_name, []).append(tuple(coord))
+            else:
                 record(game, player, category, detail, subject=subject,
                        system_name=system_name, hex_coord=coord, once=not key.startswith("spy:"))
+        for system_name, coords in new_sectors_by_system.items():
+            if len(coords) == 1:
+                record(game, player, "discovery", "Newly explored sector",
+                       system_name=system_name, hex_coord=coords[0], once=True)
+            else:
+                preview = ", ".join(f"[{c[0]}, {c[1]}]" for c in coords[:8])
+                suffix = f" (+{len(coords) - 8} more)" if len(coords) > 8 else ""
+                record(game, player, "discovery", f"Newly explored {len(coords)} sectors: {preview}{suffix}",
+                       system_name=system_name, hex_coord=None, once=True)
         state.seen = {"known": sorted(known | {k for k in found if not k.startswith("presence:")}),
                       "presence": sorted(k for k in found if k.startswith("presence:"))}
 
@@ -275,7 +323,8 @@ def initialize_campaign(game):
         state = player.briefing = BriefingState(initialized=True, collecting=True)
         state.baseline = economy_snapshot(game, player)
         found = _discoveries(game, player)
-        state.seen = {"known": sorted(k for k in found if not k.startswith("presence:")),
+        known = {k for k in found if not k.startswith("presence:")} | _starting_known_sector_keys(game, player)
+        state.seen = {"known": sorted(known),
                       "presence": sorted(k for k in found if k.startswith("presence:"))}
     finish_window(game, game.players[game.current_player_index])
 
@@ -302,7 +351,8 @@ def begin_window(game, player):
     refresh_discoveries(game)
     if not state.initialized:
         found = _discoveries(game, player)
-        state.seen = {"known": sorted(k for k in found if not k.startswith("presence:")),
+        known = {k for k in found if not k.startswith("presence:")} | _starting_known_sector_keys(game, player)
+        state.seen = {"known": sorted(known),
                       "presence": sorted(k for k in found if k.startswith("presence:"))}
     if state.collecting:
         state.pending, state.omitted_count = [], 0
