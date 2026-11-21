@@ -660,7 +660,7 @@ report mandatory returns and endurance losses.
 | Patrol Cutter | Combat | TINY ship | 9.88/10 | 396 | 15 | 5 | 6 | 0.10 | Designed for local patrol. Local-sector operations; Tiny craft can travel aboard a hangar transport. |
 | Missile Platform | Combat | SMALL station | 12.40/25 | 622 | 25 | 7 | 9 | 0.12 | Designed for local missile defense. Stationary installation. |
 | Kinetic Emplacement | Combat | SMALL station | 19.93/25 | 848 | 33 | 10 | 11 | 0.20 | Compact armored defense station with an extended-range mass driver. |
-| System Patrol Craft | Combat | SMALL ship | 23.20/25 | 946 | 36 | 12 | 12 | 0.23 | Affordable armed patrol craft for single-system policing and convoy protection. Basic Hyperdrive allows intra-system travel only. |
+| System Defense Craft | Combat | SMALL ship | 23.20/25 | 946 | 36 | 12 | 12 | 0.23 | Affordable armed defense craft for single-system policing and convoy protection. Basic Hyperdrive allows intra-system travel only. |
 | Interceptor | Combat | SMALL ship | 24.20/25 | 976 | 37 | 13 | 12 | 0.24 | Designed for strikecraft interception. Inter-system travel. |
 | Patrol Escort | Combat | MEDIUM ship | 33.00/50 | 1490 | 58 | 17 | 17 | 0.33 | Economical armed escort for patrol and convoy protection. Inter-system travel. |
 | Beam Redoubt | Combat | MEDIUM station | 40.82/50 | 1725 | 66 | 21 | 18 | 0.41 | Shielded defensive station with a beam battery and a long-range lance. |

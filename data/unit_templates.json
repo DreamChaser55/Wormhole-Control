@@ -7976,8 +7976,8 @@
     "has_titan_component": false,
     "titan_hull_cost": 0.0
   },
-  "SYSTEM_PATROL_CRAFT": {
-    "name": "System Patrol Craft",
+  "SYSTEM_DEFENSE_CRAFT": {
+    "name": "System Defense Craft",
     "hull_size": "SMALL",
     "hull_points": 50,
     "build_time": 12,
@@ -8075,7 +8075,7 @@
       "intra-system policing",
       "convoy protection"
     ],
-    "description": "Affordable armed patrol craft for single-system policing and convoy protection. Basic Hyperdrive allows intra-system travel only.",
+    "description": "Affordable armed defense craft for single-system policing and convoy protection. Basic Hyperdrive allows intra-system travel only.",
     "has_troop_transport_component": false,
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
