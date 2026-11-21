@@ -84,20 +84,6 @@ From `saves/ai_telemetry.jsonl` (campaign `babda014`, Turns 1–204):
 
 ## 5. Discovered Bugs & Engine Issues
 
-### [HIGH] Bug 2: `Commander.start_next_order()` Leaves Synchronously Terminated Orders Stuck in `current_order`
-
-- **Observed (4 independent reproductions):**
-  1. **Turn 96 (`Harvester #72`):** `give_antimatter` emptied `#72` to `0/300 AM` and promoted queued `continuous_resupply`, which synchronously failed (`insufficient_resources`, logged `ev#21`). Yet `#72`'s observation still showed `current_order: {type: "continuous_resupply", status: "failed", active: false, cancellable: false, progress: {phase: "harvesting"}}` and `standing_order.suspended: true` until manually cleared via `clear_explicit_orders`.
-  2. **Turn 205 (`Harvester #99`):** Identical reproduction — `give_antimatter` failed on jump fuel, promoted `continuous_resupply` which synchronously failed (`insufficient_resources`), and left dead `continuous_resupply` stuck in `current_order`.
-  3. **Turn 100 (`Beam Frigate Alpha #86`):** `enter_gas_giant` and queued `leave_gas_giant` both completed on Turn 100, leaving `current_order: {type: "leave_gas_giant", status: "completed", active: false}` with `queued_orders: ["move"]` stalled for an extra turn before promoting on Turn 101.
-  4. **Turn 147 (`Shipyard #88`) & Turn 181 (`Troop Transport #103`):** `dismantle_unit(completed)` and `recruit_troops` lingered in `current_order` for 1 turn, delaying `Idle after finishing orders` until the next turn.
-- **Root Cause (`unit_components/commander.py:712-742`):**
-  - `Commander.start_next_order()` executes the popped order (`execute()` / `update()`), but **never checks whether the newly promoted order terminated synchronously** (`status in {COMPLETED, FAILED, CANCELLED}`). It therefore stays in `self.current_order` until a future `Commander.update()` releases it (or indefinitely if idle/stalled).
-- **Suggested Fix:**
-  - Loop in `start_next_order()` (bounded by queue length): whenever a promoted order finishes synchronously (`COMPLETED`, `FAILED`, or `CANCELLED`), call `self._release_current_order()` immediately and continue promoting the next eligible queued order (or resume standing stance if queue is empty).
-
----
-
 ### [HIGH] Bug 3: `ContinuousMineOrder` Fails With Opaque `execution_failed` When No Refinery Exists Yet (Plus Duplicate Logs)
 
 - **Observed (Turn 58, `Small Mining Ship #83`):**

@@ -179,11 +179,19 @@ class TurnProcessor:
             process_support(self.game, current_player)
 
             process_wing_service(self.game, current_player)
+            self._settle_finished_orders(current_player)
             reconcile_links(self.game.galaxy)
             self._cancel_hidden_attacks()
             refresh(self.game)
             revalidate_colony_orders(self.game)
             logger.debug(f"Finished Turn {turn_num} processing for {current_player.name}.")
+
+    def _settle_finished_orders(self, current_player):
+        """Release explicit roots finished by post-update services and promote queued work."""
+        from campaign_graph import iter_units
+        for unit, _ in iter_units(self.game.galaxy):
+            if unit.owner == current_player and unit.current_hit_points > 0 and unit.commander_component:
+                unit.commander_component.settle_finished_order()
 
     def _cancel_hidden_attacks(self):
         """Settle lost contacts for every owner without running their next orders."""
