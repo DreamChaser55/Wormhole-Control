@@ -181,3 +181,77 @@ def test_dialog_emits_selected_policy_and_departure_threshold(pygame_context, mo
     finally:
         window.close()
         gui.manager.clear_and_reset()
+
+
+def test_service_urgency_prioritizes_stalled_construction_over_nearly_full_constructor():
+    from antimatter_logistics import service_fuel_horizon
+    from unit_components.constructor import Constructor
+    game, actor, source, depot, tender, _ = scenario(amount=150)
+    tender.antimatter_component.current_amount = 150
+    depot.antimatter_component.current_amount = 200
+    builder_near = ship(game, 'Constructor', hull=HullSize.MEDIUM)
+    builder_near.position = Position(1050, 0)
+    builder_near.add_component(AntimatterStorage(builder_near, max_capacity=150))
+    builder_near.antimatter_component.current_amount = 148
+    builder_near.add_component(Constructor(builder_near))
+    builder_near.constructor_component.current_construction_target = {'template_name': 'SCOUT'}
+    shipyard_stalled = ship(game, 'Shipyard', hull=HullSize.SMALL)
+    shipyard_stalled.position = Position(2500, 0)
+    shipyard_stalled.add_component(AntimatterStorage(shipyard_stalled, max_capacity=80))
+    shipyard_stalled.antimatter_component.current_amount = 1.0
+    shipyard_stalled.add_component(Constructor(shipyard_stalled))
+    shipyard_stalled.constructor_component.current_construction_target = {'template_name': 'PATROL_ESCORT'}
+    assert service_fuel_horizon(shipyard_stalled) == 0.0
+    assert service_fuel_horizon(builder_near) == pytest.approx(74.0)
+    chosen = automatic_recipient(actor, source, game.galaxy, harvesting=True, priority='service_urgency')
+    assert chosen is shipyard_stalled
+
+
+def test_service_urgency_includes_strikecraft_bay_production_and_replenishment():
+    from antimatter_logistics import service_fuel_horizon
+    from unit_components.strikecraft import StrikecraftBayComponent, StrikecraftWingComponent
+    game, actor, source, depot, tender, _ = scenario(amount=150)
+    tender.antimatter_component.current_amount = 150
+    carrier = ship(game, 'Carrier', hull=HullSize.LARGE)
+    carrier.position = Position(2200, 0)
+    carrier.add_component(AntimatterStorage(carrier, max_capacity=200))
+    carrier.antimatter_component.current_amount = 4.0
+    bay = StrikecraftBayComponent(carrier, max_slots=2)
+    carrier.add_component(bay)
+    bay.construction_slot_index = 0
+    assert service_fuel_horizon(carrier) == pytest.approx(2.0)
+    assert automatic_recipient(actor, source, game.galaxy, harvesting=True, priority='service_urgency') is carrier
+    bay.construction_slot_index = None
+    wing = ship(game, 'Wing', hull=HullSize.STRIKECRAFT_WING)
+    wing.add_component(StrikecraftWingComponent(wing))
+    wing.current_hit_points = 20
+    bay.docked_units.append(wing)
+    bay.replenishing_unit = wing
+    carrier.antimatter_component.current_amount = 1.0
+    assert service_fuel_horizon(carrier) == 0.0
+
+
+def test_service_urgency_prioritizes_movement_stalled_ship_and_skips_trivial_escort_topoff():
+    from antimatter_logistics import service_fuel_horizon
+    from unit_orders.movement import MoveOrder
+    game, actor, source, depot, tender, _ = scenario(amount=150)
+    tender.antimatter_component.current_amount = 150
+    depot.antimatter_component.current_amount = 200
+    escort = ship(game, 'Escort', hull=HullSize.MEDIUM)
+    escort.position = Position(1020, 0)
+    escort.add_component(AntimatterStorage(escort, max_capacity=100))
+    escort.antimatter_component.current_amount = 99.0
+    assert automatic_recipient(actor, source, game.galaxy, harvesting=True, priority='service_urgency') is None
+    assert automatic_recipient(actor, source, game.galaxy, harvesting=True, priority='nearest') is None
+    stalled = ship(game, 'Colonizer', hull=HullSize.MEDIUM)
+    stalled.position = Position(2000, 0)
+    stalled.add_component(AntimatterStorage(stalled, max_capacity=150))
+    stalled.antimatter_component.current_amount = 0.2
+    stalled.add_component(Engines(stalled, speed=175))
+    stalled.commander_component.add_order(MoveOrder(stalled, {
+        'destination_system_name': 'Sol',
+        'destination_hex_coord': (0, 0),
+        'destination_position': Position(3500, 0),
+    }))
+    assert service_fuel_horizon(stalled) == 0.0
+    assert automatic_recipient(actor, source, game.galaxy, harvesting=True, priority='service_urgency') is stalled

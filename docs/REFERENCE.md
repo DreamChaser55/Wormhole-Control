@@ -311,7 +311,10 @@ For unattended deliveries, harvesters and transports both offer **Automatic** an
 the actor and the transport source. Proximity uses local distance, sector distance,
 and wormhole distance, with unit ID breaking ties. Unreachable or unaffordable
 recipients are skipped. Recipients must be alive, deployed, outside gas-giant
-atmospheres, and have functional storage with spare capacity. The chosen recipient
+atmospheres, and have functional storage with spare capacity. Non-urgent units at
+or above 90% tank missing less than one transfer (`25 AM`) are skipped as trivial
+top-offs to avoid self-feeding escort or 1–2 AM drip loops; once selected, a
+recipient is still filled to capacity. The chosen recipient
 is retained until it fills or becomes unavailable/unreachable, then another is
 selected. Routes can serve several recipients per load, returning to their source
 when no productive delivery remains and retrying each owner turn. Automatic routes
@@ -319,7 +322,8 @@ can be started even when nobody currently needs fuel.
 
 **Priority: Fuel service urgency** optionally serves active equipment/support with
 the fewest remaining owner turns of fuel first, including maintaining or fuel-starved
-wormhole stabilizers and destabilizers. Distance and unit ID break ties. Idle depots follow active
+wormhole stabilizers and destabilizers, active or stalled construction and strikecraft
+bay production/replenishment, and movement-stalled ships. Distance and unit ID break ties. Idle depots follow active
 services. A newly more urgent service can interrupt an automatic delivery; all
 recipients must still pass reachability and return-reserve checks. **Nearest** is
 the default. Manual destinations stay pinned regardless of priority.

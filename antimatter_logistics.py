@@ -22,6 +22,8 @@ from geometry import (
 )
 
 RECIPIENT_PRIORITIES = ('nearest', 'service_urgency')
+AUTOMATIC_TOP_OFF_FILL_RATIO = 0.90
+URGENT_SERVICE_HORIZON_TURNS = 5.0
 
 
 def validate_delivery_preferences(priority, minimum_load_fraction):
@@ -36,17 +38,100 @@ def validate_delivery_preferences(priority, minimum_load_fraction):
         raise ValueError('minimum_load_fraction must be finite, greater than zero and at most one.')
 
 
+def _movement_fuel_stalled(unit):
+    """True when the active movement leaf cannot pay its next step's antimatter cost."""
+    commander = getattr(unit, 'commander_component', None)
+    order = getattr(commander, 'current_order', None) if commander else None
+    if order is None:
+        return False
+    from unit_orders.base import OrderStatus, OrderType
+    if order.status != OrderStatus.IN_PROGRESS:
+        return False
+    node = order
+    for _ in range(8):
+        if not node.sub_orders:
+            break
+        node = node.sub_orders[0]
+    if node.order_type != OrderType.REACH_WAYPOINT or node.status not in (OrderStatus.PENDING, OrderStatus.IN_PROGRESS):
+        return False
+    params = node.parameters
+    dest_system = params.get('destination_system_name')
+    dest_hex = params.get('destination_hex_coord')
+    dest_pos = params.get('destination_position')
+    if dest_system is None or dest_hex is None:
+        return False
+    current = unit.antimatter_component.current_amount
+    from custom_unit_templates import (
+        get_sublight_antimatter_cost_per_turn,
+        get_hyperdrive_hex_jump_cost,
+        get_hyperdrive_system_jump_cost,
+    )
+    if unit.in_system == dest_system and unit.in_hex == dest_hex:
+        if dest_pos is None or distance(unit.position, dest_pos) < 0.01:
+            return False
+        from movement_costs import fuel_free_sublight
+        if fuel_free_sublight(unit):
+            return False
+        from environmental_effects import sublight_speed, modifiers_for_unit
+        speed = sublight_speed(unit)
+        if speed <= 0:
+            return False
+        step_cost = get_sublight_antimatter_cost_per_turn(unit.hull_size, speed) * modifiers_for_unit(unit).fuel_multiplier
+        return step_cost > 0 and current < step_cost
+    drive = getattr(unit, 'hyperdrive_component', None)
+    if not drive or not drive.is_functional:
+        return False
+    recharge = getattr(drive, 'recharge_time_remaining', 0)
+    if isinstance(recharge, int) and recharge > 0:
+        return False
+    crossing = unit.in_system != dest_system
+    step_cost = (get_hyperdrive_system_jump_cost(unit.hull_size) if crossing
+                 else get_hyperdrive_hex_jump_cost(unit.hull_size))
+    return step_cost > 0 and current < step_cost
+
+
 def service_fuel_horizon(unit):
-    """Owner turns until active equipment/support stops; idle depots rank later."""
-    if unit.is_disabled:
+    """Owner turns until active equipment, construction, bay or movement stalls; idle depots rank later."""
+    if unit.is_disabled or not storage_ready(unit):
         return float('inf')
+    current = unit.antimatter_component.current_amount
+    if _movement_fuel_stalled(unit):
+        return 0.0
+    from constants import CONSTRUCTION_AM_PER_OWNER_TURN, REPAIR_AM_PER_HP
     upkeep = equipment_upkeep(unit)
     from wormhole_stabilization import current_order, state_view, equipment_ready, SUPPORT_UPKEEP
     order = current_order(unit)
     if order and equipment_ready(unit, order.support_mode):
         if state_view(unit, mode=order.support_mode)['phase'] in {'maintaining', 'waiting_for_antimatter'}:
             upkeep += SUPPORT_UPKEEP
-    return unit.antimatter_component.current_amount / upkeep if upkeep > 0 else float('inf')
+    constructor = getattr(unit, 'constructor_component', None)
+    if constructor and not constructor.is_destroyed and constructor.current_construction_target:
+        upkeep += CONSTRUCTION_AM_PER_OWNER_TURN
+    bay = getattr(unit, 'strikecraft_bay_component', None)
+    if bay and not bay.is_destroyed:
+        if bay.constructing:
+            upkeep += CONSTRUCTION_AM_PER_OWNER_TURN
+        elif (bay.replenishing_unit and bay.replenishing_unit in bay.docked_units
+              and bay.replenishing_unit.current_hit_points > 0):
+            missing = bay.replenishing_unit.max_hit_points - bay.replenishing_unit.current_hit_points
+            if missing > 0:
+                upkeep += min(10, missing) * REPAIR_AM_PER_HP
+    if upkeep <= 0:
+        return float('inf')
+    return 0.0 if current < upkeep else current / upkeep
+
+
+def _is_trivial_top_off(candidate, horizon):
+    """Skip nearly-full non-urgent units missing less than one transfer to prevent top-off loops."""
+    tank = candidate.antimatter_component
+    if tank.max_capacity <= 0:
+        return True
+    deficit = tank.max_capacity - tank.current_amount
+    return (
+        horizon > URGENT_SERVICE_HORIZON_TURNS
+        and tank.current_amount / tank.max_capacity >= AUTOMATIC_TOP_OFF_FILL_RATIO
+        and deficit < ANTIMATTER_TRANSFER_RATE
+    )
 
 
 def storage_ready(unit):
@@ -436,6 +521,23 @@ def automatic_recipient(unit, source, galaxy, *, harvesting=False, excluded=(), 
     from geometry import hex_distance
     from pathfinding import find_intersystem_path
 
+    candidates = []
+    horizons = {}
+    for system in galaxy.systems.values():
+        for sector in system.hexes.values():
+            for candidate in sector.units:
+                if (candidate is source or candidate.id in excluded
+                        or candidate.owner is not unit.owner
+                        or exchange_blocker(unit, candidate, galaxy) is not None
+                        or candidate.antimatter_component.current_amount
+                        >= candidate.antimatter_component.max_capacity):
+                    continue
+                horizon = service_fuel_horizon(candidate)
+                if _is_trivial_top_off(candidate, horizon):
+                    continue
+                horizons[candidate.id] = horizon
+                candidates.append(candidate)
+
     def proximity(candidate):
         if unit.in_system == candidate.in_system:
             value = (distance(unit.position, candidate.position)
@@ -447,16 +549,9 @@ def automatic_recipient(unit, source, galaxy, *, harvesting=False, excluded=(), 
             value = (float('inf') if not path else
                      (len(path) - 1) * 1_000_000.0
                      + hex_distance(unit.in_hex, candidate.in_hex) * 10000.0)
-        horizon = service_fuel_horizon(candidate) if priority == 'service_urgency' else 0
+        horizon = horizons[candidate.id] if priority == 'service_urgency' else 0
         return horizon, value, candidate.id
 
-    candidates = [candidate for system in galaxy.systems.values()
-                  for sector in system.hexes.values() for candidate in sector.units
-                  if candidate is not source and candidate.id not in excluded
-                  and candidate.owner is unit.owner
-                  and exchange_blocker(unit, candidate, galaxy) is None
-                  and candidate.antimatter_component.current_amount
-                  < candidate.antimatter_component.max_capacity]
     for candidate in sorted(candidates, key=proximity):
         budget = delivery_budget(unit, source, candidate, galaxy, harvesting=harvesting)
         fuel = unit.antimatter_component.current_amount if available_fuel is None else available_fuel

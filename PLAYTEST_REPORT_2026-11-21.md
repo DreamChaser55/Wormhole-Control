@@ -84,23 +84,6 @@ From `saves/ai_telemetry.jsonl` (campaign `babda014`, Turns 1–204):
 
 ## 5. Discovered Bugs & Engine Issues
 
-### [CRITICAL] Bug 1: `service_urgency` Excludes Construction/Bay Production & Deadlocks With `protect` Escorts
-
-- **Observed:**
-  - Around Turn 41, Luna's `Shipyard 73` stalled at `0/80 AM` (`8/17` turns on Patrol Escort) and remained **starved for ~70 consecutive turns** until Luna manually intervened with Constructor 74.
-  - Luna's `Harvester 76` (configured with `continuous_resupply`, `recipient_priority: "service_urgency"`) instead stayed glued to `Constructor 74` (`148/150 AM`), dripping `2 AM/turn` for ~40 turns.
-  - Once `Constructor 74` finished on Turn 90, `Patrol Escort 90` (ordered to `protect` Harvester 76) burned `1 AM/turn` following Harvester 76 at 150-unit standoff — becoming the nearest non-full ship every turn and locking Harvester 76 in a **self-feeding bodyguard loop**! The exact same deadlock hit Luna a second time on Turn 143 (`Constructor 74` stalled at `15/19` turns on Deep Survey Ship while Harvester 76 kept feeding Escort 90).
-  - Our own Harvester `#72` exhibited the same stickiness, dripping `2 AM/turn` into `Alpha Shipyard #69` (`78/80 AM`) while Colonizer `#71` (`33/150 AM`) and Constructor `#70` (`47/150 AM`) ran low.
-- **Root Cause (`antimatter_logistics.py:39-49`):**
-  - `service_fuel_horizon(unit)` only sums `equipment_upkeep(unit)` (cloaking, inhibitor, tractor tether, environmental resistances) and wormhole stabilization (`SUPPORT_UPKEEP`). It **completely omits active/stalled construction (`2 AM/turn`) and strikecraft bay production (`2 AM/turn`)**.
-  - Consequently, a stalled Shipyard at `0/80 AM` and a nearly-full Constructor at `148/150 AM` (or a `99/100 AM` escort) all evaluate to `horizon = inf`, falling back to pure nearest-distance tie-breaking.
-  - Furthermore, automatic recipient selection has **no minimum-deficit / hysteresis threshold**, so any adjacent ship missing `1–2 AM` perpetually wins over a fuel-starved unit in another hex.
-- **Suggested Fix:**
-  1. Include active/stalled construction, refit, and strikecraft-bay production (`2 AM/turn`) in `service_fuel_horizon(unit)`, giving stalled (`0`-turn) jobs top urgency (`0.0`). Also prioritize movement-stalled (`waiting_for_antimatter`) ships ahead of non-urgent top-offs.
-  2. Add a recipient-selection deficit threshold (e.g., ignore non-urgent ships above ~85–90% tank when other reachable units have lower tank ratios or active stalls, and avoid re-selecting the same recipient for a trivial `1–2 AM` top-off).
-
----
-
 ### [HIGH] Bug 2: `Commander.start_next_order()` Leaves Synchronously Terminated Orders Stuck in `current_order`
 
 - **Observed (4 independent reproductions):**
