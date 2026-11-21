@@ -300,7 +300,7 @@ class Commander(UnitComponent):
         self.orders_queue.append(order)
 
         if self.current_order is None:
-            self.start_next_order(release_completed=False)
+            self.start_next_order(release_terminated=False)
 
     def set_stance(self, stance: UnitStance, *, internal: bool = False) -> None:
         """Replace the standing policy without interrupting explicit work."""
@@ -727,16 +727,16 @@ class Commander(UnitComponent):
             if not self.current_order and not getattr(self.unit, 'is_hidden_in_gas_giant', False):
                 self.process_stance()
 
-    def start_next_order(self, *, release_completed: bool = True) -> None:
+    def start_next_order(self, *, release_terminated: bool = True) -> None:
         """Promote only the FIFO head when idle, respecting atmospheric blocking.
 
         Pending roots execute immediately; restored active roots resume bindings
-        without replaying startup effects. Synchronously terminated roots are
-        released immediately so queued work can advance without stalling.
-        ``release_completed=False`` is used by ``add_order()`` so same-turn
-        synchronous completions (such as in-range gas-giant entry followed by a
-        queued departure) remain queued until turn resolution while still
-        clearing synchronous failures.
+        without replaying startup effects. When ``release_terminated`` is True
+        (the default for turn-resolution and cancellation promotion),
+        synchronously terminated roots are released immediately so queued work
+        can advance without stalling. ``add_order()`` passes
+        ``release_terminated=False`` so freshly issued roots remain inspectable
+        during planning and settle at turn resolution.
         Outside-space work ahead of Leave stays queued while hidden.
         """
         while not self.current_order and self.orders_queue:
@@ -766,9 +766,11 @@ class Commander(UnitComponent):
 
             if self.current_order is None:
                 continue
-            failed_or_cancelled = self.current_order.status in {OrderStatus.FAILED, OrderStatus.CANCELLED}
-            completed = self.current_order.is_completed()
-            if failed_or_cancelled or (release_completed and completed):
+            terminated = (
+                self.current_order.is_completed()
+                or self.current_order.status in {OrderStatus.FAILED, OrderStatus.CANCELLED}
+            )
+            if release_terminated and terminated:
                 self._release_current_order()
             else:
                 break
