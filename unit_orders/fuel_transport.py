@@ -23,6 +23,15 @@ class TransferAntimatterOrder(Order):
 
     def __init__(self, unit, parameters=None, parent_order=None):
         super().__init__(unit, OrderType[self.TYPE], parameters, parent_order)
+        self.transferred_amount = 0.0
+
+    def get_persistence_state(self):
+        return dict(super().get_persistence_state(), transferred_amount=self.transferred_amount)
+
+    def restore_persistence_state(self, state):
+        super().restore_persistence_state(state)
+        from state_codec import number
+        self.transferred_amount = float(number(state.get("transferred_amount", 0.0), "transferred_amount", 0))
 
     def get_state_data(self):
         data = super().get_state_data()
@@ -34,6 +43,8 @@ class TransferAntimatterOrder(Order):
             target_name=target.name if target else None,
             lookup_attempted=True,
             lookup_success=target is not None,
+            amount=self.parameters.get("amount"),
+            transferred_amount=round(self.transferred_amount, 2),
         )
         return data
 
@@ -42,6 +53,34 @@ class TransferAntimatterOrder(Order):
 
     def _reserve(self):
         return float(self.parameters.get("reserve", 0.0))
+
+    def _effective_reserve(self, galaxy):
+        """Retain source-approach fuel when donating immediately before a queued continuous route."""
+        reserve = self._reserve()
+        if self.TAKE or galaxy is None:
+            return reserve
+        commander = getattr(self.unit, "commander_component", None)
+        queue = getattr(commander, "orders_queue", None)
+        if not queue:
+            return reserve
+        following = queue[0]
+        if following.order_type not in (OrderType.CONTINUOUS_RESUPPLY, OrderType.CONTINUOUS_ANTIMATTER_TRANSPORT):
+            return reserve
+        from antimatter_logistics import source_range
+        source = following.source(galaxy)
+        if source is None:
+            return reserve
+        harvesting = following.order_type == OrderType.CONTINUOUS_RESUPPLY
+        estimate = estimate_approach(self.unit, galaxy, source, approach_range=source_range(self.unit, harvesting))
+        if estimate is not None and estimate.fuel > reserve:
+            return estimate.fuel
+        return reserve
+
+    def _remaining_cap(self):
+        cap = self.parameters.get("amount")
+        if cap is None:
+            return None
+        return max(0.0, float(cap) - self.transferred_amount)
 
     def _pair(self, target):
         return (target, self.unit) if self.TAKE else (self.unit, target)
@@ -102,9 +141,14 @@ class TransferAntimatterOrder(Order):
         if blocker:
             self.fail(blocker)
             return None
+        remaining = self._remaining_cap()
+        if remaining is not None and remaining <= 1e-9:
+            self.status = OrderStatus.COMPLETED
+            return None
         donor, receiver = self._pair(target)
+        reserve = self._effective_reserve(galaxy)
         if (
-            donor.antimatter_component.current_amount <= self._reserve()
+            donor.antimatter_component.current_amount <= reserve + 1e-9
             or receiver.antimatter_component.current_amount
             >= receiver.antimatter_component.max_capacity
         ):
@@ -137,7 +181,11 @@ class TransferAntimatterOrder(Order):
             return
         target = self._prepare(galaxy_ref)
         if target is not None:
-            exchange(*self._pair(target), self._reserve())
+            from constants import ANTIMATTER_TRANSFER_RATE
+            remaining = self._remaining_cap()
+            limit = ANTIMATTER_TRANSFER_RATE if remaining is None else min(ANTIMATTER_TRANSFER_RATE, remaining)
+            moved = exchange(*self._pair(target), self._effective_reserve(galaxy_ref), limit=limit)
+            self.transferred_amount += moved
             self._prepare(galaxy_ref)
 
 

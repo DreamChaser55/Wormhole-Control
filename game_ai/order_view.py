@@ -311,6 +311,9 @@ def order_layers(unit, relation, visible_ids, body_ids):
             progress = wormhole_support_state(unit, mode=SUPPORT_COMMANDS[kind], order=order)
         if kind == 'resupply_nearby' and active:
             progress = order.progress_view(unit.in_galaxy)
+        if kind in {'give_antimatter', 'take_antimatter'} and not hidden and params.get('amount') is not None:
+            progress = {'transferred_amount': round(getattr(order, 'transferred_amount', 0.0), 2),
+                        'requested_amount': params['amount']}
         if kind == 'continuous_mine' and not hidden:
             progress = order.progress_view(unit.game.galaxy, visible_ids)
         if fuel_order and not hidden:

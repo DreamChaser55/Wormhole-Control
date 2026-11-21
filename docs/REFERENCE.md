@@ -285,7 +285,7 @@ construction/refit refunds return all recorded resources once to the original pa
 
 ### Antimatter logistics
 
-Every unit with functional Antimatter Storage can donate or receive fuel. **Give Antimatter** moves the donor toward the recipient; **Take Antimatter** moves the recipient toward the donor without changing the donor's orders or stance. Both work with owned/allied ships and stations, within 200 units in the same sector, at up to 25 AM per acting unit's owner turn. They conserve fuel and finish when the recipient fills or the donor empties. Shift queues either order. Manual transfers may empty harvesters; Continuous Resupply alone retains its 60 AM reserve. Harvesters remain necessary for stellar and hydrogen-nebula collection.
+Every unit with functional Antimatter Storage can donate or receive fuel. **Give Antimatter** moves the donor toward the recipient; **Take Antimatter** moves the recipient toward the donor without changing the donor's orders or stance. Both work with owned/allied ships and stations, within 200 units in the same sector, at up to 25 AM per acting unit's owner turn. They conserve fuel and finish when the recipient fills, the donor empties, or an optional positive `amount` cap is reached. Shift queues either order. Standalone manual transfers may empty harvesters; Continuous Resupply retains its 60 AM reserve, and queuing Continuous Resupply or Continuous Antimatter Transport directly behind Give Antimatter automatically retains the fuel needed to reach that route's source. Harvesters remain necessary for stellar and hydrogen-nebula collection.
 
 Select a ship or station with a functional tank and choose **Resupply Nearby**
 from its context menu or an empty sector position. It stays in place and shares

@@ -84,7 +84,5 @@ From `saves/ai_telemetry.jsonl` (campaign `babda014`, Turns 1–204):
 
 ## 7. Gameplay & UX Improvement Suggestions
 
-1. **Add an optional `amount` parameter to `give_antimatter` and `take_antimatter`:** Currently, manual transfers either fill the recipient or completely empty the donor (`0 AM`), making it impossible for a ship to donate e.g. `30 AM` to jump-start a stranded Harvester without stranding itself. Allowing an optional `amount` (defaulting to full/empty) solves a major real logistics frustration for both human and AI players.
-2. **Prevent `continuous_resupply` from stranding Harvesters via `give_antimatter` + queued `continuous_resupply`:** Combined with Bug 8 (allowing low-fuel Harvesters to fly to their star), adding a `preserve_reserve` option or `amount` cap on `give_antimatter` prevents accidental self-stranding.
-3. **Expose active-unit count & prompt-size budget tips in AI telemetry/dashboard:** The local telemetry in `saves/ai_telemetry.jsonl` was invaluable for diagnosing latency and cache decay; optionally logging `active_unit_count` and `memory_chars` alongside `prompt_metrics` would make scalability profiling even easier.
-4. **Update `docs/CODEX_CONTROL.md` Windows PowerShell quick-start:** Use stdin piping (`'{"action":"status"}' | python .\game_control.py -`) for the PowerShell example so Windows PowerShell 5.1 users don't hit quote-stripping errors on step 1.
+1. **Expose active-unit count & prompt-size budget tips in AI telemetry/dashboard:** The local telemetry in `saves/ai_telemetry.jsonl` was invaluable for diagnosing latency and cache decay; optionally logging `active_unit_count` and `memory_chars` alongside `prompt_metrics` would make scalability profiling even easier.
+2. **Update `docs/CODEX_CONTROL.md` Windows PowerShell quick-start:** Use stdin piping (`'{"action":"status"}' | python .\game_control.py -`) for the PowerShell example so Windows PowerShell 5.1 users don't hit quote-stripping errors on step 1.

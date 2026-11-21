@@ -1573,7 +1573,10 @@ class CommandGateway:
             self._require_friendly(player, target_unit)
             from unit_orders.fuel_transport import TakeAntimatterOrder
             cls = TakeAntimatterOrder if command.type == 'take_antimatter' else TransferAntimatterOrder
-            return (lambda unit: cls(unit, {"target_unit_id": target_unit.id}), command.type)
+            params = {"target_unit_id": target_unit.id}
+            if command.amount is not None:
+                params["amount"] = command.amount
+            return (lambda unit, params=params: cls(unit, dict(params)), command.type)
         if command.type == 'continuous_antimatter_transport':
             from unit_orders.fuel_transport import ContinuousAntimatterTransportOrder
             source = self._visible_unit(player, command.source_id)

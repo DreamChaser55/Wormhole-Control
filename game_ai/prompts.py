@@ -281,7 +281,7 @@ to one upgrade per round, levels 0-3. Levels cost 250/500/750 credits. Base defe
 multiplied by (1+0.5*fortification_level) and readiness. Empty colonies have zero defense. Readiness recovers
 10 percentage points on quiet global rounds; capture lowers fortifications one level and sets readiness
 to 25%. Read colony defenses and command_options for current previews, costs and blockers.
-Use give_antimatter to donate and take_antimatter to approach a friendly source and load fuel.
+Use give_antimatter to donate and take_antimatter to approach a friendly source and load fuel; pass an optional positive amount to cap a transfer without emptying the donor (null transfers until full or empty). Queuing continuous_resupply or continuous_antimatter_transport behind give_antimatter automatically retains enough fuel to reach the route's source.
 Use resupply_nearby to set up a local depot that shares available fuel with all nearby
 owned and allied units each owner turn. This order holds position and runs until cancelled.
 continuous_resupply uses source_id for a star or hydrogen nebula; continuous_antimatter_transport uses source_id for a loading unit.

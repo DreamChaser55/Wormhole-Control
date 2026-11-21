@@ -1111,3 +1111,57 @@ def test_repair_and_protect_refresh_moving_target_coordinates_before_movement():
     assert repairer.engines_component.move_target.x > 0
     assert escort.commander_component.current_order.sub_orders[0].parameters['destination_position'].x > 0
     assert escort.engines_component.move_target.x > 0
+
+
+@pytest.mark.parametrize('kind', ['give_antimatter', 'take_antimatter'])
+def test_manual_antimatter_exchange_supports_optional_amount_cap_and_persistence(kind):
+    game = campaign()
+    actor = vessel(game, 'Actor', amount=100 if kind == 'give_antimatter' else 10, position=(0, 0), moving=True)
+    target = vessel(game, 'Target', amount=10 if kind == 'give_antimatter' else 100, position=(100, 0))
+    assert issue(game, dict(type=kind, unit_ids=(actor.id,), target_id=target.id, amount=30)).accepted
+    donor, recipient = (target, actor) if kind == 'take_antimatter' else (actor, target)
+    actor.commander_component.update()
+    assert donor.antimatter_component.current_amount == 75
+    assert recipient.antimatter_component.current_amount == 35
+    assert actor.commander_component.current_order.status == OrderStatus.IN_PROGRESS
+    # Save and restore mid-transfer preserves transferred_amount so only 5 AM remains.
+    payload = json.loads(json.dumps(serialize_game_state(game)))
+    assert deserialize_game_state(game, payload)
+    restored_actor = game.galaxy.get_unit_by_id(actor.id)
+    restored_donor = game.galaxy.get_unit_by_id(donor.id)
+    restored_recipient = game.galaxy.get_unit_by_id(recipient.id)
+    restored_actor.commander_component.update()
+    assert restored_donor.antimatter_component.current_amount == 70
+    assert restored_recipient.antimatter_component.current_amount == 40
+    assert restored_actor.commander_component.current_order is None
+
+
+def test_give_antimatter_before_queued_continuous_resupply_preserves_source_return_fuel():
+    from constants import StarType
+    from domain.celestials import Star
+    game = campaign()
+    star = Star(in_system='Sol', star_type=StarType.G_TYPE)
+    star.in_hex = (0, 0)
+    star.position = Position(0, 0)
+    game.galaxy.systems['Sol'].add_celestial_body(star)
+    harvester = vessel(game, 'Harvester', amount=80, capacity=300, position=(4000, 0), moving=True)
+    harvester.add_component(AntimatterHarvester(harvester))
+    recipient = vessel(game, 'Recipient', amount=0, capacity=200, position=(4050, 0))
+    res = issue(
+        game,
+        dict(type='give_antimatter', unit_ids=(harvester.id,), target_id=recipient.id),
+        dict(type='continuous_resupply', unit_ids=(harvester.id,), source_id=star.id, queue=True),
+    )
+    assert res.accepted, res.errors
+    for _ in range(10):
+        tick(game, harvester)
+        if harvester.commander_component.current_order and harvester.commander_component.current_order.order_type.name == 'CONTINUOUS_RESUPPLY':
+            break
+    assert recipient.antimatter_component.current_amount > 0
+    assert harvester.commander_component.current_order is not None
+    assert harvester.commander_component.current_order.order_type.name == 'CONTINUOUS_RESUPPLY'
+    assert harvester.commander_component.current_order.status == OrderStatus.IN_PROGRESS
+    for _ in range(60):
+        tick(game, harvester)
+    assert harvester.commander_component.current_order.status == OrderStatus.IN_PROGRESS
+    assert harvester.antimatter_component.current_amount > 80
