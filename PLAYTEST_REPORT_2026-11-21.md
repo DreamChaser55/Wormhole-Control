@@ -23,14 +23,11 @@ This report documents a **205-turn live playtest** of **Wormhole Control** drive
 
 ## 2. Antigravity Playtesting Workflow Notes (Codex Skill Compatibility)
 
-Because `.agents/skills/wormhole-control/SKILL.md` was authored for OpenAI Codex CLI, two Windows/Antigravity environment differences surfaced immediately and should be noted if running future playtests in Antigravity:
+Because `.agents/skills/wormhole-control/SKILL.md` was authored for OpenAI Codex CLI, one Windows/Antigravity environment difference surfaced immediately and should be noted if running future playtests in Antigravity:
 
 1. **Detached child processes are terminated between `run_command` calls in Antigravity:**
    - When `game_control.py` auto-launches `game.py` (`CREATE_NEW_PROCESS_GROUP | DETACHED_PROCESS`), Antigravity's per-command job/session cleanup terminates the spawned `game.py` once `game_control.py` exits.
    - **Workaround used:** Launch `DEBUG_LOG=true python game.py --port 47653` once as an Antigravity daemon (`IsDaemon=true`), then drive all game commands through `python game_control.py --no-launch -`. This worked flawlessly for the entire 205-turn session.
-2. **PowerShell 5.1 JSON argument quoting in `docs/CODEX_CONTROL.md`:**
-   - The quick-start example `python .\game_control.py '{"action":"status"}'` in `docs/CODEX_CONTROL.md` fails under Windows PowerShell 5.1 (`Invalid JSON: Expecting property name enclosed in double quotes`) because PowerShell 5.1 strips inner double quotes when passing arguments to native binaries.
-   - Piping UTF-8 JSON over stdin (`'{"action":"status"}' | python .\game_control.py -` with `$OutputEncoding = [System.Text.UTF8Encoding]::new($false)`) works reliably. Updating the PowerShell quick-start snippet in `docs/CODEX_CONTROL.md` to use stdin piping (or escaped quotes) will prevent first-run friction on Windows.
 
 ---
 
@@ -82,6 +79,6 @@ From `saves/ai_telemetry.jsonl` (campaign `babda014`, Turns 1–204):
 
 ---
 
-## 7. Gameplay & UX Improvement Suggestions
+## Status
 
-1. **Update `docs/CODEX_CONTROL.md` Windows PowerShell quick-start:** Use stdin piping (`'{"action":"status"}' | python .\game_control.py -`) for the PowerShell example so Windows PowerShell 5.1 users don't hit quote-stripping errors on step 1.
+All bugs, AI planning observations, and UX/documentation improvements recorded in this report have been addressed.

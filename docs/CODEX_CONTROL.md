@@ -25,13 +25,14 @@ See the [servicing rules](REFERENCE.md#strikecraft-endurance-and-servicing) and
 
 Run commands from the repository root. `game_control.py` connects to an existing game or launches `game.py` with the same Python interpreter, waits up to 15 seconds, and retries the request.
 
+Pipe one UTF-8 JSON object through stdin (`-`), which avoids Windows PowerShell 5.1 stripping inner double quotes from native-binary arguments. Set PowerShell's pipeline encoding before sending non-ASCII text (Windows PowerShell defaults to ASCII):
+
 ```powershell
-python .\game_control.py '{"action":"status"}'
+$OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+'{"action":"status"}' | python .\game_control.py -
 ```
 
-For requests that are inconvenient to quote, pipe one UTF-8 JSON object through stdin.
-Set PowerShell's pipeline encoding before sending non-ASCII text (including in
-Windows PowerShell, whose default pipeline encoding is ASCII):
+For multi-line requests, pipe a single-quoted here-string through stdin:
 
 ```powershell
 $OutputEncoding = [System.Text.UTF8Encoding]::new($false)
