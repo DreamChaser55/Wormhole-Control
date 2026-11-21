@@ -84,17 +84,6 @@ From `saves/ai_telemetry.jsonl` (campaign `babda014`, Turns 1–204):
 
 ## 5. Discovered Bugs & Engine Issues
 
-### [MEDIUM] Bug 4: `TakeAntimatterOrder` / Unit Approach Does Not Refresh Moving Target Coordinates Mid-Flight
-
-- **Observed (Turns 75–91, `Colonizer #71` & `Harvester #72`):**
-  - When `#71` had `take_antimatter` targeting `#72` while `#72` had `give_antimatter` targeting `#71`, `#72` flew past `#71` and donated 25 AM on Turn 89. On Turn 91, `#71` (now mobile again) flew **away** from `#72` toward `[-917.85, -709.47]` — where `#72` had been on Turn 75 — while `#72` chased `#71` from behind!
-- **Root Cause:**
-  - Unlike `AttackOrder` (which `Commander.prepare_for_movement()` refreshes every turn at `unit_components/commander.py:601-603`), `TakeAntimatterOrder` / `GiveAntimatterOrder` only recompute target standoff positions when the current `MoveOrder` suborder finishes.
-- **Suggested Fix:**
-  - Refresh moving-unit approach waypoints in `prepare_for_movement()` (or when target displacement exceeds transfer range) for unit-targeted support orders (`give_antimatter`, `take_antimatter`, `repair`, `protect`) just like `AttackOrder`.
-
----
-
 ### [MEDIUM] Bug 5: Enemy `turn_summary` Discloses Exact Internal Component Damage From Wormhole Instability
 
 - **Observed (Turn 178, `Escort Carrier #94`):**

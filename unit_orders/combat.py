@@ -603,5 +603,58 @@ class ProtectOrder(Order):
 
         super().update(galaxy_ref)
 
+    def refresh_approach(self, galaxy_ref: 'Galaxy') -> None:
+        """Rebind stale follow waypoints before movement when the protected unit moved."""
+        if self.status != OrderStatus.IN_PROGRESS:
+            return
+        if self.sub_orders and self.sub_orders[0].order_type == OrderType.ATTACK:
+            return
+        target_unit_id = self.parameters.get("target_unit_id")
+        galaxy = getattr(getattr(self.unit, "game", None), "galaxy", None) or galaxy_ref
+        target_unit = galaxy.get_unit_by_id(target_unit_id) if target_unit_id is not None and galaxy else None
+        from domain.players import are_allies
+        if not target_unit or target_unit.current_hit_points <= 0 or not are_allies(self.unit.owner, target_unit.owner):
+            return
+        local = self.unit.in_system == target_unit.in_system and self.unit.in_hex == target_unit.in_hex
+        in_standoff = local and distance(self.unit.position, target_unit.position) <= DEFAULT_STANDOFF_DISTANCE
+        if self.sub_orders and self.sub_orders[0].order_type in (OrderType.MOVE, OrderType.REACH_WAYPOINT):
+            child = self.sub_orders[0]
+            if in_standoff:
+                child.cancel()
+                self.sub_orders.popleft()
+                return
+            dest_system = child.parameters.get("destination_system_name")
+            dest_hex = child.parameters.get("destination_hex_coord")
+            dest_pos = child.parameters.get("destination_position")
+            planned_standoff = float(child.parameters.get("standoff_distance", DEFAULT_STANDOFF_DISTANCE))
+            approach_resolved = child.parameters.get("approach_position_resolved", True)
+            if (dest_system != target_unit.in_system
+                    or dest_hex != target_unit.in_hex
+                    or (local and dest_pos is not None and approach_resolved
+                        and abs(distance(dest_pos, target_unit.position) - planned_standoff) > 15.0)):
+                child.cancel()
+                self.sub_orders.popleft()
+                fresh = MoveOrder.for_unit_approach(
+                    self.unit,
+                    target_unit,
+                    DEFAULT_STANDOFF_DISTANCE,
+                    parent_order=self,
+                )
+                self.add_sub_order(fresh)
+                fresh.execute(galaxy_ref)
+                if fresh.status == OrderStatus.IN_PROGRESS:
+                    fresh.update(galaxy_ref)
+        elif not self.sub_orders and not in_standoff:
+            fresh = MoveOrder.for_unit_approach(
+                self.unit,
+                target_unit,
+                DEFAULT_STANDOFF_DISTANCE,
+                parent_order=self,
+            )
+            self.add_sub_order(fresh)
+            fresh.execute(galaxy_ref)
+            if fresh.status == OrderStatus.IN_PROGRESS:
+                fresh.update(galaxy_ref)
+
     def check_completion_conditions(self) -> None:
         pass

@@ -46,6 +46,56 @@ class TransferAntimatterOrder(Order):
     def _pair(self, target):
         return (target, self.unit) if self.TAKE else (self.unit, target)
 
+    def _spawn_approach(self, target):
+        return MoveOrder.for_unit_approach(
+            self.unit,
+            target,
+            ANTIMATTER_TRANSFER_RANGE - 5,
+            parent_order=self,
+        )
+
+    def refresh_approach(self, galaxy_ref):
+        """Rebind stale unit-approach waypoints before movement if the target moved."""
+        if self.status != OrderStatus.IN_PROGRESS:
+            return
+        target = self._target(galaxy_ref)
+        if exchange_blocker(self.unit, target, galaxy_ref) is not None:
+            return
+        if in_transfer_range(self.unit, target):
+            if self.sub_orders:
+                for child in list(self.sub_orders):
+                    child.cancel()
+                self.sub_orders.clear()
+            return
+        if not self.sub_orders:
+            move = self._spawn_approach(target)
+            self.add_sub_order(move)
+            move.execute(galaxy_ref)
+            if move.status == OrderStatus.IN_PROGRESS:
+                move.update(galaxy_ref)
+            return
+        child = self.sub_orders[0]
+        if child.order_type not in (OrderType.MOVE, OrderType.REACH_WAYPOINT):
+            return
+        dest_system = child.parameters.get("destination_system_name")
+        dest_hex = child.parameters.get("destination_hex_coord")
+        dest_pos = child.parameters.get("destination_position")
+        local = self.unit.in_system == target.in_system and self.unit.in_hex == target.in_hex
+        changed_sector = dest_system != target.in_system or dest_hex != target.in_hex
+        moved_out_of_bubble = False
+        if local and dest_pos is not None:
+            from geometry import distance
+            moved_out_of_bubble = distance(dest_pos, target.position) > ANTIMATTER_TRANSFER_RANGE - 1.0
+        if changed_sector or moved_out_of_bubble:
+            for sub in list(self.sub_orders):
+                sub.cancel()
+            self.sub_orders.clear()
+            move = self._spawn_approach(target)
+            self.add_sub_order(move)
+            move.execute(galaxy_ref)
+            if move.status == OrderStatus.IN_PROGRESS:
+                move.update(galaxy_ref)
+
     def _prepare(self, galaxy):
         target = self._target(galaxy)
         blocker = exchange_blocker(self.unit, target, galaxy)
@@ -62,14 +112,7 @@ class TransferAntimatterOrder(Order):
             return None
         if not in_transfer_range(self.unit, target):
             if not self.sub_orders:
-                self.add_sub_order(
-                    MoveOrder.for_unit_approach(
-                        self.unit,
-                        target,
-                        ANTIMATTER_TRANSFER_RANGE - 5,
-                        parent_order=self,
-                    )
-                )
+                self.add_sub_order(self._spawn_approach(target))
             return None
         return target
 
@@ -88,6 +131,7 @@ class TransferAntimatterOrder(Order):
             self.sub_orders.clear()
             self.fail(blocker)
             return
+        self.refresh_approach(galaxy_ref)
         super().update(galaxy_ref)
         if self.status != OrderStatus.IN_PROGRESS or self.sub_orders:
             return

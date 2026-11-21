@@ -1069,3 +1069,45 @@ def test_nearby_resupply_distributes_fuel_without_moving_and_survives_loading():
     assert deserialize_game_state(game, data)
     restored = game.galaxy.get_unit_by_id(depot.id)
     assert restored.commander_component.current_order.order_type.name == 'RESUPPLY_NEARBY'
+
+
+@pytest.mark.parametrize('kind', ['take_antimatter', 'give_antimatter'])
+def test_fuel_exchange_refreshes_moving_target_coordinates_before_movement(kind):
+    game = campaign()
+    actor = vessel(game, 'Actor', amount=50 if kind == 'take_antimatter' else 200, position=(0, 0), moving=True)
+    target = vessel(game, 'Target', amount=200 if kind == 'take_antimatter' else 50, position=(-1000, 0), moving=True)
+    assert issue(game, dict(type=kind, unit_ids=(actor.id,), target_id=target.id)).accepted
+    actor.commander_component.update()
+    # Target flies past the actor to the opposite side; stale waypoint was near (-805, 0).
+    target.position = Position(1000, 0)
+    actor.commander_component.prepare_for_movement()
+    move = actor.commander_component.current_order.sub_orders[0]
+    assert move.parameters['destination_position'].x > 0
+    assert actor.engines_component.move_target.x > 0
+    # Moving target into transfer range clears the approach instead of flying to a stale point.
+    target.position = Position(100, 0)
+    actor.commander_component.prepare_for_movement()
+    assert not actor.commander_component.current_order.sub_orders
+
+
+def test_repair_and_protect_refresh_moving_target_coordinates_before_movement():
+    from unit_components.repair import RepairComponent
+    from unit_orders.repair import RepairOrder
+    from unit_orders.combat import ProtectOrder
+    game = campaign()
+    repairer = vessel(game, 'Repairer', amount=200, position=(0, 0), moving=True)
+    repairer.add_component(RepairComponent(repairer, repair_rate=10, repair_range=200.0))
+    escort = vessel(game, 'Escort', amount=200, position=(0, 0), moving=True)
+    target = vessel(game, 'Target', amount=200, position=(-1000, 0), moving=True)
+    target.current_hit_points = 50
+    repairer.commander_component.add_order(RepairOrder(repairer, {'target_unit_id': target.id}))
+    escort.commander_component.add_order(ProtectOrder(escort, {'target_unit_id': target.id}))
+    repairer.commander_component.update()
+    escort.commander_component.update()
+    target.position = Position(1200, 0)
+    repairer.commander_component.prepare_for_movement()
+    escort.commander_component.prepare_for_movement()
+    assert repairer.commander_component.current_order.sub_orders[0].parameters['destination_position'].x > 0
+    assert repairer.engines_component.move_target.x > 0
+    assert escort.commander_component.current_order.sub_orders[0].parameters['destination_position'].x > 0
+    assert escort.engines_component.move_target.x > 0

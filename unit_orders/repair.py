@@ -77,6 +77,47 @@ class RepairOrder(Order):
             repair_sub_order = RepairOrder(self.unit, self.parameters, parent_order=self)
             self.add_sub_order(repair_sub_order)
 
+    def refresh_approach(self, galaxy_ref: 'Galaxy') -> None:
+        """Rebind stale approach waypoints when the repaired unit moved."""
+        if self.status != OrderStatus.IN_PROGRESS or not self.unit.repair_component:
+            return
+        target_unit_id = self.parameters.get("target_unit_id")
+        target_unit = galaxy_ref.get_unit_by_id(target_unit_id) if galaxy_ref and target_unit_id is not None else None
+        if not target_unit or target_unit.current_hit_points <= 0:
+            return
+        if not self.sub_orders or self.sub_orders[0].order_type != OrderType.MOVE:
+            return
+        repair_range = self.unit.repair_component.repair_range
+        local = self.unit.in_system == target_unit.in_system and self.unit.in_hex == target_unit.in_hex
+        if local and distance(self.unit.position, target_unit.position) <= repair_range:
+            self.sub_orders[0].cancel()
+            self.sub_orders.popleft()
+            return
+        child = self.sub_orders[0]
+        dest_system = child.parameters.get("destination_system_name")
+        dest_hex = child.parameters.get("destination_hex_coord")
+        dest_pos = child.parameters.get("destination_position")
+        changed_sector = dest_system != target_unit.in_system or dest_hex != target_unit.in_hex
+        moved_out_of_bubble = local and dest_pos is not None and distance(dest_pos, target_unit.position) > repair_range - 1.0
+        if changed_sector or moved_out_of_bubble:
+            child.cancel()
+            self.sub_orders.popleft()
+            fresh = MoveOrder.for_unit_approach(
+                self.unit,
+                target_unit,
+                repair_range - 5.0,
+                parent_order=self,
+            )
+            fresh.unit = self.unit
+            self.sub_orders.appendleft(fresh)
+            fresh.execute(galaxy_ref)
+            if fresh.status == OrderStatus.IN_PROGRESS:
+                fresh.update(galaxy_ref)
+
+    def update(self, galaxy_ref: 'Galaxy') -> None:
+        self.refresh_approach(galaxy_ref)
+        super().update(galaxy_ref)
+
     def check_completion_conditions(self) -> None:
         if self.status != OrderStatus.IN_PROGRESS:
             return

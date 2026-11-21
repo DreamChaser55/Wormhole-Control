@@ -601,6 +601,8 @@ class Commander(UnitComponent):
             attack = self.attack_for_visibility_check()
             if attack is not None:
                 attack.update(galaxy_ref)
+            elif self.current_order and hasattr(self.current_order, "refresh_approach"):
+                self.current_order.refresh_approach(galaxy_ref)
 
         # A Do Nothing standing policy must not leave a stale weapon lock from
         # an order that was removed by an external integration.
