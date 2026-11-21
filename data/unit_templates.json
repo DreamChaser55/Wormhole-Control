@@ -1361,7 +1361,7 @@
     "hull_size": "STRIKECRAFT_WING",
     "hull_points": 30,
     "build_time": 2,
-    "build_cost": 260,
+    "build_cost": 259,
     "has_engine": true,
     "engine_speed": 200,
     "engine_hull_cost": 2.0,
@@ -1375,13 +1375,13 @@
     "hyperdrive_jump_range": 5,
     "hyperdrive_hull_cost": 0.0,
     "has_weapon_bays": true,
-    "weapon_bays_hull_cost": 4.2,
+    "weapon_bays_hull_cost": 4.166666666666667,
     "turrets": [
       {
         "type": "MISSILE",
-        "damage": 8,
-        "range": 120,
-        "cooldown": 5,
+        "damage": 5,
+        "range": 150,
+        "cooldown": 3,
         "variant": "STANDARD"
       }
     ],
