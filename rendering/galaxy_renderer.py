@@ -20,12 +20,14 @@ from domain.units import Unit
 from unit_orders.base import OrderType
 from geometry import Position
 from galaxy_utils import logical_to_screen_galaxy, get_home_systems_mapping
+from rendering.drawing_utils import get_cached_font
 
 class GalaxyViewRenderer:
     def __init__(self, game_instance):
         self.game = game_instance
         self.screen = game_instance.screen
         self.overlay_surface = game_instance.overlay_surface
+        self._label_surface_cache: dict[tuple[str, int, tuple[int, ...]], pygame.Surface] = {}
 
     def draw_galaxy_view(self):
         """Draw the map and its overlays within the unobstructed viewport."""
@@ -84,6 +86,10 @@ class GalaxyViewRenderer:
 
         # 3. Draw Systems
         home_systems_map = get_home_systems_mapping(self.game, player_scoped=bool(self.game.game_started))
+        font_size = max(1, int(12 * display_config_for(self.game).text_scale))
+        font = get_cached_font(None, font_size)
+        if len(self._label_surface_cache) > 512:
+            self._label_surface_cache.clear()
 
         for sys_name, system in self.game.galaxy.systems.items():
             screen_pos = self._system_screen_position(system)
@@ -131,13 +137,14 @@ class GalaxyViewRenderer:
                 if is_hovered:
                     pygame.draw.circle(self.overlay_surface, HOVER_HIGHLIGHT_COLOR, pos_tuple, self._scaled(max_radius + 2), self._scaled(2))
 
-            # Draw system name
-            if not pygame.font.get_init():
-                pygame.font.init()
-            font_size = max(1, int(12 * display_config_for(self.game).text_scale))
-            font = pygame.font.Font(None, font_size)
+            # Draw system name (cached surface per text/size/color)
             label = f"{system.name} (Nebula)" if getattr(system, "is_nebula_system", False) else system.name
-            text_surface = font.render(label, True, label_color)
+            color_key = tuple(label_color)
+            cache_key = (label, font_size, color_key)
+            text_surface = self._label_surface_cache.get(cache_key)
+            if text_surface is None:
+                text_surface = font.render(label, True, label_color)
+                self._label_surface_cache[cache_key] = text_surface
             text_rect = text_surface.get_rect()
             label_radius = max_radius
             if is_selected:
@@ -356,7 +363,7 @@ def draw_galaxy_preview(
 
     if not galaxy or not getattr(galaxy, "systems", None):
         font_size = max(12, int(14 * scale))
-        font = pygame.font.Font(None, font_size)
+        font = get_cached_font(None, font_size)
         msg_surf = font.render("Click 'Generate Map' to create galaxy preview", True, (140, 160, 180))
         msg_rect = msg_surf.get_rect(center=preview_rect.center)
         surface.blit(msg_surf, msg_rect)
@@ -391,7 +398,7 @@ def draw_galaxy_preview(
 
     # 2. Draw Systems
     font_size = max(10, int(11 * scale))
-    font = pygame.font.Font(None, font_size)
+    font = get_cached_font(None, font_size)
     home_map = home_systems_map or {}
 
     for sys_name, system in galaxy.systems.items():
@@ -458,10 +465,8 @@ def get_system_at_preview_point(
     if not galaxy or not getattr(galaxy, "systems", None) or not preview_rect.collidepoint(screen_pos):
         return None
 
-    if not pygame.font.get_init():
-        pygame.font.init()
     font_size = max(10, int(11 * scale))
-    font = pygame.font.Font(None, font_size)
+    font = get_cached_font(None, font_size)
 
     closest_sys = None
     min_dist_sq = hit_radius * hit_radius
@@ -471,8 +476,8 @@ def get_system_at_preview_point(
         pos_tuple = (int(sys_screen_pos.x), int(sys_screen_pos.y))
 
         # Check label bounding box (generous click area around system name)
-        text_surface = font.render(name, True, (255, 255, 255))
-        text_rect = text_surface.get_rect()
+        text_w, text_h = font.size(name)
+        text_rect = pygame.Rect(0, 0, text_w, text_h)
         text_rect.midleft = (pos_tuple[0] + 8, pos_tuple[1])
         click_box = text_rect.inflate(12, 12)
         if click_box.collidepoint(screen_pos):

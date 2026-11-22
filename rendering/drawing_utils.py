@@ -6,6 +6,34 @@ from constants import ORANGE, RED, SELECTION_HIGHLIGHT_COLOR
 
 UNIT_ICON_INTERIOR_DARKEN_FACTOR = 0.35
 
+_FONT_CACHE: dict[tuple[str | None, int], pygame.font.Font] = {}
+_MAX_FONT_CACHE_SIZE = 256
+_REAL_PYGAME_FONT = pygame.font.Font
+
+
+def get_cached_font(font_path: str | None, size: int) -> pygame.font.Font:
+    """Return a cached pygame Font, safely reinitializing if pygame.font was reset."""
+    clamped_size = max(1, int(size))
+    if pygame.font.Font is not _REAL_PYGAME_FONT:
+        return pygame.font.Font(font_path, clamped_size)
+    if not pygame.font.get_init():
+        _FONT_CACHE.clear()
+        pygame.font.init()
+    key = (font_path, clamped_size)
+    font = _FONT_CACHE.get(key)
+    if font is not None:
+        try:
+            font.get_height()
+            return font
+        except pygame.error:
+            _FONT_CACHE.clear()
+    if len(_FONT_CACHE) >= _MAX_FONT_CACHE_SIZE:
+        _FONT_CACHE.clear()
+    font = pygame.font.Font(font_path, clamped_size)
+    if isinstance(font, _REAL_PYGAME_FONT):
+        _FONT_CACHE[key] = font
+    return font
+
 
 def wormhole_ring_color(galaxy, wormhole):
     from wormhole_stabilization import connection_stability

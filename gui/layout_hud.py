@@ -262,15 +262,18 @@ def update_back_button_visibility(gui) -> None:
     """
     view_mode = getattr(gui.game_instance, 'view_mode', None)
     if gui.back_button:
-        if view_mode in ['system', 'sector']:
+        should_show_back = view_mode in ('system', 'sector')
+        if should_show_back and not gui.back_button.visible:
             gui.back_button.show()
-        else:
+        elif not should_show_back and gui.back_button.visible:
             gui.back_button.hide()
-    if getattr(gui, 'reset_view_button', None):
-        if view_mode == 'galaxy':
-            gui.reset_view_button.show()
-        else:
-            gui.reset_view_button.hide()
+    reset_btn = getattr(gui, 'reset_view_button', None)
+    if reset_btn:
+        should_show_reset = view_mode == 'galaxy'
+        if should_show_reset and not reset_btn.visible:
+            reset_btn.show()
+        elif not should_show_reset and reset_btn.visible:
+            reset_btn.hide()
 
 
 def update_view_mode_label(gui, text: str) -> None:
@@ -280,7 +283,7 @@ def update_view_mode_label(gui, text: str) -> None:
         gui: Target GUI_Handler instance.
         text (str): Display string to set on the view mode label.
     """
-    if gui.view_mode_label:
+    if gui.view_mode_label and getattr(gui.view_mode_label, 'text', None) != text:
         gui.view_mode_label.set_text(text)
     gui.update_back_button_visibility()
 
@@ -293,7 +296,13 @@ def update_turn_label(gui, text: str) -> None:
         text (str): HTML-formatted turn display string.
     """
     if gui.player_turn_label:
+        if (
+            getattr(gui, '_last_turn_label_text', None) == text
+            and getattr(gui.player_turn_label, 'html_text', None) == text
+        ):
+            return
         gui.player_turn_label.set_text(text)
+        gui._last_turn_label_text = text
 
 
 def update_player_color_indicator(gui, color: Color) -> None:
@@ -306,8 +315,15 @@ def update_player_color_indicator(gui, color: Color) -> None:
     if gui.player_color_indicator:
         try:
             valid_color = Color(color)
+            color_key = tuple(valid_color)
+            if (
+                getattr(gui, '_last_player_indicator_color', None) == color_key
+                and getattr(gui.player_color_indicator, 'background_colour', None) == valid_color
+            ):
+                return
             gui.player_color_indicator.background_colour = valid_color
             gui.player_color_indicator.rebuild()
+            gui._last_player_indicator_color = color_key
         except (ValueError, TypeError) as e:
             logger.debug(f"Error setting player indicator color ({color}): {e}")
 
@@ -322,6 +338,7 @@ def update_hud_panel_colors(gui, player_color: Color) -> None:
     bg_color, border_color = create_player_scifi_theme_colors(player_color)
     gui.current_player_bg_color = bg_color
     gui.current_player_border_color = border_color
+    theme_sig = (tuple(bg_color), tuple(border_color))
 
     unit_editor_panel = (
         gui.unit_editor_window._panel
@@ -370,11 +387,18 @@ def update_hud_panel_colors(gui, player_color: Color) -> None:
     for panel in panels:
         if panel is not None and panel not in seen_panels:
             seen_panels.add(panel)
+            if (
+                getattr(panel, '_wormhole_themed_colors', None) == theme_sig
+                and getattr(panel, 'background_colour', None) == bg_color
+                and (not hasattr(panel, 'border_colour') or getattr(panel, 'border_colour', None) == border_color)
+            ):
+                continue
             try:
                 panel.background_colour = bg_color
                 if hasattr(panel, 'border_colour'):
                     panel.border_colour = border_color
                 panel.rebuild()
+                panel._wormhole_themed_colors = theme_sig
             except Exception as e:
                 logger.debug(f"Error updating panel color for {panel}: {e}")
 
@@ -388,16 +412,33 @@ def update_resource_display(gui, player: 'Player') -> None:
         player (Player): Active player entity whose resources to render.
     """
     if gui.credits_label:
-        gui.credits_label.set_text(f"Credits: {player.credits:.0f}")
+        credits_text = f"Credits: {player.credits:.0f}"
+        if getattr(gui.credits_label, 'text', None) != credits_text:
+            gui.credits_label.set_text(credits_text)
 
     if gui.metal_label:
-        gui.metal_label.set_text(f"Metal: {player.metal:.0f}")
+        metal_text = f"Metal: {player.metal:.0f}"
+        if getattr(gui.metal_label, 'text', None) != metal_text:
+            gui.metal_label.set_text(metal_text)
     if gui.crystal_label:
-        gui.crystal_label.set_text(f"Crystal: {player.crystal:.0f}")
+        crystal_text = f"Crystal: {player.crystal:.0f}"
+        if getattr(gui.crystal_label, 'text', None) != crystal_text:
+            gui.crystal_label.set_text(crystal_text)
     if getattr(gui, 'population_label', None):
-        from economy import total_population
-        population = total_population(getattr(gui.game_instance, 'galaxy', None), player)
-        gui.population_label.set_text(f"Population: {population:,.1f}")
+        game = getattr(gui, 'game_instance', None)
+        pop_cache = getattr(game, '_cached_population_display', None)
+        pop_dirty = getattr(game, '_population_display_dirty', True)
+        if not pop_dirty and pop_cache is not None and pop_cache[0] is player:
+            population = pop_cache[1]
+        else:
+            from economy import total_population
+            population = total_population(getattr(game, 'galaxy', None), player)
+            if game is not None and hasattr(game, '_population_display_dirty'):
+                game._cached_population_display = (player, population)
+                game._population_display_dirty = False
+        pop_text = f"Population: {population:,.1f}"
+        if getattr(gui.population_label, 'text', None) != pop_text:
+            gui.population_label.set_text(pop_text)
 
 
 ECONOMY_INCOME_HEADER_COLOR = "#50E550"
@@ -496,7 +537,6 @@ def update_comms_button(gui) -> None:
     if not current_player:
         return
     unread = gui.game_instance.get_unread_messages_for_player(current_player.id)
-    if unread:
-        gui.comms_button.set_text(f"Comms ({len(unread)})")
-    else:
-        gui.comms_button.set_text("Comms")
+    text = f"Comms ({len(unread)})" if unread else "Comms"
+    if getattr(gui.comms_button, 'text', None) != text:
+        gui.comms_button.set_text(text)

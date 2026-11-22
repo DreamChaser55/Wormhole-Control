@@ -18,6 +18,9 @@ logger = logging.getLogger(__name__)
 def _apply_player_button_theme(game) -> None:
     """Loads player-colored button and label styles into the GUI theme manager."""
     if game.players and hasattr(game.gui, 'manager') and game.gui.manager:
+        sig = tuple((p.name, tuple(p.color)) for p in game.players)
+        if getattr(game.gui, '_last_player_button_theme_sig', None) == sig:
+            return
         theme_dict = {}
         for p in game.players:
             obj_id = f'#player_{p.name.lower().replace(" ", "_")}_button'
@@ -43,6 +46,7 @@ def _apply_player_button_theme(game) -> None:
             }
         try:
             game.gui.manager.get_theme().load_theme(theme_dict)
+            game.gui._last_player_button_theme_sig = sig
         except Exception as e:
             logger.debug(f"Error loading player button themes: {e}")
 

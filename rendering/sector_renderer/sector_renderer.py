@@ -159,7 +159,11 @@ class SectorViewRenderer:
         
         if self.game.hex_has_presence(self.game.current_system_name, self.game.current_sector_coord):
             font_size = max(12, int(14 * display_config_for(self.game).text_scale))
-            hud_font = pygame.font.Font(None, font_size)
+            hud_font = self._font_cache.get(font_size)
+            if hud_font is None:
+                from rendering.drawing_utils import get_cached_font
+                hud_font = get_cached_font(None, font_size)
+                self._font_cache[font_size] = hud_font
             text_surface = hud_font.render("WARNING: Enemy presence detected in sector", True, FOG_PRESENCE_COLOR)
             text_rect = text_surface.get_rect(center=(self.screen.get_width() // 2, 60))
             self.screen.blit(text_surface, text_rect)
@@ -254,51 +258,55 @@ class SectorViewRenderer:
 
         # External units targeting this sector
         current_turn_player = self.game.players[self.game.current_player_index] if self.game.players else None
-        candidate_units = set()
+        external_units_with_orders_to_this_sector = []
         if current_turn_player:
+            current_sys_name = self.game.current_system_name
+            current_hex_coord = self.game.current_sector_coord
+            order_targets_sector = self.overlay_renderer.order_targets_sector
+            seen_ids: set[int] = set()
+
+            def _check_external_unit(candidate_unit: Unit) -> None:
+                uid = id(candidate_unit)
+                if uid in seen_ids:
+                    return
+                seen_ids.add(uid)
+                if (
+                    candidate_unit.in_system == current_sys_name
+                    and candidate_unit.in_hex == current_hex_coord
+                ):
+                    return
+                commander = candidate_unit.commander_component
+                if not commander:
+                    return
+                order = commander.current_order or commander.get_active_order_root()
+                if order:
+                    if order_targets_sector(order, current_sys_name, current_hex_coord):
+                        external_units_with_orders_to_this_sector.append(candidate_unit)
+                        return
+                    for sub_order in order.sub_orders:
+                        if order_targets_sector(sub_order, current_sys_name, current_hex_coord):
+                            external_units_with_orders_to_this_sector.append(candidate_unit)
+                            return
+                for queued_order in commander.orders_queue:
+                    if order_targets_sector(queued_order, current_sys_name, current_hex_coord):
+                        external_units_with_orders_to_this_sector.append(candidate_unit)
+                        return
+                    for sub_order in queued_order.sub_orders:
+                        if order_targets_sector(sub_order, current_sys_name, current_hex_coord):
+                            external_units_with_orders_to_this_sector.append(candidate_unit)
+                            return
+
             for obj in self.game.selected_objects:
                 if isinstance(obj, Unit) and obj.owner == current_turn_player:
-                    candidate_units.add(obj)
+                    _check_external_unit(obj)
             if self.game.galaxy:
-                for system in self.game.galaxy.systems.values():
-                    for hex_obj in system.hexes.values():
-                        for unit in hex_obj.units:
+                for sys_name, sys_obj in self.game.galaxy.systems.items():
+                    for h_coord, h_obj in sys_obj.hexes.items():
+                        if sys_name == current_sys_name and h_coord == current_hex_coord:
+                            continue
+                        for unit in h_obj.units:
                             if unit.owner == current_turn_player:
-                                candidate_units.add(unit)
-
-        external_units_with_orders_to_this_sector = []
-        for candidate_unit in candidate_units:
-            if isinstance(candidate_unit, Unit):
-                is_external_unit = (
-                    candidate_unit.in_system != self.game.current_system_name or
-                    candidate_unit.in_hex != self.game.current_sector_coord
-                )
-                if is_external_unit and candidate_unit.commander_component:
-                    has_orders_to_current_sector = False
-                    order = (
-                        candidate_unit.commander_component.current_order
-                        or candidate_unit.commander_component.get_active_order_root()
-                    )
-                    if order:
-                        if self.overlay_renderer.order_targets_sector(order, self.game.current_system_name, self.game.current_sector_coord):
-                            has_orders_to_current_sector = True
-                        for sub_order in order.sub_orders:
-                            if self.overlay_renderer.order_targets_sector(sub_order, self.game.current_system_name, self.game.current_sector_coord):
-                                has_orders_to_current_sector = True
-                                break
-                    if not has_orders_to_current_sector:
-                        for queued_order in candidate_unit.commander_component.orders_queue:
-                            if self.overlay_renderer.order_targets_sector(queued_order, self.game.current_system_name, self.game.current_sector_coord):
-                                has_orders_to_current_sector = True
-                                break
-                            for sub_order in queued_order.sub_orders:
-                                if self.overlay_renderer.order_targets_sector(sub_order, self.game.current_system_name, self.game.current_sector_coord):
-                                    has_orders_to_current_sector = True
-                                    break
-                            if has_orders_to_current_sector:
-                                break
-                    if has_orders_to_current_sector:
-                        external_units_with_orders_to_this_sector.append(candidate_unit)
+                                _check_external_unit(unit)
 
         self.overlay_renderer.draw_sector_view_order_lines_from_other_sectors(external_units_with_orders_to_this_sector)
         self.overlay_renderer.draw_targeting_mode_overlay()

@@ -188,6 +188,8 @@ class ControlService:
                 queued = self._requests.get_nowait()
             except queue.Empty:
                 break
+            if hasattr(self.game, "_population_display_dirty"):
+                self.game._population_display_dirty = True
             if queued.future.cancelled():
                 continue
             try:

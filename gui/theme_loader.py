@@ -12,6 +12,85 @@ from utils import resource_path
 logger = logging.getLogger(__name__)
 
 
+def _install_fast_combined_id_cache(theme) -> None:
+    """Bypass pygame_gui 0.6.14's nested str.join() cache-key explosion in build_all_combined_ids."""
+    if theme is None or getattr(theme, "_wormhole_fast_combined_ids", False):
+        return
+    get_next_id_node = getattr(theme, "_get_next_id_node", None)
+    if get_next_id_node is None:
+        return
+
+    cache: dict[tuple, list[str]] = {}
+
+    def fast_build_all_combined_ids(
+        element_base_ids: typing.Union[None, typing.List[typing.Union[str, None]]],
+        element_ids: typing.Union[None, typing.List[str]],
+        class_ids: typing.Union[None, typing.List[typing.Union[str, None]]],
+        object_ids: typing.Union[None, typing.List[typing.Union[str, None]]],
+    ) -> typing.List[str]:
+        cache_key = (
+            None if element_base_ids is None else tuple(element_base_ids),
+            None if element_ids is None else tuple(element_ids),
+            None if class_ids is None else tuple(class_ids),
+            None if object_ids is None else tuple(object_ids),
+        )
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
+
+        combined_ids: typing.List[str] = []
+        if (
+            object_ids is not None
+            and element_ids is not None
+            and class_ids is not None
+            and element_base_ids is not None
+        ):
+            if (
+                len(object_ids) != len(element_ids)
+                or len(class_ids) != len(element_ids)
+                or len(element_base_ids) != len(element_ids)
+            ):
+                raise ValueError(
+                    "Object & class ID hierarchy is not equal in length to Element ID"
+                    f" hierarchyElement IDs: {str(element_ids)}"
+                    + "\nClass IDs: "
+                    + str(class_ids)
+                    + "\n"
+                    "\nObject IDs: " + str(object_ids) + "\n"
+                )
+            if len(element_ids) != 0:
+                get_next_id_node(
+                    None,
+                    element_base_ids,
+                    element_ids,
+                    class_ids,
+                    object_ids,
+                    0,
+                    len(element_ids),
+                    combined_ids,
+                )
+
+            found_all_ids = False
+            current_ids = combined_ids[:]
+            while not found_all_ids:
+                if len(current_ids) > 0:
+                    for index, current_id in enumerate(current_ids):
+                        found_full_stop_index = current_id.find(".")
+                        if found_full_stop_index == -1:
+                            found_all_ids = True
+                        else:
+                            current_ids[index] = current_id[found_full_stop_index + 1:]
+                            combined_ids.append(current_ids[index])
+                else:
+                    found_all_ids = True
+
+        cache[cache_key] = combined_ids
+        return combined_ids
+
+    theme.build_all_combined_ids = fast_build_all_combined_ids
+    theme._wormhole_fast_combined_ids = True
+
+
 def preload_rich_text_fonts(manager) -> None:
     """Load actual rich-text styles once, including a standalone manager's fallback."""
     font_dict = manager.ui_theme.get_font_dictionary()
@@ -105,6 +184,10 @@ def build_ui_manager(display_config: DisplayConfig) -> pygame_gui.UIManager:
     except pygame.error as e:
         logger.debug(f"Pygame error initializing UIManager (maybe font issue?): {e}")
         manager = pygame_gui.UIManager(display_config.resolution.to_tuple())
+
+    # Install tuple-keyed combined-ID cache to avoid pygame_gui 0.6.14's str.join() key explosion
+    if manager and manager.ui_theme:
+        _install_fast_combined_id_cache(manager.ui_theme)
 
     # Programmatic preloading for problematic fonts
     if manager and manager.ui_theme and manager.ui_theme.get_font_dictionary():

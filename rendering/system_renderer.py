@@ -11,8 +11,20 @@ from unit_orders.base import OrderType
 from galaxy import Hex
 from rendering.planetary_intel import draw_ownership_ring
 from planetary_intel import displayed_owner
-from rendering.drawing_utils import draw_selection_brackets, selection_color_for, wormhole_ring_color
+from rendering.drawing_utils import draw_selection_brackets, get_cached_font, selection_color_for, wormhole_ring_color
 from rendering.system_unit_icons import SystemUnitIcons
+
+_PLANET_COLOR_MAP = {
+    PlanetType.TERRAN: (0, 128, 0),
+    PlanetType.DESERT: (210, 180, 140),
+    PlanetType.VOLCANIC: (255, 69, 0),
+    PlanetType.ICE: (173, 216, 230),
+    PlanetType.BARREN: (128, 128, 128),
+    PlanetType.FERROUS: (165, 42, 42),
+    PlanetType.GREENHOUSE: (0, 255, 0),
+    PlanetType.OCEANIC: (0, 0, 205),
+    PlanetType.GAS_GIANT: (255, 228, 181),
+}
 
 
 class SystemViewRenderer:
@@ -89,9 +101,39 @@ class SystemViewRenderer:
                 in_range_hexes = {coord for s_name, coord in lr_hexes if s_name == system.name}
 
         # 1. Draw Hex Backgrounds (Fog of War and Enemy Presence) and Grid Lines
+        display_cfg = display_config_for(self.game)
+        zoom = self._system_zoom()
+        pan_offset = self._system_pan_offset()
+        raw_size = self.screen.get_size() if hasattr(self.screen, 'get_size') else None
+        can_cull = (
+            isinstance(zoom, (int, float))
+            and isinstance(getattr(pan_offset, 'x', None), (int, float))
+            and isinstance(getattr(pan_offset, 'y', None), (int, float))
+            and isinstance(raw_size, (tuple, list))
+            and len(raw_size) == 2
+            and isinstance(raw_size[0], (int, float))
+            and isinstance(raw_size[1], (int, float))
+            and raw_size[0] > 0
+            and raw_size[1] > 0
+        )
+        cull_w = max(raw_size[0], display_cfg.width) if can_cull else None
+        cull_h = max(raw_size[1], display_cfg.height) if can_cull else None
+        screen_h = raw_size[1] if can_cull else None
+        hex_cull_margin = (display_cfg.hex_size * zoom * 2.0 + 32.0) if can_cull else 0.0
+        visible_hex_geometry = {}
+
         for hex_coord, hex_obj in system.hexes.items():
              q, r = hex_coord
-             hex_points_objects = self._hex_vertices(q, r)
+             hex_center_pixel = hex_to_pixel(q, r, zoom, pan_offset, display_config=display_cfg)
+             if can_cull and (
+                 hex_center_pixel.x + hex_cull_margin < 0
+                 or hex_center_pixel.x - hex_cull_margin > cull_w
+                 or hex_center_pixel.y + hex_cull_margin < 0
+                 or hex_center_pixel.y - hex_cull_margin > cull_h
+             ):
+                 continue
+             hex_points_objects = get_hex_vertices(q, r, zoom, pan_offset, display_config=display_cfg)
+             visible_hex_geometry[hex_coord] = (hex_center_pixel, hex_points_objects)
              hex_points_tuples = [p.to_tuple() for p in hex_points_objects]
 
              in_sensor_range = (hex_coord in in_range_hexes) if in_range_hexes is not None else (
@@ -111,33 +153,38 @@ class SystemViewRenderer:
                  pygame.draw.polygon(self.screen, CYAN, hex_points_tuples, 2)
 
         # 1b. Draw Wormhole Lines
+        center_px = None
+        wormhole_font = None
+        edge_radius = None
+        scale_val_screen = None
         for hex_coord, hex_obj in system.hexes.items():
             for body in hex_obj.celestial_bodies:
                 if isinstance(body, Wormhole):
                     q_w, r_w = hex_coord
                     if q_w == 0 and r_w == 0:
                         continue
-                    center_px = self._hex_to_pixel(0, 0)
-                    wh_px = self._hex_to_pixel(q_w, r_w)
+                    if center_px is None:
+                        center_px = hex_to_pixel(0, 0, zoom, pan_offset, display_config=display_cfg)
+                        wormhole_font = get_cached_font(None, max(1, int(10 * display_cfg.text_scale)))
+                        edge_radius = (system.radius + 0.5) * SQRT3 * display_cfg.hex_size * zoom
+                        scale_val_screen = (screen_h if screen_h is not None else self.screen.get_height()) / 720.0
+                    geom = visible_hex_geometry.get(hex_coord)
+                    wh_px = geom[0] if geom is not None else hex_to_pixel(q_w, r_w, zoom, pan_offset, display_config=display_cfg)
                     dx = wh_px.x - center_px.x
                     dy = wh_px.y - center_px.y
                     dist = math.hypot(dx, dy)
                     if dist > 0:
                         ux = dx / dist
                         uy = dy / dist
-                        edge_radius = (system.radius + 0.5) * SQRT3 * display_config_for(self.game).hex_size * self._system_zoom()
                         end_x = int(center_px.x + edge_radius * ux)
                         end_y = int(center_px.y + edge_radius * uy)
                         pygame.draw.line(self.screen, WORMHOLE_LINE_COLOR, (wh_px.x, wh_px.y), (end_x, end_y), 2)
 
                         # Draw destination system name at the end of the line
-                        scale_val = self.screen.get_height() / 720.0
-                        font_size = max(1, int(10 * display_config_for(self.game).text_scale))
-                        font = pygame.font.Font(None, font_size)
-                        text_surface = font.render(body.exit_system_name, True, WORMHOLE_LINE_COLOR)
+                        text_surface = wormhole_font.render(body.exit_system_name, True, WORMHOLE_LINE_COLOR)
                         text_rect = text_surface.get_rect()
 
-                        padding = int(5 * scale_val)
+                        padding = int(5 * scale_val_screen)
                         if ux > 0.3:
                             text_rect.midleft = (end_x + padding, end_y)
                         elif ux < -0.3:
@@ -151,12 +198,13 @@ class SystemViewRenderer:
                         self.screen.blit(text_surface, text_rect)
 
         # 2. Draw Contents of Hexes (Stars, Planets, Units)
-        for hex_coord, hex_obj in system.hexes.items():
-            q, r = hex_coord
-            hex_center_pixel = self._hex_to_pixel(q, r)
+        from domain.construction_job import get_sector_construction_jobs
+        from constants import CONSTRUCTOR_RANGE_RING_COLOR
+        scale_val = self._map_scale()
+        for hex_coord, (hex_center_pixel, hex_points_objects) in visible_hex_geometry.items():
+            hex_obj = system.hexes[hex_coord]
 
             # Draw celestial bodies
-            scale_val = self._map_scale()
             solid_icon_radius = None
             for body in hex_obj.celestial_bodies:
                 body_color = DARK_GRAY
@@ -168,18 +216,7 @@ class SystemViewRenderer:
                     body_color = STAR_COLORS.get(body.star_type, YELLOW)
                     body_radius = int(8 * scale_val)
                 elif isinstance(body, Planet):
-                    planet_color_map = {
-                        PlanetType.TERRAN: (0, 128, 0),
-                        PlanetType.DESERT: (210, 180, 140),
-                        PlanetType.VOLCANIC: (255, 69, 0),
-                        PlanetType.ICE: (173, 216, 230),
-                        PlanetType.BARREN: (128, 128, 128),
-                        PlanetType.FERROUS: (165, 42, 42),
-                        PlanetType.GREENHOUSE: (0, 255, 0),
-                        PlanetType.OCEANIC: (0, 0, 205),
-                        PlanetType.GAS_GIANT: (255, 228, 181),
-                    }
-                    body_color = planet_color_map.get(body.planet_type, CYAN)
+                    body_color = _PLANET_COLOR_MAP.get(body.planet_type, CYAN)
                     body_radius = int(4 * scale_val)
                     draw_ownership_ring(self.screen, self.game, body,
                                         (hex_center_pixel.x, hex_center_pixel.y), body_radius + int(3 * scale_val))
@@ -262,16 +299,14 @@ class SystemViewRenderer:
             if visible_units:
                 selection_bounds.extend(self._unit_icons.draw(
                     self.screen, visible_units, center=hex_center_pixel,
-                    vertices=self._hex_vertices(q, r), scale=scale_val, solid_radius=solid_icon_radius,
+                    vertices=hex_points_objects, scale=scale_val, solid_radius=solid_icon_radius,
                     selected=self.game.selected_objects, viewer=current_viewer,
-                    text_scale=display_config_for(self.game).text_scale,
+                    text_scale=display_cfg.text_scale,
                 ))
 
             # Draw construction marker badge if hex contains active construction
-            from domain.construction_job import get_sector_construction_jobs
             sector_jobs = get_sector_construction_jobs(hex_obj, viewer=current_viewer)
             if sector_jobs:
-                from constants import CONSTRUCTOR_RANGE_RING_COLOR
                 badge_radius = max(2, int(3.5 * scale_val))
                 badge_x = int(hex_center_pixel.x + 14 * scale_val)
                 badge_y = int(hex_center_pixel.y - 14 * scale_val)

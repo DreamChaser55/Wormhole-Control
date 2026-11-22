@@ -47,27 +47,41 @@ def toggle_section_expansion(gui, section_id: str) -> None:
 
 def _build_label(gui, item_data: dict, x: int, y: int, width: int, height: int, container, obj_id) -> int:
     text = item_data.get('text', '')
-    # Resolve the actual widget font, including inherited/scaled theme selectors.
-    # Looking up just ObjectID can select a different font from the rendered label.
-    first = pygame_gui.elements.UILabel(
-        relative_rect=pygame.Rect(x, y, width, -1), text='',
-        manager=gui.manager, container=container, object_id=obj_id)
-    lines, _ = gui.wrap_text_to_lines(text, width, first.font)
+    if not text:
+        return 0
+    font_cache = getattr(gui, '_sidebar_label_fonts', None)
+    style_key = (item_data.get('object_id', None), item_data.get('class_id', None))
+    cached_font = font_cache.get(style_key) if font_cache is not None else None
+    first = None
+    if cached_font is None:
+        # Resolve the actual widget font once per style, including inherited/scaled theme selectors.
+        # Looking up just ObjectID can select a different font from the rendered label.
+        first = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(x, y, width, -1), text='',
+            manager=gui.manager, container=container, object_id=obj_id)
+        cached_font = first.font
+        if font_cache is not None:
+            font_cache[style_key] = cached_font
+
+    lines, _ = gui.wrap_text_to_lines(text, width, cached_font)
     if not lines:
-        first.kill()
+        if first is not None:
+            first.kill()
         return 0
     total_height = 0
     for index, line in enumerate(lines):
         label_rect = pygame.Rect(x, y + total_height, width, -1)
-        label = first if index == 0 else pygame_gui.elements.UILabel(
-            relative_rect=label_rect,
-            text=line,
-            manager=gui.manager,
-            container=container,
-            object_id=obj_id
-        )
-        if index == 0:
+        if index == 0 and first is not None:
+            label = first
             label.set_text(line)
+        else:
+            label = pygame_gui.elements.UILabel(
+                relative_rect=label_rect,
+                text=line,
+                manager=gui.manager,
+                container=container,
+                object_id=obj_id
+            )
         gui.side_bar_dynamic_elements.append(label)
         total_height += label.get_relative_rect().height
     return total_height

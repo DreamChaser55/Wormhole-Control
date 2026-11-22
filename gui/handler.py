@@ -1,5 +1,6 @@
 from display_config import DisplayConfig
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -43,8 +44,14 @@ class GUI_Handler:
         self.scale_y = screen_res.y / 720.0
 
         self.manager = build_ui_manager(self.display_config)
-        if self.manager:
+        if self.manager and os.environ.get("WORMHOLE_UI_DEBUG", "").lower() == "true":
             self.manager.set_visual_debug_mode(True)
+
+        # Cached HUD / sidebar render signatures to avoid redundant per-frame rebuilds
+        self._last_turn_label_text: typing.Optional[str] = None
+        self._last_player_indicator_color: typing.Optional[tuple[int, ...]] = None
+        self._last_player_button_theme_sig: typing.Optional[tuple] = None
+        self._sidebar_label_fonts: typing.Dict[tuple[typing.Optional[str], typing.Optional[str]], typing.Any] = {}
 
         # --- UI Elements --- 
         # Main Menu
@@ -219,6 +226,10 @@ class GUI_Handler:
         from .turn_briefing_window import close_briefing
         close_briefing(self)
         self.turn_summary_button = None
+        self._last_turn_label_text = None
+        self._last_player_indicator_color = None
+        self._last_player_button_theme_sig = None
+        self._sidebar_label_fonts.clear()
         self.manager.clear_and_reset()
 
     # --- Visibility Control --- 

@@ -140,6 +140,8 @@ class Game:
         # Initialize the main menu UI
         self.gui.show_main_menu()
         self.sidebar_needs_update: bool = True
+        self._population_display_dirty: bool = True
+        self._cached_population_display: typing.Optional[typing.Tuple[Player, float]] = None
         self.pending_ai_turn_end_time: int = 0
         self.defeat_notice: tuple[int, tuple[str, ...]] = (0, ())
         self.selected_component_name: typing.Optional[str] = None
@@ -207,7 +209,9 @@ class Game:
 
     def start_new_game(self, settings=None):
         """Initializes a new game when the New Game button is clicked."""
-        return game_setup.start_new_game(self, settings=settings)
+        result = game_setup.start_new_game(self, settings=settings)
+        self._population_display_dirty = True
+        return result
 
     def spawn_units(self, player_homeworld_hexes: typing.Dict[Player, HexCoord] = None):
         """Sets up the starting units of all players."""
@@ -245,6 +249,7 @@ class Game:
             return
         import game_actions
         game_actions.handle_gui_action(self, action)
+        self._population_display_dirty = True
         from turn_briefing import refresh_discoveries
         refresh_discoveries(self)
 
@@ -285,6 +290,7 @@ class Game:
             self.visibility = None
         self.visibility_dirty = False
         self.sidebar_needs_update = True
+        self._population_display_dirty = True
         gui = getattr(self, 'gui', None)
         if gui:
             gui.close_context_menu()
@@ -369,8 +375,17 @@ class Game:
         if not is_open(self.gui) and not ai_summary_active(self):
             self.update_sector_camera(time_delta)
             self.update_system_camera(time_delta)
+            prev_galaxy_zoom = self.galaxy_zoom
+            prev_galaxy_pan = (self.galaxy_pan_offset.x, self.galaxy_pan_offset.y)
             self.update_galaxy_camera(time_delta)
-            if self.game_started and self.view_mode == 'galaxy':
+            if (
+                self.game_started
+                and self.view_mode == 'galaxy'
+                and (
+                    self.galaxy_zoom != prev_galaxy_zoom
+                    or (self.galaxy_pan_offset.x, self.galaxy_pan_offset.y) != prev_galaxy_pan
+                )
+            ):
                 self.input_processor.update_hover_states(Position(*pygame.mouse.get_pos()))
 
         # Update the GUI Handler
@@ -408,6 +423,7 @@ class Game:
         self.turn_processor.end_turn()
         self.visibility_dirty = True
         self.sidebar_needs_update = True # Ensure sidebar refreshes after turn processing
+        self._population_display_dirty = True
 
     def check_and_schedule_ai_turn(self):
         """Schedules automated turn completion if the active player is an AI."""
@@ -567,6 +583,7 @@ class Game:
             success = False
 
         if success:
+            self._population_display_dirty = True
             # Commit has succeeded. Presentation failures must not report a rejected save.
             try:
                 self.ai_coordinator.reset()

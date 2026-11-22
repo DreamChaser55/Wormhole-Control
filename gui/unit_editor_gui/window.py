@@ -88,6 +88,7 @@ class UnitEditorWindow:
 
         # Tracked UI elements — built once in _build_ui, shown/hidden together
         self._elements: typing.List[pygame_gui.core.UIElement] = []
+        self._detached_sprites: typing.List[typing.Tuple[typing.Any, int]] = []
 
         # Specific widget references
         self._panel: typing.Optional[pygame_gui.elements.UIPanel] = None
@@ -190,10 +191,53 @@ class UnitEditorWindow:
         """Builds Column 4 design summary text box and layout container."""
         layout.build_col4_summary(self, c4x, c4y, c4w, row_h, pad, pr)
 
+    def _detach_from_ui_group(self) -> None:
+        """Remove hidden editor sprites from UIManager.ui_group so they don't tick every frame."""
+        if self._panel is None or self._detached_sprites:
+            return
+        ui_group = getattr(self.manager, "ui_group", None)
+        if ui_group is None or not hasattr(ui_group, "remove_internal"):
+            return
+        panel = self._panel
+        panel_container = panel.get_container()
+        spritelayers = getattr(ui_group, "_spritelayers", {})
+
+        def _belongs_to_panel(sprite) -> bool:
+            seen: set[int] = set()
+            cur = sprite
+            while cur is not None and id(cur) not in seen:
+                seen.add(id(cur))
+                if cur is panel or cur is panel_container:
+                    return True
+                cur = getattr(cur, "ui_container", None)
+            return False
+
+        matched = [s for s in list(ui_group.sprites()) if _belongs_to_panel(s)]
+        for sprite in matched:
+            layer = spritelayers.get(sprite, getattr(sprite, "_layer", 0))
+            if ui_group.has_internal(sprite):
+                ui_group.remove_internal(sprite)
+                sprite.remove_internal(ui_group)
+                self._detached_sprites.append((sprite, layer))
+
+    def _attach_to_ui_group(self) -> None:
+        """Restore detached editor sprites to UIManager.ui_group before showing or killing."""
+        if not self._detached_sprites:
+            return
+        ui_group = getattr(self.manager, "ui_group", None)
+        detached = self._detached_sprites
+        self._detached_sprites = []
+        if ui_group is None:
+            return
+        for sprite, layer in detached:
+            if not ui_group.has_internal(sprite):
+                ui_group.add(sprite, layer=layer)
+
     def show(self) -> None:
         """Open a fresh draft, preserving an already-visible editing session."""
         if self.is_visible:
             return
+        self._attach_to_ui_group()
         self._reset_draft()
         self.is_visible = True
         if self._panel:
@@ -244,9 +288,11 @@ class UnitEditorWindow:
             self._save_dialog = None
         if self._panel:
             self._panel.hide()
+        self._detach_from_ui_group()
 
     def kill(self) -> None:
         """Destroy all widgets."""
+        self._attach_to_ui_group()
         self.close_description()
         if self._save_dialog:
             self._save_dialog.kill()

@@ -4,11 +4,13 @@ from constants import BLACK
 from game_actions.turn_presentation import defeat_notice, ai_summary_snapshot
 from player_controller import automated_turn_active
 
+from rendering.drawing_utils import get_cached_font
 from rendering.galaxy_renderer import GalaxyViewRenderer
 from rendering.system_renderer import SystemViewRenderer
 from rendering.sector_renderer import SectorViewRenderer
 from rendering.main_menu_renderer import MainMenuRenderer
 from rendering.ai_turn_renderer import AITurnRenderer
+
 
 class Renderer:
     def __init__(self, game_instance):
@@ -27,10 +29,10 @@ class Renderer:
     def _draw_status(self, title, detail):
         center_x, center_y = self.screen.get_rect().center
         for text, size, offset in ((title, 42, -18), (detail, 25, 25)):
-            font = pygame.font.Font(None, size)
+            font = get_cached_font(None, size)
             text_width = font.size(text)[0]
             if text_width > self.screen.get_width() - 32:
-                font = pygame.font.Font(None, max(12, int(size * (self.screen.get_width() - 32) / text_width)))
+                font = get_cached_font(None, max(12, int(size * (self.screen.get_width() - 32) / text_width)))
             image = font.render(text, True, (205, 219, 234))
             self.screen.blit(image, image.get_rect(center=(center_x, center_y + offset)))
         pygame.display.flip()
@@ -39,9 +41,6 @@ class Renderer:
         """Renders the current game state to the screen."""
 
         self.screen.fill(BLACK)
-
-        # Always clear the overlay surface at the start of a draw call
-        self.overlay_surface.fill((0, 0, 0, 0))
 
         defeated = defeat_notice(self.game)
         if defeated:
@@ -66,6 +65,10 @@ class Renderer:
             pygame.display.flip()
             return
 
+        use_overlay = self.game.view_mode not in ('main_menu', 'about')
+        if use_overlay:
+            self.overlay_surface.fill((0, 0, 0, 0))
+
         if self.game.view_mode == 'galaxy' and self.game.game_started:
             self.galaxy_renderer.draw_galaxy_view()
         elif self.game.view_mode == 'system' and self.game.game_started:
@@ -75,7 +78,7 @@ class Renderer:
         elif self.game.view_mode in ('main_menu', 'about'):
             self.main_menu_renderer.draw()
 
-        if self.game.view_mode not in ['main_menu', 'about']:
+        if use_overlay:
             self.screen.blit(self.overlay_surface, (0, 0))
 
         self.gui.draw(self.screen)
