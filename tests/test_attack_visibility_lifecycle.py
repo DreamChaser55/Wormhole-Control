@@ -34,7 +34,7 @@ def battle():
 def attack_ship(attacker, target, order_class=AttackOrder, component=None):
     variant = TurretVariant.LONG_RANGE if order_class is AttackLongRangeOrder else TurretVariant.STANDARD
     attacker.weapons_component.turrets = [Turret(
-        TurretType.MASS_DRIVER, damage=6, range=100 if variant == TurretVariant.LONG_RANGE else 300,
+        TurretType.MASS_DRIVER, damage=6, range=300,
         cooldown=2, parent_unit=attacker, variant=variant)]
     order = order_class(attacker, {'target_unit_id': target.id, 'target_component_type': component})
     attacker.commander_component.add_order(order)

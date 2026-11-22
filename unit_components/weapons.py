@@ -32,7 +32,7 @@ def _antimatter_per_shot(unit: 'Unit') -> float:
 
 
 def targeting_range(turret_range: float, target_component_type: Optional[type] = None) -> float:
-    """Range for the selected target, using already variant-scaled turret range."""
+    """Range for the selected target (halved when targeting a specific component)."""
     return turret_range * COMPONENT_TARGET_RANGE_MULTIPLIER if target_component_type is not None else turret_range
 
 
@@ -82,11 +82,6 @@ class Turret:
         reduction = modifiers_for_unit(self.parent_unit).cooldown_reduction
         return max(1, self.cooldown - reduction)
 
-    def __post_init__(self) -> None:
-        if self.variant == TurretVariant.LONG_RANGE:
-            self.range *= 3.0
-            self.cooldown *= 3
-
     def to_state(self):
         from state_codec import encode
         return {name: encode(getattr(self, name)) for name in
@@ -102,10 +97,15 @@ class Turret:
         errors = turret_numeric_errors(values, include_current_cooldown=True)
         if errors:
             raise ValueError("; ".join(errors))
-        # The save contains effective values. Do not apply variant scaling again.
-        turret = cls.__new__(cls)
-        turret.__dict__.update(values, parent_unit=unit, target=None, target_component_type=None)
-        return turret
+        return cls(
+            turret_type=values["turret_type"],
+            damage=values["damage"],
+            range=values["range"],
+            cooldown=values["cooldown"],
+            parent_unit=unit,
+            variant=values["variant"],
+            current_cooldown=values["current_cooldown"],
+        )
 
     def fire(self) -> bool:
         """Pay for and resolve a shot, returning whether the turret fired."""
@@ -191,19 +191,12 @@ class Weapons(UnitComponent):
     @staticmethod
     def calc_turret_hull_cost(turret: typing.Any) -> float:
         """Compute the hull cost of a single turret based on its stats."""
-        effective_range = turret.range
         effective_cooldown = max(1, turret.cooldown)
-
-        variant_val = getattr(turret, "variant", "")
-        variant_name = variant_val.name if hasattr(variant_val, "name") else str(variant_val)
-        if variant_name.upper() == "LONG_RANGE":
-            effective_range *= 3.0
-            effective_cooldown *= 3
 
         cost = (
             BASE_TURRET_COST
             + turret.damage / DMG_PER_POINT
-            + effective_range / RANGE_PER_POINT
+            + turret.range / RANGE_PER_POINT
             + COOLDOWN_BONUS / effective_cooldown
         )
         return float(cost)

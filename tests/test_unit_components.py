@@ -372,7 +372,7 @@ def test_commander_stances():
 @pytest.mark.parametrize('reverse', [False, True])
 def test_dreadnought_weapon_hull_cost_is_canonical(reverse):
     turrets = [
-        TurretConfig('MISSILE', damage=20, range=400, cooldown=3,
+        TurretConfig('MISSILE', damage=20, range=1200, cooldown=9,
                      variant='LONG_RANGE')
         for _ in range(6)
     ] + [
@@ -864,12 +864,12 @@ def test_turret_variants():
     weapons_std.set_target(target_strikecraft)
     assert turret_std.target is None
 
-    # 2. Long range turret: 3x range, 3x cooldown
+    # 2. Long range turret: stores specified range and cooldown directly without hidden scaling
     turret_lr = Turret(
         turret_type=TurretType.MASS_DRIVER,
         damage=10.0,
-        range=100.0,
-        cooldown=2,
+        range=300.0,
+        cooldown=6,
         parent_unit=unit,
         variant=TurretVariant.LONG_RANGE
     )
@@ -932,8 +932,8 @@ def test_weapons_sidebar_data():
     turret2 = Turret(
         turret_type=TurretType.BEAM,
         damage=30.0,
-        range=97.5,
-        cooldown=3,
+        range=292.5,
+        cooldown=9,
         parent_unit=unit,
         variant=TurretVariant.LONG_RANGE,
         current_cooldown=2,

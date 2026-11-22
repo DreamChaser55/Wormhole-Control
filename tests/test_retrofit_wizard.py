@@ -154,6 +154,7 @@ def test_retrofit_wizard_weapons_turrets_customization(wizard_setup):
     assert wizard._turrets[1]["type"] == "BEAM"
     assert wizard._turrets[1]["variant"] == "LONG_RANGE"
     assert wizard._turrets[1]["damage"] == 25.0
+    assert "rng:400 cd:3" in wizard._turret_labels[1].html_text
 
     # Remove the first turret
     wizard._remove_turret(0)

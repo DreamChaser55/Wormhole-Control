@@ -28,14 +28,11 @@ def describe_template(key, raw):
             'ship' if data['has_engine'] or data['has_hyperdrive'] else 'station')
     weapons = []
     for turret in data['turrets'] if data['has_weapon_bays'] else []:
-        scale = 3 if turret['variant'] == 'LONG_RANGE' else 1
         targets = ['ship', 'station', 'wing'] if turret['variant'] == 'ANTI_STRIKECRAFT' else ['ship', 'station']
         if kind == 'wing':
             allowed = ['ship', 'station'] if data['wing_type'].upper() == 'BOMBER' else ['wing']
             targets = [target for target in targets if target in allowed]
-        weapons.append(dict(turret, range=turret['range'] * scale,
-                            cooldown=turret['cooldown'] * scale,
-                            target_classes=targets))
+        weapons.append(dict(turret, target_classes=targets))
     support = {}
     for flag, fields in {
         'constructor_component': (), 'colony_component': (),

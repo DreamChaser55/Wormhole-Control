@@ -306,10 +306,10 @@ def test_invalid_inputs_never_charge_or_start(world, name, config):
 
 def test_long_range_base_cost_and_snapshot(world):
     target = world[-1]
-    config = {'turrets': [dict(type='BEAM', variant='LONG_RANGE', damage=10, range=300, cooldown=2)],
+    config = {'turrets': [dict(type='BEAM', variant='LONG_RANGE', damage=10, range=900, cooldown=6)],
               'hull_cost': .001}
     result = evaluate_refit(target, 'ADD', 'Weapons', config)
-    expected = TurretConfig('BEAM', 10, 300, 2, 'LONG_RANGE')
+    expected = TurretConfig('BEAM', 10, 900, 6, 'LONG_RANGE')
     from custom_unit_templates import calc_weapons_hull_cost
     assert result.hull_cost == pytest.approx(calc_weapons_hull_cost([expected]))
     order = issue(world, 'Weapons', config)
@@ -318,6 +318,7 @@ def test_long_range_base_cost_and_snapshot(world):
     finish(world)
     assert installed_configuration(target).turrets == [expected]
     assert target.weapons_component.turrets[0].range == 900
+    assert target.weapons_component.turrets[0].cooldown == 6
     assert order.status == OrderStatus.COMPLETED
 
 

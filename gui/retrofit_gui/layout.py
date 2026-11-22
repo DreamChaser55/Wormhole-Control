@@ -392,9 +392,7 @@ def rebuild_wizard_turret_list(wizard: RetrofitWizardWindow) -> None:
 
     turrets = wizard._turrets
     for i, tc in enumerate(turrets):
-        disp_range = tc["range"] * 3.0 if tc.get("variant") == "LONG_RANGE" else tc["range"]
-        disp_cooldown = tc["cooldown"] * 3 if tc.get("variant") == "LONG_RANGE" else tc["cooldown"]
-        text = f"{tc['type']} ({tc.get('variant', 'STANDARD').lower()}) dmg:{tc['damage']:g} rng:{disp_range:g} cd:{disp_cooldown}"
+        text = f"{tc['type']} ({tc.get('variant', 'STANDARD').lower()}) dmg:{tc['damage']:g} rng:{tc['range']:g} cd:{tc['cooldown']}"
 
         from gui.text_layout import wrap_text_to_lines
         font = wizard.manager.ui_theme.get_font(['text_box', '#turret_item_label'])

@@ -42,9 +42,7 @@ def rebuild_turret_list(editor) -> None:
     ly = editor._turret_list_y_start
 
     for i, tc in enumerate(editor._turrets):
-        disp_range = tc.range * 3.0 if tc.variant == "LONG_RANGE" else tc.range
-        disp_cooldown = tc.cooldown * 3 if tc.variant == "LONG_RANGE" else tc.cooldown
-        text = f"{tc.turret_type} ({tc.variant.lower()})  dmg:{tc.damage:g}  rng:{disp_range:g}  cd:{disp_cooldown}"
+        text = f"{tc.turret_type} ({tc.variant.lower()})  dmg:{tc.damage:g}  rng:{tc.range:g}  cd:{tc.cooldown}"
         lbl = pygame_gui.elements.UILabel(
             relative_rect=pygame.Rect(lx, ly, int(lw * 0.80), small_h),
             text=text,

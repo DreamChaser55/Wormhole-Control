@@ -787,7 +787,7 @@ ability and Trade prerequisites, turret rules and numeric validation, with at
 least one meaningful component. Removing a prerequisite can invalidate a refit.
 Docked craft must remain safe. Validation happens before charging and again at
 completion; queued jobs validate when they start. The engine calculates prices
-and durations. Long-range turret costs use Designer stats before variant scaling.
+and durations directly from the Designer turret and component stats.
 
 Failed or cancelled installations refund their charge once to the original payer.
 Failed or cancelled removals pay no salvage. A pending job cannot cancel or refund
@@ -902,7 +902,7 @@ orders hold position once the required turrets have range. Losing all eligible
 Long Range turrets fails the long-range order.
 
 Selecting a specific component halves each turret's hull-attack range for both
-approach and firing, including Long Range turrets after their variant scaling.
+approach and firing, including Long Range turrets.
 Each turret holds fire until the target is strictly inside its own component range;
 it does not shoot the hull instead while approaching. For example, a turret with
 1,000 hull range can attack a component only at distances below 500. The normal
@@ -1598,8 +1598,8 @@ Stationary, disabled, fuel-blocked, jump-only and tractor-only ships are exempt.
 Crossing without ending inside is safe. Each overlapping debris source applies
 its density-based base hull damage separately; active damage reduction can reduce it.
 
-Ice/nitrogen cooling reduces a turret's cooldown reset **when it fires**, after
-variant scaling. Positive cooldowns have a minimum reset of one; zero-cooldown
+Ice/nitrogen cooling reduces a turret's cooldown reset **when it fires**.
+Positive cooldowns have a minimum reset of one; zero-cooldown
 designs remain zero. Coolant sources do not stack. Entering or leaving a region
 does not recalculate an already running cooldown. All turret types and hulls
 benefit; ability cooldowns are unaffected.

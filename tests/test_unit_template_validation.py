@@ -122,7 +122,8 @@ def test_direct_design_validation_reports_bad_types_before_cost_arithmetic(field
 
 def test_finite_parameters_with_overflowing_cost_are_invalid():
     data = record(has_weapon_bays=True, turrets=[
-        dict(type='BEAM', variant='LONG_RANGE', damage=1, range=1e308, cooldown=0),
+        dict(type='BEAM', variant='LONG_RANGE', damage=1e308, range=1e308, cooldown=0)
+        for _ in range(10)
     ])
     assert 'total_hull_cost' in messages(data)
 

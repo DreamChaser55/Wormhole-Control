@@ -38,9 +38,9 @@ def battle():
     game.is_unit_visible = lambda target: True
     target = create_combat_ship(game.galaxy, enemy, 'Target', (0, 0), pos=(1000, 0))
     target.current_hit_points = target.max_hit_points = 1000
-    for base_range in (200, 300):
+    for turret_range in (600, 900):
         unit.weapons_component.add_turret(Turret(
-            TurretType.BEAM, damage=3, range=base_range, cooldown=1,
+            TurretType.BEAM, damage=3, range=turret_range, cooldown=3,
             parent_unit=unit, variant=TurretVariant.LONG_RANGE))
     return game, player, unit, target
 
@@ -109,10 +109,10 @@ def test_range_policy_uses_variant_and_ignores_cooldowns(battle, component, stan
 @pytest.mark.parametrize('offset', [-0.01, 0, 0.01])
 def test_firing_range_boundary(battle, turret_type, variant, component, offset):
     game, _, unit, target = battle
-    turret = Turret(turret_type, damage=8, range=301, cooldown=2,
+    hull_range = 903 if variant == TurretVariant.LONG_RANGE else 301
+    turret = Turret(turret_type, damage=8, range=hull_range, cooldown=2,
                     parent_unit=unit, variant=variant)
     unit.weapons_component.turrets = [turret]
-    hull_range = 903 if variant == TurretVariant.LONG_RANGE else 301
     limit = hull_range * 0.5 if component else hull_range
     target.position = Position(limit + offset, 0)
     target.engines_component.current_hit_points = target.engines_component.max_hit_points = 100

@@ -1,7 +1,7 @@
 """Pure adapters between installed equipment, retrofit requests, and Designer rules.
 
-No component is instantiated during evaluation: turret construction applies runtime
-variant scaling, and component constructors may have other gameplay side effects.
+No component is instantiated during evaluation: component constructors may have
+gameplay side effects.
 """
 from copy import deepcopy
 from dataclasses import dataclass, field
@@ -78,14 +78,11 @@ def installed_configuration(unit):
         if spec.fixed_cost:
             setattr(result, spec.fixed_cost, component.hull_cost)
         if name == 'Weapons':
-            result.turrets = []
-            for turret in component.turrets:
-                variant = enum_name(turret.variant)
-                scale = 3 if variant == 'LONG_RANGE' else 1
-                # Runtime values were multiplied by three exactly once on creation.
-                cooldown = turret.cooldown // scale if turret.cooldown % scale == 0 else turret.cooldown / scale
-                result.turrets.append(TurretConfig(enum_name(turret.turret_type), turret.damage,
-                                                   turret.range / scale, cooldown, variant))
+            result.turrets = [
+                TurretConfig(enum_name(turret.turret_type), turret.damage,
+                             turret.range, turret.cooldown, enum_name(turret.variant))
+                for turret in component.turrets
+            ]
         elif name == 'AbilityComponent':
             result.abilities = [ability.value for ability in component.abilities]
     wing = getattr(unit, 'strikecraft_wing_component', None)

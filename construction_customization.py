@@ -26,7 +26,7 @@ def validate_template_overrides(template, turret_type_override=None, defense_typ
 
 
 def customize_template(template, turret_type_override=None, defense_type_override=None):
-    """Keep authored stats/costs intact, including unscaled Long Range turret stats."""
+    """Keep authored stats and costs intact while applying turret/defense type overrides."""
     validate_template_overrides(template, turret_type_override, defense_type_override)
     result = deepcopy(template)
     if turret_type_override is not None:

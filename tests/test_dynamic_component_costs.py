@@ -88,11 +88,13 @@ class TestCalcTurretHullCost:
         t_fast = self._standard(10, 300, 1)
         assert calc_turret_hull_cost(t_fast) > calc_turret_hull_cost(t_slow)
 
-    def test_long_range_variant_costs_more_than_standard(self):
-        """LONG_RANGE variant triples effective range and cooldown in pricing."""
+    def test_long_range_variant_uses_direct_stats_for_hull_cost(self):
+        """LONG_RANGE variant prices its stored range and cooldown directly without hidden scaling."""
         t_std = self._standard(10, 300, 2, "STANDARD")
-        t_lr = self._standard(10, 300, 2, "LONG_RANGE")
-        assert calc_turret_hull_cost(t_lr) > calc_turret_hull_cost(t_std)
+        t_lr_same = self._standard(10, 300, 2, "LONG_RANGE")
+        t_lr_far = self._standard(10, 900, 6, "LONG_RANGE")
+        assert calc_turret_hull_cost(t_lr_same) == calc_turret_hull_cost(t_std)
+        assert calc_turret_hull_cost(t_lr_far) > calc_turret_hull_cost(t_std)
 
 
 # ---------------------------------------------------------------------------

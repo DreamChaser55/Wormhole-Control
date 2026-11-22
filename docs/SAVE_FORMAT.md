@@ -103,8 +103,8 @@ Component names come from a registry; save data cannot import arbitrary classes.
 Unknown types, unsupported schema versions, missing component fields, invalid
 types, and non-finite or out-of-range numbers fail validation.
 
-Weapons save the complete turret inventory, effective turret statistics, variants,
-and current cooldowns. Restoration does not apply variant modifiers a second time.
+Weapons save the complete turret inventory, turret statistics, variants,
+and current cooldowns, and restore them verbatim.
 Each ability has its own type and schema version, a saved definition, and separate
 runtime state: active flag, cooldown, remaining duration, target ID/position, and
 spawned-unit IDs. Restoration never calls ability activation.

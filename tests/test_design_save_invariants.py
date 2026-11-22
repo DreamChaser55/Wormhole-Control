@@ -92,8 +92,7 @@ def test_accepted_equipment_roundtrips_through_campaign(tmp_path, variant, stats
         assert order.status.name == 'IN_PROGRESS'
         actor.constructor_component.finish_refit(game.galaxy)
     assert player.credits < 10000
-    expected = (stats[0], stats[1] * (3 if variant == 'LONG_RANGE' else 1),
-                stats[2] * (3 if variant == 'LONG_RANGE' else 1))
+    expected = stats
     for _ in range(2):
         prepared = prepare_campaign(json.loads(json.dumps(serialize_game_state(game))))
         game = prepared.state

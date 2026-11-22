@@ -154,7 +154,7 @@ def describe_body(body) -> BodyDescription:
             rules.append(f'Cover reduces incoming {label} damage by {effects[key]:.0%} before equipment defenses. Strongest overlapping cover applies; it does not add.')
     if 'cooldown_reduction' in effects:
         rules.extend((
-            f'Turret cooling: -{effects["cooldown_reduction"]:g} turn from cooldown reset when firing, after variant scaling.',
+            f'Turret cooling: -{effects["cooldown_reduction"]:g} turn from cooldown reset when firing.',
             'Minimum reset is 1 for positive cooldowns; zero stays zero. Running and ability cooldowns are unaffected. Coolant sources do not stack; all hulls and turret types benefit.',
         ))
     for hazard in hazards:

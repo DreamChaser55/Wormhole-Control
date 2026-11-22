@@ -55,7 +55,7 @@ def test_cooling_uses_actual_inclusive_boundary(kind, position, expected):
 
 @pytest.mark.parametrize('base,variant,expected', [
     (0, TurretVariant.STANDARD, 0), (1, TurretVariant.STANDARD, 1),
-    (3, TurretVariant.STANDARD, 2), (3, TurretVariant.LONG_RANGE, 8),
+    (3, TurretVariant.STANDARD, 2), (9, TurretVariant.LONG_RANGE, 8),
 ])
 def test_cooling_overlap_and_variant_floor(base, variant, expected):
     game, attacker, target, _ = combatants()
@@ -64,7 +64,7 @@ def test_cooling_overlap_and_variant_floor(base, variant, expected):
     turret.target = target
     turret.fire()
     assert turret.current_cooldown == expected
-    assert turret.cooldown == base * (3 if variant == TurretVariant.LONG_RANGE else 1)
+    assert turret.cooldown == base
 
 
 def test_moving_does_not_rewrite_remaining_cooldown_and_save_restores_exactly():
