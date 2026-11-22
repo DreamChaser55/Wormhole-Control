@@ -488,3 +488,140 @@ class TestGUIModalDialogs(unittest.TestCase):
         with self.assertRaises(ValueError) as ctx:
             GameSettings(min_system_distance=200.0, max_system_distance=100.0)
         self.assertIn("Min System Distance (200) must be strictly less than Max System Distance (100)", str(ctx.exception))
+
+    def test_income_and_upkeep_dialog_headers_sorting_and_height(self):
+        """Clicking Credits opens a taller dialog with colored headers and descending section entries."""
+        from constants import PlanetType
+        from domain.celestials import Planet
+        from domain.coordinates import HexCoord
+        from geometry import Position
+        from gui import event_router
+        from gui.layout_hud import (
+            ECONOMY_INCOME_HEADER_COLOR,
+            ECONOMY_UPKEEP_HEADER_COLOR,
+            format_economy_breakdown_html,
+        )
+        from unit_components.civilian_habitat import CivilianHabitatComponent
+        from unit_components.enums import SabotageType
+        from unit_components.intelligence import Agent
+
+        self.assertTrue(self.game.start_new_game())
+        player, enemy = self.game.players[0], self.game.players[1]
+        system_name = next(iter(self.game.galaxy.systems))
+        system = self.game.galaxy.systems[system_name]
+
+        # Clear existing owned colonies and units for deterministic ordering assertions
+        for _, body in list(system.get_all_celestial_bodies()):
+            if getattr(body, "owner", None) is player:
+                body.owner = None
+                body.population = 0.0
+        for existing_system in self.game.galaxy.systems.values():
+            for unit, _ in list(existing_system.get_all_units()):
+                if unit.owner is player:
+                    existing_system.remove_unit(unit)
+
+        def add_colony(name: str, pop: float, owner: Player) -> Planet:
+            body = Planet(HexCoord(0, 0), system_name, PlanetType.TERRAN)
+            body.name = name
+            body.owner = owner
+            body.population = pop
+            system.add_celestial_body(body)
+            return body
+
+        add_colony("Small Outpost", 10.0, player)
+        add_colony("Capital Prime", 100.0, player)
+        add_colony("Mid Colony", 40.0, player)
+
+        enemy_world = add_colony("Enemy Core", 60.0, enemy)
+        agent = Agent(player, source_unit_id=0, target_type="CELESTIAL_BODY", target_id=enemy_world.id)
+        agent.active_sabotage = SabotageType.ECONOMY
+        enemy_world.infiltrating_agents.append(agent)
+
+        def add_unit(name: str, hull: HullSize, hull_usage: float, *, habitat_bonus: float = 0.0) -> Unit:
+            unit = Unit(
+                name=name,
+                owner=player,
+                hull_size=hull,
+                position=Position(0, 0),
+                in_hex=HexCoord(0, 0),
+                in_system=system_name,
+                game=self.game,
+            )
+            if habitat_bonus > 0.0:
+                hab = CivilianHabitatComponent(unit)
+                hab.economic_bonus = habitat_bonus
+                unit.add_component(hab)
+            unit.current_hull_usage = hull_usage
+            system.add_unit(unit)
+            return unit
+
+        add_unit("Small Habitat", HullSize.SMALL, 20.0, habitat_bonus=12.0)
+        add_unit("Grand Habitat", HullSize.LARGE, 80.0, habitat_bonus=30.0)
+        add_unit("Mid Habitat", HullSize.MEDIUM, 40.0, habitat_bonus=18.0)
+
+        default_dlg = self.gui.show_info_dialog("Default", title="Default")
+        default_height = default_dlg.get_abs_rect().height
+        default_text_height = default_dlg.text_block.get_abs_rect().height
+        default_dlg.kill()
+
+        event = pygame.event.Event(pygame_gui.UI_BUTTON_PRESSED, {"ui_element": self.gui.credits_label})
+        self.assertEqual(event_router.process_event(self.gui, event), {"action": "ui_handled"})
+
+        dlg = self.gui.active_dialogs[-1]
+        self.assertEqual(dlg.window_display_title, "Income and Upkeep")
+        self.assertGreater(dlg.get_abs_rect().height, default_height)
+        self.assertGreater(dlg.text_block.get_abs_rect().height, default_text_height)
+
+        html = dlg.text_block.html_text
+        self.assertIn(f"<font color='{ECONOMY_INCOME_HEADER_COLOR}'>Income ", html)
+        self.assertIn(f"<font color='{ECONOMY_UPKEEP_HEADER_COLOR}'>Upkeep ", html)
+        self.assertIn(f"<font color='{ECONOMY_INCOME_HEADER_COLOR}'>Net +", html)
+        self.assertIn(f"<font color='{ECONOMY_INCOME_HEADER_COLOR}'><b>Income from colonies</b></font>", html)
+        self.assertIn(
+            f"<font color='{ECONOMY_INCOME_HEADER_COLOR}'><b>Income from civilian habitats</b></font>",
+            html,
+        )
+        self.assertIn(f"<font color='{ECONOMY_INCOME_HEADER_COLOR}'><b>Intelligence income</b></font>", html)
+        self.assertIn(f"<font color='{ECONOMY_UPKEEP_HEADER_COLOR}'><b>Fleet upkeep</b></font>", html)
+
+        # Colonies sorted highest credits -> lowest
+        colonies_idx = html.index("<b>Income from colonies</b>")
+        habitats_idx = html.index("<b>Income from civilian habitats</b>")
+        colonies_section = html[colonies_idx:habitats_idx]
+        self.assertLess(colonies_section.index("Capital Prime"), colonies_section.index("Mid Colony"))
+        self.assertLess(colonies_section.index("Mid Colony"), colonies_section.index("Small Outpost"))
+
+        # Civilian habitats sorted highest credits -> lowest
+        upkeep_idx = html.index("<b>Fleet upkeep</b>")
+        habitats_section = html[habitats_idx:upkeep_idx]
+        self.assertLess(habitats_section.index("Grand Habitat"), habitats_section.index("Mid Habitat"))
+        self.assertLess(habitats_section.index("Mid Habitat"), habitats_section.index("Small Habitat"))
+
+        # Fleet upkeep sorted highest upkeep -> lowest
+        upkeep_section = html[upkeep_idx:]
+        self.assertLess(upkeep_section.index("Grand Habitat"), upkeep_section.index("Mid Habitat"))
+        self.assertLess(upkeep_section.index("Mid Habitat"), upkeep_section.index("Small Habitat"))
+
+        # Negative net colors Net red while keeping Income green and Upkeep red
+        deficit_html = format_economy_breakdown_html(
+            {
+                "income": 10.0,
+                "upkeep": 25.5,
+                "income_breakdown": {"colonies": [], "habitats": [], "siphoned_credits": 0.0},
+                "upkeep_breakdown": [],
+            }
+        )
+        self.assertIn(f"<font color='{ECONOMY_INCOME_HEADER_COLOR}'>Income 10.00</font>", deficit_html)
+        self.assertIn(f"<font color='{ECONOMY_UPKEEP_HEADER_COLOR}'>Upkeep 25.50</font>", deficit_html)
+        self.assertIn(f"<font color='{ECONOMY_UPKEEP_HEADER_COLOR}'>Net -15.50</font>", deficit_html)
+
+        # Zero net uses green (non-negative)
+        even_html = format_economy_breakdown_html(
+            {
+                "income": 12.0,
+                "upkeep": 12.0,
+                "income_breakdown": {"colonies": [], "habitats": [], "siphoned_credits": 0.0},
+                "upkeep_breakdown": [],
+            }
+        )
+        self.assertIn(f"<font color='{ECONOMY_INCOME_HEADER_COLOR}'>Net +0.00</font>", even_html)

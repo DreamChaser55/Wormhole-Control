@@ -104,6 +104,16 @@ def test_application_views_at_explicit_display_sizes(game_factory, tmp_path, siz
     dialog = gui.show_info_dialog('Campaign ready. Orders execute on the active player’s turn.', title='Ready')
     capture('dialog')
     assert game.screen.get_rect().contains(dialog.get_abs_rect())
+    default_dialog_height = dialog.get_abs_rect().height
+    dialog.kill()
+
+    from gui.layout_hud import show_economy_breakdown
+    show_economy_breakdown(gui)
+    econ_dialog = gui.active_dialogs[-1]
+    capture('economy-dialog')
+    assert game.screen.get_rect().contains(econ_dialog.get_abs_rect())
+    assert econ_dialog.get_abs_rect().height > default_dialog_height
+    assert econ_dialog.window_display_title == 'Income and Upkeep'
 
 
 def test_turn_processor_alias_has_one_owner(game_factory):

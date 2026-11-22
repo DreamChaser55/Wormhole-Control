@@ -667,7 +667,10 @@ class GUI_Handler:
         self,
         title: str,
         message: str,
-        window_type: str = "info"
+        window_type: str = "info",
+        *,
+        width: typing.Optional[int] = None,
+        height: typing.Optional[int] = None,
     ) -> pygame_gui.windows.UIMessageWindow:
         """Displays a pop-up modal message dialog window.
 
@@ -675,6 +678,8 @@ class GUI_Handler:
             title (str): Title of the window dialog.
             message (str): Body message text (HTML supported by Pygame GUI).
             window_type (str): Type identifier ('info', 'warning', 'error').
+            width (Optional[int]): Optional base dialog width at 1280x720 before scaling.
+            height (Optional[int]): Optional base dialog height at 1280x720 before scaling.
 
         Returns:
             pygame_gui.windows.UIMessageWindow: Created message window instance.
@@ -682,8 +687,10 @@ class GUI_Handler:
         # Clean up dead dialog references
         self.active_dialogs = [d for d in self.active_dialogs if d.alive()]
 
-        dialog_w = int(500 * self.scale_x)
-        dialog_h = int(280 * self.scale_y)
+        base_w = 500 if width is None else width
+        base_h = 280 if height is None else height
+        dialog_w = min(int(self.screen_res.x) - 24, int(base_w * self.scale_x))
+        dialog_h = min(int(self.screen_res.y) - 24, int(base_h * self.scale_y))
         x = (self.screen_res.x - dialog_w) / 2
         y = (self.screen_res.y - dialog_h) / 2
         rect = pygame.Rect(int(x), int(y), dialog_w, dialog_h)
@@ -727,9 +734,22 @@ class GUI_Handler:
         """Convenience method to display a Warning modal dialog popup."""
         return self.show_message_dialog(title=title, message=message, window_type="warning")
 
-    def show_info_dialog(self, message: str, title: str = "Information") -> pygame_gui.windows.UIMessageWindow:
+    def show_info_dialog(
+        self,
+        message: str,
+        title: str = "Information",
+        *,
+        width: typing.Optional[int] = None,
+        height: typing.Optional[int] = None,
+    ) -> pygame_gui.windows.UIMessageWindow:
         """Convenience method to display an Informational modal dialog popup."""
-        return self.show_message_dialog(title=title, message=message, window_type="info")
+        return self.show_message_dialog(
+            title=title,
+            message=message,
+            window_type="info",
+            width=width,
+            height=height,
+        )
 
     def show_retrofit_wizard(
         self,

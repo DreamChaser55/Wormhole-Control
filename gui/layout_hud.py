@@ -400,38 +400,88 @@ def update_resource_display(gui, player: 'Player') -> None:
         gui.population_label.set_text(f"Population: {population:,.1f}")
 
 
+ECONOMY_INCOME_HEADER_COLOR = "#50E550"
+ECONOMY_UPKEEP_HEADER_COLOR = "#FF6666"
+ECONOMY_DIALOG_HEIGHT = 560
+
+
+def format_economy_breakdown_html(report: dict) -> str:
+    """Format the recurring economy report as HTML for the Income and Upkeep dialog."""
+    from html import escape
+
+    income, upkeep = report["income"], report["upkeep"]
+    details = report["income_breakdown"]
+    colonies = sorted(
+        details["colonies"],
+        key=lambda row: (
+            -row["credits"],
+            -row["metal"],
+            -row["crystal"],
+            (row["name"] or "").casefold(),
+            row["body_id"],
+        ),
+    )
+    habitats = sorted(
+        details["habitats"],
+        key=lambda row: (-row["credits"], (row["name"] or "").casefold(), row["unit_id"]),
+    )
+    upkeep_rows = sorted(
+        report["upkeep_breakdown"],
+        key=lambda row: (-row["credits"], (row["name"] or "").casefold(), row["unit_id"]),
+    )
+
+    net = income - upkeep
+    net_color = ECONOMY_UPKEEP_HEADER_COLOR if net < 0 else ECONOMY_INCOME_HEADER_COLOR
+    summary_line = (
+        f"<b><font color='{ECONOMY_INCOME_HEADER_COLOR}'>Income {income:,.2f}</font>"
+        f" · <font color='{ECONOMY_UPKEEP_HEADER_COLOR}'>Upkeep {upkeep:,.2f}</font>"
+        f" · <font color='{net_color}'>Net {net:+,.2f}</font></b>"
+    )
+    rows = [
+        summary_line,
+        f"<font color='{ECONOMY_INCOME_HEADER_COLOR}'><b>Income from colonies</b></font>",
+    ]
+    rows.extend(
+        f'{escape(row["name"])} ({escape(row["system_name"] or "")}) · {row["credits"]:,.2f} credits'
+        f' · {row["metal"]:g} metal · {row["crystal"]:g} crystal'
+        for row in colonies
+    )
+    if not colonies:
+        rows.append("No owned colonies.")
+    if habitats:
+        rows.append(f"<font color='{ECONOMY_INCOME_HEADER_COLOR}'><b>Income from civilian habitats</b></font>")
+        rows.extend(
+            f'{escape(row["name"])} (#{row["unit_id"]}) · {row["credits"]:,.2f} credits'
+            for row in habitats
+        )
+    if details["siphoned_credits"]:
+        rows.append(
+            f"<font color='{ECONOMY_INCOME_HEADER_COLOR}'><b>Intelligence income</b></font>"
+            f' · {details["siphoned_credits"]:,.2f} credits'
+        )
+    rows.append(f"<font color='{ECONOMY_UPKEEP_HEADER_COLOR}'><b>Fleet upkeep</b></font>")
+    rows.extend(
+        f'{escape(row["name"])} (#{row["unit_id"]}) · {row["credits"]:,.2f} credits'
+        for row in upkeep_rows
+    )
+    if not upkeep_rows:
+        rows.append("No recurring fleet upkeep.")
+    return "<br>".join(rows)
+
+
 def show_economy_breakdown(gui) -> None:
     from economy import recurring_economy
-    from html import escape
 
     game = gui.game_instance
     player = game.current_player
     if player is None:
         return
     report = recurring_economy(game.galaxy, player)
-    income, upkeep = report["income"], report["upkeep"]
-    details = report["income_breakdown"]
-    rows = [f"<b>Income {income:,.2f} · Upkeep {upkeep:,.2f} · Net {income - upkeep:+,.2f}</b>",
-            "<b>Colonies</b>"]
-    rows.extend(
-        f'{escape(row["name"])} ({escape(row["system_name"] or "")}) · {row["credits"]:,.2f} credits'
-        f' · {row["metal"]:g} metal · {row["crystal"]:g} crystal'
-        for row in details["colonies"]
+    gui.show_info_dialog(
+        format_economy_breakdown_html(report),
+        title="Income and Upkeep",
+        height=ECONOMY_DIALOG_HEIGHT,
     )
-    if not details["colonies"]:
-        rows.append("No owned colonies.")
-    if details["habitats"]:
-        rows.append("<b>Civilian habitats</b>")
-        rows.extend(f'{escape(row["name"])} (#{row["unit_id"]}) · {row["credits"]:,.2f} credits'
-                    for row in details["habitats"])
-    if details["siphoned_credits"]:
-        rows.append(f'Intelligence income · {details["siphoned_credits"]:,.2f} credits')
-    rows.append("<b>Fleet upkeep</b>")
-    rows.extend(f'{escape(row["name"])} (#{row["unit_id"]}) · {row["credits"]:,.2f} credits'
-                for row in report["upkeep_breakdown"])
-    if not report["upkeep_breakdown"]:
-        rows.append("No recurring fleet upkeep.")
-    gui.show_info_dialog("<br>".join(rows), title="Income and Upkeep")
 
 
 def update_comms_button(gui) -> None:
