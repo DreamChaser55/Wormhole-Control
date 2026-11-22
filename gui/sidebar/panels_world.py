@@ -1,8 +1,71 @@
 """Sidebar UI panel builders for StarSystem, Hex, CelestialBody, and Minefield entities."""
-from domain.celestials import CelestialBody, Planet, Moon, ColonizableAsteroid, MetalAsteroid, Wormhole, Comet
+from domain.celestials import (
+    CelestialBody, Planet, Moon, ColonizableAsteroid, MetalAsteroid, Wormhole, Comet,
+    NON_SOLID_CELESTIAL_BODIES,
+)
+from domain.construction_job import get_sector_construction_jobs
 from domain.minefields import Minefield
+from domain.players import are_enemies
 from domain.units import Unit
 from galaxy import StarSystem, Hex
+
+
+def _is_ship_unit(unit: Unit) -> bool:
+    """Returns True for mobile units (ships and wings), False for stationary stations."""
+    return getattr(unit, 'engines_component', None) is not None
+
+
+def _hex_section_header(title: str) -> dict:
+    return {
+        'type': 'label',
+        'text': title,
+        'object_id': '#sidebar_component_header_label',
+        'height': 20,
+    }
+
+
+def _hex_subsection_header(title: str) -> dict:
+    return {
+        'type': 'label',
+        'text': title,
+        'object_id': '#sidebar_info_label',
+        'height': 20,
+        'indent_level': 1,
+    }
+
+
+def _hex_celestial_button(game, body: CelestialBody) -> dict:
+    from planetary_intel import is_colony_body, displayed_owner, presentation_view
+    owner = displayed_owner(game, body) if is_colony_body(body) else getattr(body, 'owner', None)
+    stale = is_colony_body(body) and presentation_view(game, body).status == 'last_known'
+    if isinstance(body, Wormhole) and getattr(body, 'exit_system_name', None):
+        text = f"{body.name} → {body.exit_system_name}"
+    else:
+        text = body.name + (' (last known)' if stale else '')
+    return {
+        'type': 'button',
+        'text': text,
+        'object_id': object_button_style(None if stale else owner),
+        'class_id': '#sidebar_expand_button',
+        'action_id': 'select_celestial_body',
+        'target_data': body.id,
+        'height': 20,
+        'indent_level': 1,
+    }
+
+
+def _hex_unit_button(unit: Unit, *, indent_level: int) -> dict:
+    owner = getattr(unit, 'owner', None)
+    return {
+        'type': 'button',
+        'text': unit.name,
+        'object_id': object_button_style(owner),
+        'class_id': '#sidebar_expand_button',
+        'action_id': 'select_individual_unit',
+        'target_data': unit.id,
+        'height': 20,
+        'indent_level': indent_level,
+    }
 
 
 def object_button_style(owner) -> str:
@@ -58,68 +121,145 @@ def build_hex_panel(game, hex_obj: Hex) -> list[dict]:
                 intel_str = f"{diff} turns ago"
         data.append({'type': 'label', 'text': f"Last Intel: {intel_str}", 'object_id': '#sidebar_info_label', 'height': 25})
 
-    from tactical_ui import button
-    for obj in getattr(hex_obj, 'deployables', ()):
-        if game.is_unit_visible(obj):
-            data.append(button(obj.name + ' (Persistent)', 'select_deployable', obj.id))
-    visible_units = [u for u in hex_obj.units if game.is_unit_visible(u)]
+    is_unit_visible = getattr(game, 'is_unit_visible', lambda _u: True)
+    is_minefield_visible = getattr(game, 'is_minefield_visible', lambda _mf: True)
+
+    visible_units = [u for u in hex_obj.units if is_unit_visible(u)]
+    visible_ships = [u for u in visible_units if _is_ship_unit(u)]
+    visible_stations = [u for u in visible_units if not _is_ship_unit(u)]
     has_presence = game.hex_has_presence(system_name, coords)
+    has_visible_enemy = any(
+        are_enemies(current_player, getattr(u, 'owner', None))
+        for u in visible_units
+    ) if current_player is not None else False
+    visible_deployables = [
+        obj for obj in getattr(hex_obj, 'deployables', ())
+        if is_unit_visible(obj)
+    ]
     visible_minefields = [
         mf for mf in getattr(hex_obj, 'minefields', [])
-        if game.is_minefield_visible(mf)
+        if is_minefield_visible(mf)
     ]
+    visible_construction_jobs = [
+        job for job in get_sector_construction_jobs(hex_obj, viewer=current_player)
+        if is_unit_visible(job.constructor_unit)
+    ]
+    submerged_ships = []
+    if current_player is not None:
+        for body in hex_obj.celestial_bodies:
+            for hidden_unit in getattr(body, 'hidden_units', ()):
+                if getattr(hidden_unit, 'owner', None) == current_player:
+                    submerged_ships.append(hidden_unit)
 
-    if not hex_obj.celestial_bodies and not visible_units and not has_presence and not visible_minefields:
+    wormholes = []
+    solid_bodies = []
+    resource_bodies = []
+    environmental_regions = []
+    for body in hex_obj.celestial_bodies:
+        if isinstance(body, Wormhole):
+            wormholes.append(body)
+        elif isinstance(body, (MetalAsteroid, Comet)):
+            resource_bodies.append(body)
+        elif isinstance(body, NON_SOLID_CELESTIAL_BODIES) or not getattr(body, 'is_solid', True):
+            environmental_regions.append(body)
+        else:
+            solid_bodies.append(body)
+
+    if has_presence and not has_visible_enemy:
+        data.append({
+            'type': 'label',
+            'text': "⚠ Enemy presence detected",
+            'object_id': '#sidebar_hit_points_critical_damage_label',
+            'height': 20,
+        })
+
+    has_any_content = bool(
+        hex_obj.celestial_bodies
+        or visible_units
+        or submerged_ships
+        or visible_construction_jobs
+        or visible_deployables
+        or visible_minefields
+        or has_presence
+    )
+    if not has_any_content:
         data.append({'type': 'label', 'text': "Contains: Nothing", 'object_id': '#sidebar_info_label', 'height': 25})
-    else:
-        if hex_obj.celestial_bodies:
-            data.append({'type': 'label', 'text': "Bodies:", 'object_id': '#sidebar_info_label', 'height': 20})
-            for b in hex_obj.celestial_bodies:
-                from planetary_intel import is_colony_body, displayed_owner, presentation_view
-                owner = displayed_owner(game, b) if is_colony_body(b) else getattr(b, 'owner', None)
-                stale = is_colony_body(b) and presentation_view(game, b).status == 'last_known'
-                data.append({
-                    'type': 'button',
-                    'text': b.name + (' (last known)' if stale else ''),
-                    'object_id': object_button_style(None if stale else owner),
-                    'class_id': '#sidebar_expand_button',
-                    'action_id': 'select_celestial_body',
-                    'target_data': b.id,
-                    'height': 20,
-                    'indent_level': 1
-                })
-        if visible_units:
-            data.append({'type': 'label', 'text': "Units:", 'object_id': '#sidebar_info_label', 'height': 20})
-            for u in visible_units:
-                owner = getattr(u, 'owner', None)
-                data.append({
-                    'type': 'button',
-                    'text': u.name,
-                    'object_id': object_button_style(owner),
-                    'class_id': '#sidebar_expand_button',
-                    'action_id': 'select_individual_unit',
-                    'target_data': u.id,
-                    'height': 20,
-                    'indent_level': 1
-                })
+        return data
 
-        # Minefields (friendly or revealed enemy minefields)
-        if visible_minefields:
-            data.append({'type': 'label', 'text': "Minefields:", 'object_id': '#sidebar_info_label', 'height': 20})
-            for mf in visible_minefields:
-                owner = getattr(mf, 'owner', None)
-                data.append({
-                    'type': 'button',
-                    'text': f"{mf.name} ({mf.mines_remaining} mines)",
-                    'object_id': object_button_style(owner),
-                    'class_id': '#sidebar_expand_button',
-                    'action_id': 'select_minefield',
-                    'target_data': mf.id,
-                    'height': 20,
-                    'indent_level': 1
-                })
-        if has_presence and not any(u.owner != current_player for u in visible_units):
-            data.append({'type': 'label', 'text': "⚠ Enemy presence detected", 'object_id': '#sidebar_hit_points_critical_damage_label', 'height': 20})
+    if wormholes:
+        data.append(_hex_section_header("Wormholes:"))
+        data.extend(_hex_celestial_button(game, body) for body in wormholes)
+
+    if solid_bodies:
+        data.append(_hex_section_header("Celestial Bodies:"))
+        data.extend(_hex_celestial_button(game, body) for body in solid_bodies)
+
+    if resource_bodies:
+        data.append(_hex_section_header("Resource Bodies:"))
+        data.extend(_hex_celestial_button(game, body) for body in resource_bodies)
+
+    if environmental_regions:
+        data.append(_hex_section_header("Environment:"))
+        data.extend(_hex_celestial_button(game, body) for body in environmental_regions)
+
+    if visible_units:
+        data.append(_hex_section_header("Units:"))
+        if visible_ships:
+            data.append(_hex_subsection_header(f"Ships ({len(visible_ships)}):"))
+            data.extend(_hex_unit_button(u, indent_level=2) for u in visible_ships)
+        if visible_stations:
+            data.append(_hex_subsection_header(f"Stations ({len(visible_stations)}):"))
+            data.extend(_hex_unit_button(u, indent_level=2) for u in visible_stations)
+
+    if submerged_ships:
+        data.append(_hex_section_header("Submerged Ships:"))
+        data.extend(_hex_unit_button(u, indent_level=1) for u in submerged_ships)
+
+    if visible_construction_jobs:
+        data.append(_hex_section_header("Construction Sites:"))
+        for job in visible_construction_jobs:
+            owner = getattr(job, 'owner', None)
+            display_name = job.get_display_name(current_player)
+            data.append({
+                'type': 'button',
+                'text': f"{display_name} ({job.progress}/{job.time_to_build}t)",
+                'object_id': object_button_style(owner),
+                'class_id': '#sidebar_expand_button',
+                'action_id': 'select_construction_job',
+                'target_data': job.constructor_unit.id,
+                'height': 20,
+                'indent_level': 1,
+            })
+
+    if visible_deployables:
+        data.append(_hex_section_header("Deployables:"))
+        for obj in visible_deployables:
+            owner = getattr(obj, 'owner', None)
+            data.append({
+                'type': 'button',
+                'text': f"{obj.name} (Persistent)",
+                'object_id': object_button_style(owner),
+                'class_id': '#sidebar_expand_button',
+                'action_id': 'select_deployable',
+                'target_data': obj.id,
+                'height': 20,
+                'indent_level': 1,
+            })
+
+    if visible_minefields:
+        data.append(_hex_section_header("Minefields:"))
+        for mf in visible_minefields:
+            owner = getattr(mf, 'owner', None)
+            data.append({
+                'type': 'button',
+                'text': f"{mf.name} ({mf.mines_remaining} mines)",
+                'object_id': object_button_style(owner),
+                'class_id': '#sidebar_expand_button',
+                'action_id': 'select_minefield',
+                'target_data': mf.id,
+                'height': 20,
+                'indent_level': 1,
+            })
 
     return data
 

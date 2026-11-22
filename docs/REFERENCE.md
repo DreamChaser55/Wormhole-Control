@@ -149,7 +149,11 @@ inside shared sensor coverage; the setup preview retains its assignment markers.
 
 Inspect non-solid bodies—fields, nebulae and storms—through their hex sidebar.
 Clicking inside these regions remains available for movement and targeting.
-Their boundary circles show the affected area.
+Their boundary circles show the affected area. The hex sidebar groups sector
+contents into **Wormholes**, **Celestial Bodies**, **Resource Bodies**,
+**Environment**, **Units** (split into **Ships** and **Stations**),
+**Submerged Ships** (friendly vessels hidden in a gas giant), **Construction
+Sites**, **Deployables**, and **Minefields**, omitting empty sections.
 
 Body sidebars show compact effect summaries: green for benefits, amber for
 restrictions, red for damage or fuel drain, and neutral text for geometry and

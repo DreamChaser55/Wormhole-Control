@@ -74,6 +74,21 @@ def handle_select_celestial_body(game, action: dict) -> None:
         game.sidebar_needs_update = True
 
 
+def handle_select_construction_job(game, action: dict) -> None:
+    from domain.construction_job import ConstructionJob
+    unit_id = action.get('constructor_unit_id') if action.get('constructor_unit_id') is not None else action.get('target_data')
+    unit = game.galaxy.get_unit_by_id(unit_id) if (game.galaxy and unit_id is not None) else None
+    if not unit:
+        return
+    is_visible = getattr(game, 'is_unit_visible', None)
+    if callable(is_visible) and not is_visible(unit):
+        return
+    job = ConstructionJob(unit)
+    if job.is_valid:
+        game.selected_objects = [job]
+        game.sidebar_needs_update = True
+
+
 def handle_select_hex(game, action: dict) -> None:
     hex_coord = action.get('hex_coord') if action.get('hex_coord') is not None else action.get('target_data')
     if hex_coord is not None and game.galaxy:
@@ -101,6 +116,7 @@ HANDLERS: typing.Dict[str, typing.Callable[[typing.Any, dict], None]] = {
     'select_minefield': handle_select_minefield,
     'remove_minefield': handle_remove_minefield,
     'select_celestial_body': handle_select_celestial_body,
+    'select_construction_job': handle_select_construction_job,
     'select_hex': handle_select_hex,
     'component_selected': handle_component_selected,
     'switch_unit_sidebar_tab': handle_switch_unit_sidebar_tab,

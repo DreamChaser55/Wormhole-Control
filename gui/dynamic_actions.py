@@ -176,6 +176,11 @@ def build_button_payload(gui, action_id: str, target_data: typing.Any) -> typing
             'action': 'select_constructor_unit',
             'unit_id': target_data
         }
+    elif action_id == 'select_construction_job':
+        return {
+            'action': 'select_construction_job',
+            'constructor_unit_id': target_data
+        }
     elif action_id == 'cancel_construction_job':
         return {
             'action': 'cancel_construction_job',
