@@ -695,8 +695,8 @@ def _parse_new_game_settings(raw: Any) -> GameSettings:
     if not isinstance(players_raw, list) or not MIN_PLAYERS <= len(players_raw) <= MAX_PLAYERS:
         raise ProtocolError("invalid_players", "settings.players must contain 2-6 player objects.")
     players = [_parse_player_config(item, index) for index, item in enumerate(players_raw)]
-    if sum(config.controller == PlayerController.CODEX for config in players) != 1:
-        raise ProtocolError("invalid_codex_count", "A campaign must contain exactly one Codex player.")
+    if not any(config.controller == PlayerController.CODEX for config in players):
+        raise ProtocolError("invalid_codex_count", "A campaign must contain at least one Codex player.")
     kwargs = {key: value for key, value in raw.items() if key != "players"}
     try:
         return GameSettings(player_configs=players, **kwargs)

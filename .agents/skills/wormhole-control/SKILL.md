@@ -18,7 +18,7 @@ Control the visible game from the repository root with `python game_control.py '
 ## Play loop
 
 1. Send `status` with a unique request ID.
-2. If no campaign exists and the user asked to start one, send `new_game` with 2–6 players, exactly one `codex` controller, and at least two teams. Otherwise, do not replace an active campaign.
+2. If no campaign exists and the user asked to start one, send `new_game` with 2–6 players, at least one `codex` controller, and at least two teams. Otherwise, do not replace an active campaign.
 3. When `state.codex_ready` is true, send `observe`. When another controller is active, send `wait_for_turn` with `timeout_seconds` from 1–600. If `state.attention_required` is true, inspect `state.ai_lifecycle.error_category` and the advertised recovery actions. Use the failed turn's `recovery_token` for an explicitly chosen retry or skip; a partial commit permits only skipping. Never treat a failed AI turn as ongoing planning.
 4. Reason only from the returned observation and choose commands using its visible IDs, capabilities, availability, and bounded options.
 5. Send 1–40 commands (at most 12 unique owned units per command) with `command`, the current token, and a fresh request ID. Successful batches accumulate without ending the turn. A `failure_stage: preflight` rejection applies nothing; correct it using indexed errors. A `failure_stage: commit` failure may leave partial effects: inspect applied/failed/unattempted `operation_results`, then successfully observe again before issuing commands or ending the turn. Never replay a failed batch as a new intentional request.

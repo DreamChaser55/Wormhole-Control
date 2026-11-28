@@ -77,31 +77,25 @@ def _request(action: str, request_id: str = "request-1", **values):
 
 class ProtocolSettingsTests(unittest.TestCase):
     def test_new_game_defaults_and_controller_requirements(self):
-        settings = _parse_new_game_settings(
-            {
-                "players": [
-                    {"name": "Codex", "controller": "codex", "team_id": 1},
-                    {"name": "Human", "controller": "human", "team_id": 2},
+        for controllers in (["codex", "human"], ["codex", "codex"], ["codex"] * 6):
+            with self.subTest(controllers=controllers):
+                players = [
+                    {"name": f"Player {index}", "controller": controller, "team_id": index}
+                    for index, controller in enumerate(controllers, start=1)
                 ]
-            }
-        )
-        self.assertEqual(settings.num_systems, 15)
-        self.assertEqual(settings.player_configs[0].controller, PlayerController.CODEX)
+                settings = _parse_new_game_settings({"players": players})
+                self.assertEqual(settings.num_systems, 15)
+                self.assertEqual([config.controller.value for config in settings.player_configs], controllers)
+
+        with self.assertRaises(ProtocolError) as failure:
+            _parse_new_game_settings({"players": [
+                {"name": "A", "controller": "human", "team_id": 1},
+                {"name": "B", "controller": "openai", "team_id": 2},
+            ]})
+        self.assertEqual(failure.exception.code, "invalid_codex_count")
 
         invalid_cases = (
             {"players": [{"name": "Only", "controller": "codex", "team_id": 1}]},
-            {
-                "players": [
-                    {"name": "A", "controller": "human", "team_id": 1},
-                    {"name": "B", "controller": "openai", "team_id": 2},
-                ]
-            },
-            {
-                "players": [
-                    {"name": "A", "controller": "codex", "team_id": 1},
-                    {"name": "B", "controller": "codex", "team_id": 2},
-                ]
-            },
             {
                 "players": [
                     {"name": "A", "controller": "codex", "team_id": 1},

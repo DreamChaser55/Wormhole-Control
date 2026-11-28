@@ -32,19 +32,18 @@ $OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 '{"action":"status"}' | python .\game_control.py -
 ```
 
-For multi-line requests, pipe a single-quoted here-string through stdin:
+To start a two-Codex playtest from the main menu, pipe a single-quoted here-string
+through stdin:
 
 ```powershell
 $OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 @'
 {
   "action": "new_game",
-  "request_id": "campaign-2026-08-29",
   "settings": {
     "players": [
-      {"name": "Codex", "controller": "codex", "team_id": 1},
-      {"name": "Rival", "controller": "openai", "team_id": 2,
-       "ai_reasoning_effort": "medium", "ai_repair_retries": 2}
+      {"name": "Codex A", "controller": "codex", "team_id": 1},
+      {"name": "Codex B", "controller": "codex", "team_id": 2}
     ]
   }
 }
@@ -166,7 +165,9 @@ Returns the common public state. It is also the handshake used by the CLI to dis
 
 ### `new_game`
 
-Creates a campaign only while the GUI is at the main menu. `settings.players` must contain 2–6 players, exactly one `codex` controller, and at least two distinct positive `team_id` values.
+Creates a campaign only while the GUI is at the main menu. `settings.players`
+must contain 2–6 players, at least one `codex` controller, and at least two
+distinct positive `team_id` values. Every seat can use the Codex controller.
 
 Each player requires `name`, `controller`, and `team_id`. Optional fields are `color` (three RGB integers), and—for `openai` controllers only—`ai_reasoning_effort` (`low`, `medium`, or `high`) and `ai_repair_retries` (1–5). Controller values are `human`, `openai`, and `codex`.
 
@@ -262,13 +263,17 @@ The End Turn button remains available in the GUI during a Codex turn. If it is c
 
 ### `wait_for_turn`
 
-Waits between 1 and 600 seconds for the Codex player. It returns immediately if Codex is already active, otherwise it holds that connection without blocking the Pygame loop.
+Accepts a timeout from 1 to 600 seconds and returns as soon as any Codex player
+is active. While waiting, it holds the connection without blocking the Pygame loop.
 
 ```json
 {"action":"wait_for_turn","request_id":"wait-002","timeout_seconds":120}
 ```
 
-When ready, `data` contains `ready: true`, an observation, and the current token. A normal timeout is a successful response with `data.ready: false`.
+When ready, `data` contains `ready: true`, the active player's observation, and
+their current turn token. A normal timeout is a successful response with
+`data.ready: false`. If separate sessions play different Codex seats, each can
+poll `status` and call `observe` when `state.current_player.id` matches its seat.
 
 A final AI failure returns immediately with `data.ready: false` and
 `data.attention_required: true`, including for connections already waiting.
@@ -520,7 +525,7 @@ a later batch after deployment is observed. Blocked craft can remain docked.
 
 New campaigns share the wizard's [setup limits](REFERENCE.md#setup-limits) and
 [validation contracts](DEVELOPMENT.md#campaign-setup-contracts). The control
-interface additionally requires exactly one Codex player.
+interface additionally requires at least one Codex player.
 
 ## Unit names and covert ships
 
