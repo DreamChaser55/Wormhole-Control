@@ -104,7 +104,7 @@ def test_synchronously_failed_promoted_order_is_released_immediately():
     harvester.position = Position(4500, 0)
     harvester.add_component(Engines(harvester, speed=175))
     harvester.add_component(AntimatterStorage(harvester, max_capacity=300))
-    harvester.antimatter_component.current_amount = 10.0
+    harvester.antimatter_component.current_amount = 1.0
     harvester.add_component(AntimatterHarvester(harvester))
     recipient = ship(game, 'Depot', hull=HullSize.SMALL)
     recipient.position = Position(4550, 0)

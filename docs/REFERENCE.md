@@ -276,7 +276,7 @@ materials. Installing a refinery consumes the same 5 matching minerals. Each
 refinery adds 600 credits to the usual hull-based price. Identical hull usage
 costs the same materials regardless of weapon or defense type.
 Repairs, wing replenishment, upkeep, recruitment and abilities have no mineral charge.
-Each construction progress turn costs the builder or strikecraft bay 2 AM. Repairs
+Each construction progress turn costs the builder or strikecraft bay 1 AM. Repairs
 and wing replenishment cost the worker 0.25 AM per HP restored. Paid jobs wait when
 the worker lacks fuel and resume after resupply.
 There is no credit substitution for missing minerals.
@@ -1010,12 +1010,13 @@ resupply does not automatically reactivate it.
 Positive-cost movement requires functioning Antimatter Storage and successful
 payment before displacement. Ordinary ships without storage cannot move for free;
 tankless strikecraft wings retain their fuel-free sublight flight. Fuel previews
-and journey estimates apply this same wing exception. Sublight fuel is charged
-once per turn with positive displacement, including a shortened final
-step, using the normal speed and terrain modifiers. Fuel shortages leave sublight
-orders waiting. Failed jumps follow the normal order-failure behavior. Rejected
-relocation refunds its fuel payment and starts neither recharge nor wormhole
-instability damage.
+and journey estimates apply this same wing exception. A Medium hull at speed 100
+in normal terrain uses **0.5 AM per moving turn**. The cost scales linearly with
+effective speed and uses the hull-size and terrain fuel multipliers. Any positive
+displacement, including a shortened final step, incurs the full per-turn cost.
+Fuel shortages leave sublight orders waiting. Failed jumps follow the normal
+order-failure behavior. Rejected relocation refunds its fuel payment and starts
+neither recharge nor wormhole instability damage.
 
 Ships automatically route around solid bodies and fields that exclude their hull
 size. Navigation keeps 50 units of clearance and stays inside the sector. A route

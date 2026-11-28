@@ -11,43 +11,35 @@ from tests.support.units import ComponentUnit, ComponentPlayer
 
 
 def test_get_sublight_antimatter_cost_per_turn_baseline():
-    # Medium hull (1.0), baseline speed 100.0 (1.0) -> base cost 1.0
     cost = get_sublight_antimatter_cost_per_turn(HullSize.MEDIUM, 100.0)
-    assert cost == pytest.approx(1.0)
+    assert cost == pytest.approx(0.5)
 
 
 def test_get_sublight_antimatter_cost_per_turn_speed_scaling():
-    # Medium hull (1.0), speed 200.0 -> 1.0 * 1.0 * 2.0 = 2.0
     cost_fast = get_sublight_antimatter_cost_per_turn(HullSize.MEDIUM, 200.0)
-    assert cost_fast == pytest.approx(2.0)
+    assert cost_fast == pytest.approx(1.0)
 
-    # Medium hull (1.0), speed 50.0 -> 1.0 * 1.0 * 0.5 = 0.5
     cost_slow = get_sublight_antimatter_cost_per_turn(HullSize.MEDIUM, 50.0)
-    assert cost_slow == pytest.approx(0.5)
+    assert cost_slow == pytest.approx(0.25)
 
 
 def test_get_sublight_antimatter_cost_per_turn_hull_scaling():
-    # Tiny hull (0.6), speed 100.0 -> 1.0 * 0.6 * 1.0 = 0.6
     cost_tiny = get_sublight_antimatter_cost_per_turn(HullSize.TINY, 100.0)
-    assert cost_tiny == pytest.approx(0.6)
+    assert cost_tiny == pytest.approx(0.3)
 
-    # Small hull (0.8), speed 100.0 -> 1.0 * 0.8 * 1.0 = 0.8
     cost_small = get_sublight_antimatter_cost_per_turn(HullSize.SMALL, 100.0)
-    assert cost_small == pytest.approx(0.8)
+    assert cost_small == pytest.approx(0.4)
 
-    # Large hull (1.5), speed 100.0 -> 1.0 * 1.5 * 1.0 = 1.5
     cost_large = get_sublight_antimatter_cost_per_turn(HullSize.LARGE, 100.0)
-    assert cost_large == pytest.approx(1.5)
+    assert cost_large == pytest.approx(0.75)
 
-    # Huge hull (2.0), speed 100.0 -> 1.0 * 2.0 * 1.0 = 2.0
     cost_huge = get_sublight_antimatter_cost_per_turn(HullSize.HUGE, 100.0)
-    assert cost_huge == pytest.approx(2.0)
+    assert cost_huge == pytest.approx(1.0)
 
 
 def test_get_sublight_antimatter_cost_per_turn_combined_scaling():
-    # Huge hull (2.0), speed 150.0 (1.5) -> 1.0 * 2.0 * 1.5 = 3.0
     cost = get_sublight_antimatter_cost_per_turn(HullSize.HUGE, 150.0)
-    assert cost == pytest.approx(3.0)
+    assert cost == pytest.approx(1.5)
 
 
 def test_get_sublight_antimatter_cost_per_turn_zero_speed():
@@ -87,5 +79,4 @@ def test_turn_processor_sublight_antimatter_consumption():
     tp = TurnProcessor(game)
     tp._process_movement(player)
 
-    # Huge hull (2.0) at speed 150.0 (1.5) => 3.0 AM consumed
-    assert am_storage.current_amount == pytest.approx(97.0)
+    assert am_storage.current_amount == pytest.approx(98.5)

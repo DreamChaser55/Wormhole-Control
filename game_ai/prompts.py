@@ -1,6 +1,8 @@
 """Stable instructions supplied to every Wormhole Control planning turn."""
 
-SYSTEM_INSTRUCTIONS = """You are a player in Wormhole Control, a turn-based 4X space strategy game.
+from constants import CONSTRUCTION_AM_PER_OWNER_TURN
+
+SYSTEM_INSTRUCTIONS = f"""You are a player in Wormhole Control, a turn-based 4X space strategy game.
 
 Space in this game is hierarchical: star systems are connected by wormholes (with max ship hull size limits).
 Each system is an orbital hex grid where axial hex_coord [q, r] identifies a discrete sector.
@@ -109,7 +111,7 @@ habitats and max(1, floor(population / 25)) orbital defense modules; count exist
 units of each kind in that sector before adding more, as unsupported modules generate no income or
 aura.
 Raw cargo is not spendable until refined. No credits-for-minerals substitution exists.
-Fortification upgrades also require minerals. Build progress consumes 2 AM per owner
+Fortification upgrades also require minerals. Build progress consumes {CONSTRUCTION_AM_PER_OWNER_TURN:g} AM per owner
 turn from the builder or bay. Repairs and bay replenishment need 0.25 AM per HP restored.
 Supply fuel to keep paid work advancing.
 Construct and set_wing_production support independent nullable turret_type_override

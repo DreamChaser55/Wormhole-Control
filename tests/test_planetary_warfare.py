@@ -96,9 +96,9 @@ def test_planetary_target_quotes_travel_and_action_fuel_together(kind, action_am
         row = next(actor for actor in observation['units'] if actor['id'] == unit.id)
         return row['command_options'][kind]['targets'][0]['mission_quote']
 
-    assert quote(100) == {'travel_owner_turns': 4, 'travel_antimatter': 4, 'action_antimatter': action_am,
-                          'arrival_antimatter': 96, 'total_antimatter': 4 + action_am, 'antimatter_shortfall': 0}
-    short = quote(3)
+    assert quote(100) == {'travel_owner_turns': 4, 'travel_antimatter': 2, 'action_antimatter': action_am,
+                          'arrival_antimatter': 98, 'total_antimatter': 2 + action_am, 'antimatter_shortfall': 0}
+    short = quote(1)
     assert short['arrival_antimatter'] is None and short['antimatter_shortfall'] == 1 + action_am
 
 

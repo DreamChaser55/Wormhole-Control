@@ -53,7 +53,7 @@ class TestAntimatterMoveDialog(unittest.TestCase):
 
     def test_calculate_required_antimatter_sublight(self):
         """Test calculation of antimatter for sub-light movement within same hex."""
-        # Moving from (0,0) to (300,300) -> distance ~424.26, speed 100 -> 5 turns -> 5 * 1.0 = 5.0 AM
+        # About 424 units at speed 100 takes five turns at 0.5 AM each.
         cost = calculate_required_antimatter(
             self.unit,
             self.game.galaxy,
@@ -61,7 +61,7 @@ class TestAntimatterMoveDialog(unittest.TestCase):
             destination_hex_coord=HexCoord(1, 0),
             destination_position=Position(300.0, 300.0)
         )
-        self.assertEqual(cost, 5.0)
+        self.assertEqual(cost, 2.5)
 
     def test_calculate_required_antimatter_hex_jump(self):
         """Test calculation of antimatter for single hex jump."""
@@ -109,8 +109,7 @@ class TestAntimatterMoveDialog(unittest.TestCase):
 
         try:
             expected_hex_cost = get_hyperdrive_hex_jump_cost(HullSize.MEDIUM)
-            # Speed 100.0, hull MEDIUM -> sublight cost per turn 1.0.
-            # Distance from edge (radius 80) to center (400, 400) is ~80 -> 1 turn -> 1.0 AM
+            # From the field edge to its center takes one turn at 0.5 AM.
             cost = calculate_required_antimatter(
                 self.unit,
                 self.game.galaxy,
@@ -118,7 +117,7 @@ class TestAntimatterMoveDialog(unittest.TestCase):
                 destination_hex_coord=HexCoord(3, 1),
                 destination_position=Position(400.0, 400.0)
             )
-            self.assertEqual(cost, expected_hex_cost + 1.0)
+            self.assertEqual(cost, expected_hex_cost + 0.5)
         finally:
             dest_hex_obj.static_inhibition_zones.remove(test_zone)
 
@@ -130,7 +129,7 @@ class TestAntimatterMoveDialog(unittest.TestCase):
 
         try:
             expected_hex_cost = get_hyperdrive_hex_jump_cost(HullSize.MEDIUM)
-            # Unit at (0, 0), zone radius 80 -> escape distance is ~80 -> 1 turn -> 1.0 AM
+            # From the center of the field to its edge takes one turn at 0.5 AM.
             cost = calculate_required_antimatter(
                 self.unit,
                 self.game.galaxy,
@@ -138,7 +137,7 @@ class TestAntimatterMoveDialog(unittest.TestCase):
                 destination_hex_coord=HexCoord(3, 1),
                 destination_position=Position(0.0, 0.0)
             )
-            self.assertEqual(cost, expected_hex_cost + 1.0)
+            self.assertEqual(cost, expected_hex_cost + 0.5)
         finally:
             curr_hex_obj.static_inhibition_zones.remove(test_zone)
 

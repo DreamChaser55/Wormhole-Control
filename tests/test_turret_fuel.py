@@ -4,7 +4,7 @@ from unittest.mock import Mock
 import pytest
 
 from antimatter_logistics import exchange
-from constants import DEFAULT_ANTIMATTER_CAPACITY, HullSize
+from constants import DEFAULT_ANTIMATTER_CAPACITY, ENGINE_ANTIMATTER_COST_PER_TURN, HullSize
 from domain.players import Player
 from game_ai.contracts import Command
 from game_ai.observation import build_observation
@@ -150,7 +150,7 @@ def test_movement_can_spend_the_last_am_before_turrets_fire(battle):
     turret, = arm(attacker).turrets
     attacker.add_component(Engines(attacker, speed=100))
     attacker.add_component(Sensors(attacker, short_range_radius=500))
-    attacker.antimatter_component.current_amount = 1
+    attacker.antimatter_component.current_amount = ENGINE_ANTIMATTER_COST_PER_TURN
     target.position = Position(450, 0)
     assert attack(game, attacker, target).accepted
     before = target.current_hit_points

@@ -4,7 +4,11 @@ from unittest.mock import Mock
 import pytest
 
 from constants import HullSize, FieldDensity, NebulaType
-from custom_unit_templates import get_hyperdrive_hex_jump_cost, get_hyperdrive_system_jump_cost
+from custom_unit_templates import (
+    get_hyperdrive_hex_jump_cost,
+    get_hyperdrive_system_jump_cost,
+    get_sublight_antimatter_cost_per_turn,
+)
 from domain.celestials import Wormhole, AsteroidField, Nebula
 from geometry import Position
 from tests.support.campaigns import campaign, ship
@@ -26,7 +30,7 @@ def moving_campaign(mode, *, hull=HullSize.HUGE):
     unit.add_component(AntimatterStorage(unit, max_capacity=200))
     unit.add_component(Hyperdrive(unit, drive_type=HyperdriveType.ADVANCED, jump_range=5))
     system, sector, destination = 'Sol', (0, 0), Position(1000, 0)
-    cost = 2.0
+    cost = get_sublight_antimatter_cost_per_turn(hull, 100)
     if mode == 'hex_jump':
         sector = (1, 0)
         cost = get_hyperdrive_hex_jump_cost(hull)
@@ -228,10 +232,11 @@ def test_hazard_clipping_waits_for_payment_before_moving_or_failing_order(afford
 
 
 def test_hydrogen_sublight_discount_still_applies():
-    game, unit, _order, _cost = moving_campaign('sublight')
+    game, unit, _order, cost = moving_campaign('sublight')
     cloud = Nebula((0, 0), 'Sol', NebulaType.HYDROGEN)
     cloud.position, cloud.radius = Position(100, 0), 1000
     game.galaxy.systems['Sol'].add_celestial_body(cloud)
+    fuel = unit.antimatter_component.current_amount
     TurnProcessor(game)._process_movement(unit.owner)
     assert unit.position == Position(200, 0)
-    assert unit.antimatter_component.current_amount == 199
+    assert unit.antimatter_component.current_amount == pytest.approx(fuel - cost * 0.5)

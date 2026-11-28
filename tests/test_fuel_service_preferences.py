@@ -198,11 +198,11 @@ def test_service_urgency_prioritizes_stalled_construction_over_nearly_full_const
     shipyard_stalled = ship(game, 'Shipyard', hull=HullSize.SMALL)
     shipyard_stalled.position = Position(2500, 0)
     shipyard_stalled.add_component(AntimatterStorage(shipyard_stalled, max_capacity=80))
-    shipyard_stalled.antimatter_component.current_amount = 1.0
+    shipyard_stalled.antimatter_component.current_amount = 0.5
     shipyard_stalled.add_component(Constructor(shipyard_stalled))
     shipyard_stalled.constructor_component.current_construction_target = {'template_name': 'PATROL_ESCORT'}
     assert service_fuel_horizon(shipyard_stalled) == 0.0
-    assert service_fuel_horizon(builder_near) == pytest.approx(74.0)
+    assert service_fuel_horizon(builder_near) == pytest.approx(148.0)
     chosen = automatic_recipient(actor, source, game.galaxy, harvesting=True, priority='service_urgency')
     assert chosen is shipyard_stalled
 
@@ -219,7 +219,7 @@ def test_service_urgency_includes_strikecraft_bay_production_and_replenishment()
     bay = StrikecraftBayComponent(carrier, max_slots=2)
     carrier.add_component(bay)
     bay.construction_slot_index = 0
-    assert service_fuel_horizon(carrier) == pytest.approx(2.0)
+    assert service_fuel_horizon(carrier) == pytest.approx(4.0)
     assert automatic_recipient(actor, source, game.galaxy, harvesting=True, priority='service_urgency') is carrier
     bay.construction_slot_index = None
     wing = ship(game, 'Wing', hull=HullSize.STRIKECRAFT_WING)

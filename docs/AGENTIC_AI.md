@@ -566,7 +566,7 @@ quotes are not a combined-affordability guarantee.
 Future income, mining deliveries, trade and salvage cannot finance the batch.
 Insufficient resources reject the complete batch before any commands apply;
 execution separately rechecks actual stockpiles when work starts. Build and
-wing production progress consume 2 AM from the worker each turn. Repairs and wing
+wing production progress consume 1 AM from the worker each turn. Repairs and wing
 replenishment consume 0.25 AM per HP restored. Keep workers supplied to avoid stalls.
 
 Construction and wing catalogue entries expose `resource_cost` and
