@@ -482,11 +482,14 @@ def format_economy_breakdown_html(report: dict) -> str:
         summary_line,
         f"<font color='{ECONOMY_INCOME_HEADER_COLOR}'><b>Income from colonies</b></font>",
     ]
-    rows.extend(
-        f'{escape(row["name"])} ({escape(row["system_name"] or "")}) · {row["credits"]:,.2f} credits'
-        f' · {row["metal"]:g} metal · {row["crystal"]:g} crystal'
-        for row in colonies
-    )
+    for row in colonies:
+        name = escape(row["name"])
+        system = escape(row["system_name"] or "")
+        colony_income = f'{name} ({system}) · {row["credits"]:,.2f} credits'
+        moon_bonus = row.get("moon_bonus_credits", 0.0)
+        if moon_bonus > 0:
+            colony_income += f" (includes {moon_bonus:+,.2f} moon bonus)"
+        rows.append(f'{colony_income} · {row["metal"]:g} metal · {row["crystal"]:g} crystal')
     if not colonies:
         rows.append("No owned colonies.")
     if habitats:

@@ -37,6 +37,7 @@ DEFAULT_JUMP_RANGE: int = 5 # in hexes
 DEFAULT_STANDOFF_DISTANCE: float = 150.0  # Logical distance maintained when following or escorting a target unit
 UPKEEP_COST_PER_HULL_POINT: float = 0.01  # Credits per used hull point per turn
 TAX_RATE: float = 0.5  # Credits per population per owner turn
+MOON_COLONY_TAX_BONUS_RATE: float = 0.20  # Share of planet base tax per qualifying moon
 DEFAULT_CIVILIAN_HABITAT_BONUS: float = 12.0
 COLONY_SENSOR_RANGE: float = 1500.0  # From the colony body's surface
 POPULATION_PER_HABITAT: float = 25.0  # Population required per supported civilian habitat module

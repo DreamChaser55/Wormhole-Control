@@ -83,8 +83,10 @@ that mode. Other target checks retain the recording default, as described in the
   player records include a `defeated` flag.
   `resources.income_breakdown` itemizes credits and passive mineral yields for
   owned colonies, credits for active habitats, and aggregate siphoned credits.
+  Each owned colony row reports `moon_bonus_credits`, zero when no bonus applies.
+  The amount is included in the row's `credits` and in `resources.income`.
   `resources.upkeep_breakdown` lists each owned unit owing upkeep. These are the
-  rates used by turn settlement.
+  rates used by turn settlement. See the [moon bonus rules](REFERENCE.md#economy-and-logistics).
 - `logistics` lists the most urgent owned fuel needs from current movement,
   construction with fewer than three funded owner turns remaining, and idle
   units still short of fuel after a failed jump. Mineral outlook shows unreserved

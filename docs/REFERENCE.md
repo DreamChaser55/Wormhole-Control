@@ -233,8 +233,9 @@ stating omitted counts if necessary.
 ## Economy and logistics
 
 The bottom bar shows total population across all colonies you own. Click
-**Credits** for a scrollable popup with each colony's income, active habitat
-bonuses, and individual unit upkeep for the next income phase.
+**Credits** for a scrollable popup with each colony's income and any included
+moon bonus, active habitat bonuses, and individual unit upkeep for the next
+income phase.
 
 Press **E** or **End Turn** when finished issuing orders. The hot-seat sequence
 resolves the active player's movement, mine contacts, income, upkeep, growth and
@@ -245,7 +246,7 @@ still count as surviving units.
 
 | Resource | Source and use |
 |---|---|
-| Credits | Colony taxes, active Civilian Habitats and trade; pay for construction, equipment, upkeep and operations |
+| Credits | Colony taxes, moon bonuses, active Civilian Habitats and trade. Pay for construction, equipment, upkeep and operations. |
 | Metal | Mine Metal Asteroids and unload at a Metal Refinery; passive colony yields and salvage also supply construction, equipment installation and fortifications |
 | Crystal | Mine Comets and unload at a Crystal Refinery; passive colony yields and salvage also supply construction, equipment installation and fortifications |
 | Antimatter (AM) | Per-ship fuel for movement and equipment; harvest near stars or inside hydrogen nebulae, then transfer to other ships |
@@ -394,9 +395,20 @@ and cargo space again on arrival. See [planetary traits](#planetary-traits)
 for growth and passive yields. Each populated colony supports `max(1, floor(population / 25))`
 modules of each kind: one at 25 population, two at 50. Civilian Habitats use their
 owner's colony capacity and provide 12 credits/turn each while active. Colonies
-earn 0.5 credits per population each owner turn. Orbital
-Defense shares capacity across allied colonies and installations, providing its
+earn 0.5 credits per population each owner turn. Orbital Defense shares capacity
+across allied colonies and installations, providing its
 [equipment bonuses](#component-catalogue) to allies in range.
+
+Each populated, colonizable planet earns 20% of its base population tax per
+populated moon of the same owner exactly one hex away in the same system. The
+bonuses add together, and a moon contributes to every eligible planet it
+borders. A planet with 40 credits in base tax earns another 16 credits from
+two qualifying moons. Moons also earn their own population tax.
+
+The bonus uses current ownership and population at the planet owner's income
+phase. A colony established before that phase can contribute to the upcoming
+payout. Captures and colonization that resolves later in End Turn first affect
+the owner's following payout.
 
 ## Ships and construction
 
@@ -1705,7 +1717,7 @@ and allies; infiltrated colonies provide a 500-radius visual area.
 | Hyperdrive | Hex and wormhole jumps disabled |
 | Sensors | Short-range sensor radius halved; long-range coverage disabled |
 | Antimatter | Immediately drains half the current fuel from functioning storage; no recurring leak |
-| Economy | Colony tax income halved; the infiltrating player receives 25% of base tax |
+| Economy | Halves the host's base population tax. The infiltrating player receives 25% of base tax. A planet owner earns the full moon bonus. |
 | Growth | Population growth halted |
 
 Activate **CI Sweep** in a Counter-Intelligence ship's component panel to reveal

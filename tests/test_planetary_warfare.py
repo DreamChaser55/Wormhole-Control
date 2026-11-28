@@ -472,6 +472,39 @@ def test_capture_refreshes_support_income_espionage_and_private_briefings():
     assert not outsider.briefing.pending
 
 
+def test_captured_moon_transfers_eligibility_at_the_next_income_phase():
+    from constants import TAX_RATE
+    from economy import calculate_player_income, calculate_player_upkeep
+    from galaxy import Hex
+    from turn_processor import TurnProcessor
+
+    game = campaign()
+    attacker, defender = game.players
+    game.galaxy.systems['Sol'].hexes[(0, 1)] = Hex(0, 1, 'Sol')
+    planet = world(game, population=80)
+    world(game, owner=1, sector=(0, 1), population=50)
+    moon = world(game, owner=1, cls=Moon, sector=(1, 0), population=20)
+    unit = vessel(game, moon, troops=40)
+    game.invasion_rng = random.Random(1)
+    upkeep = calculate_player_upkeep(game.galaxy, attacker)
+
+    assert calculate_player_income(game.galaxy, defender) == pytest.approx(40.0)
+    assert issue(game, action(unit, moon)).accepted
+    turns = TurnProcessor(game)
+    starting_credits = attacker.credits
+    turns.end_turn()
+    assert moon.owner is attacker
+    assert attacker.credits - starting_credits == pytest.approx(40.0 - upkeep)
+
+    starting_credits = defender.credits
+    turns.end_turn()
+    assert defender.credits - starting_credits == pytest.approx(25.0)
+    starting_credits = attacker.credits
+    expected_income = (planet.population * 1.20 + moon.population) * TAX_RATE
+    turns.end_turn()
+    assert attacker.credits - starting_credits == pytest.approx(expected_income - upkeep)
+
+
 @pytest.mark.parametrize('players', [2, 5])
 def test_recovery_runs_once_at_global_round_end(players):
     from domain.players import Player

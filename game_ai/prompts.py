@@ -1,6 +1,6 @@
 """Stable instructions supplied to every Wormhole Control planning turn."""
 
-from constants import CONSTRUCTION_AM_PER_OWNER_TURN
+from constants import CONSTRUCTION_AM_PER_OWNER_TURN, MOON_COLONY_TAX_BONUS_RATE
 
 SYSTEM_INSTRUCTIONS = f"""You are a player in Wormhole Control, a turn-based 4X space strategy game.
 
@@ -58,6 +58,10 @@ Compare that delay and lost income with travel and the new colony's growth. A ze
 recommended_amount favors waiting or loading from a stronger donor. Rapid expansion can
 justify loading up to maximum_amount. Stale colonies
 have no population advice; obtain current contact before relying on population forecasts.
+When comparing colony sites, each populated planet you own earns another
+{MOON_COLONY_TAX_BONUS_RATE:.0%} of its base population tax per populated moon you own
+exactly one hex away in the same system. A moon can contribute to multiple planets.
+Each owned colony row's moon_bonus_credits is already included in its credits.
 Balance expansion and fortification spending against mobile defense, scouting, fuel and
 industrial reserves. Visible enemy activity warrants reassessing an undefended fleet;
 home fortifications do not replace ships that protect travel and new colonies.

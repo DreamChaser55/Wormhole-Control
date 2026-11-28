@@ -492,7 +492,7 @@ class TestGUIModalDialogs(unittest.TestCase):
     def test_income_and_upkeep_dialog_headers_sorting_and_height(self):
         """Clicking Credits opens a taller dialog with colored headers and descending section entries."""
         from constants import PlanetType
-        from domain.celestials import Planet
+        from domain.celestials import Moon, Planet
         from domain.coordinates import HexCoord
         from geometry import Position
         from gui import event_router
@@ -531,6 +531,9 @@ class TestGUIModalDialogs(unittest.TestCase):
         add_colony("Small Outpost", 10.0, player)
         add_colony("Capital Prime", 100.0, player)
         add_colony("Mid Colony", 40.0, player)
+        moon = Moon(HexCoord(1, 0), system_name)
+        moon.owner, moon.population = player, 20.0
+        system.add_celestial_body(moon)
 
         enemy_world = add_colony("Enemy Core", 60.0, enemy)
         agent = Agent(player, source_unit_id=0, target_type="CELESTIAL_BODY", target_id=enemy_world.id)
@@ -590,6 +593,8 @@ class TestGUIModalDialogs(unittest.TestCase):
         colonies_section = html[colonies_idx:habitats_idx]
         self.assertLess(colonies_section.index("Capital Prime"), colonies_section.index("Mid Colony"))
         self.assertLess(colonies_section.index("Mid Colony"), colonies_section.index("Small Outpost"))
+        self.assertIn("60.00 credits (includes +10.00 moon bonus)", colonies_section)
+        self.assertNotIn("+0.00 moon bonus", colonies_section)
 
         # Civilian habitats sorted highest credits -> lowest
         upkeep_idx = html.index("<b>Fleet upkeep</b>")

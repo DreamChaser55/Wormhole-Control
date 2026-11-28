@@ -3,10 +3,10 @@ import typing
 from dataclasses import dataclass
 from itertools import chain
 
-from constants import TAX_RATE, UPKEEP_COST_PER_HULL_POINT
-from domain.celestials import Planet, Moon, ColonizableAsteroid
-from constants import HullSize
+from constants import MOON_COLONY_TAX_BONUS_RATE, TAX_RATE, UPKEEP_COST_PER_HULL_POINT, HullSize
+from domain.celestials import ColonizableAsteroid, Moon, Planet
 from domain.players import Player, are_enemies
+from geometry import hex_distance
 from unit_components.enums import SabotageType
 
 
@@ -31,6 +31,7 @@ def calculate_income_breakdown(galaxy: typing.Any, player: Player, *, details=Fa
     """Preview one owner's income without changing resources or world state.
 
     Use current colony ownership, population, sabotage and habitat eligibility.
+    Populated moons add to the income of adjacent populated planets of the same owner.
     Each enemy colony pays siphoned tax at most once to this player, regardless
     of agent count. Passive minerals belong only to the colony owner. Trade,
     growth and upkeep resolve separately; an absent galaxy produces zero income.
@@ -41,20 +42,31 @@ def calculate_income_breakdown(galaxy: typing.Any, player: Player, *, details=Fa
         return IncomeBreakdown()
 
     for system in galaxy.systems.values():
-        for body in _bodies(system):
+        bodies = list(_bodies(system))
+        owned_moon_hexes = [
+            body.in_hex for body in bodies
+            if isinstance(body, Moon) and body.owner == player and body.population > 0
+        ]
+        for body in bodies:
             if not isinstance(body, (Planet, Moon, ColonizableAsteroid)):
                 continue
             base_tax = body.population * TAX_RATE
             if body.owner == player:
                 tax = base_tax * (0.5 if body.is_sabotaged(SabotageType.ECONOMY) else 1.0)
+                moon_bonus = 0.0
+                if isinstance(body, Planet) and body.is_colonizable and body.population > 0:
+                    moon_count = sum(hex_distance(body.in_hex, moon_hex) == 1 for moon_hex in owned_moon_hexes)
+                    moon_bonus = base_tax * MOON_COLONY_TAX_BONUS_RATE * moon_count
+                credits = tax + moon_bonus
                 local_metal = max(0.0, getattr(body, 'passive_metal', 0.0))
                 local_crystal = max(0.0, getattr(body, 'passive_crystal', 0.0))
-                colony_credits += tax
+                colony_credits += credits
                 metal += local_metal
                 crystal += local_crystal
                 if details:
                     colonies.append(dict(body_id=body.id, name=body.name, system_name=body.in_system,
-                                         credits=tax, metal=local_metal, crystal=local_crystal))
+                                         credits=credits, moon_bonus_credits=moon_bonus,
+                                         metal=local_metal, crystal=local_crystal))
             elif are_enemies(player, body.owner) and any(
                 agent.owner == player and agent.active_sabotage == SabotageType.ECONOMY
                 for agent in body.infiltrating_agents
